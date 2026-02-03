@@ -1,0 +1,64 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--app-bg);
+}
+
+.app-footer {
+  padding: 8px 16px;
+  background: var(--toolbar-bg);
+  border-top: 1px solid var(--border-color);
+}
+
+.shortcuts-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.shortcuts-hint span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.shortcuts-hint kbd {
+  display: inline-block;
+  padding: 2px 6px;
+  font-family: inherit;
+  font-size: 11px;
+  background: var(--kbd-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  box-shadow: 0 1px 0 var(--border-color);
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .app-footer {
+    padding: 6px 12px;
+  }
+
+  .shortcuts-hint {
+    gap: 12px;
+  }
+
+  .shortcuts-hint span {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .shortcuts-hint {
+    display: none;
+  }
+
+  .app-footer {
+    display: none;
+  }
+}

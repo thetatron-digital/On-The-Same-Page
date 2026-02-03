@@ -1,0 +1,121 @@
+.element-line {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 4px;
+  padding: 2px 0;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+}
+
+.element-line:hover {
+  background: var(--element-hover-bg);
+}
+
+.element-line.selected {
+  background: var(--element-selected-bg);
+}
+
+.element-type-indicator {
+  position: absolute;
+  left: -28px;
+  top: 6px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--indicator-bg);
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.element-line:hover .element-type-indicator,
+.element-line.selected .element-type-indicator {
+  opacity: 1;
+}
+
+.element-input {
+  width: 100%;
+  min-height: 24px;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  resize: none;
+  overflow: hidden;
+}
+
+.element-input:focus {
+  outline: none;
+}
+
+.element-input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+/* Element type specific styles */
+.element-line.scene-heading .element-input {
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.element-line.scene-heading .element-type-indicator {
+  background: var(--scene-heading-color);
+  color: white;
+}
+
+.element-line.action .element-type-indicator {
+  background: var(--action-color);
+  color: white;
+}
+
+.element-line.character .element-input {
+  font-weight: 600;
+}
+
+.element-line.character .element-type-indicator {
+  background: var(--character-color);
+  color: white;
+}
+
+.element-line.dialogue .element-type-indicator {
+  background: var(--dialogue-color);
+  color: white;
+}
+
+.element-line.parenthetical .element-input {
+  font-style: italic;
+  opacity: 0.9;
+}
+
+.element-line.parenthetical .element-type-indicator {
+  background: var(--parenthetical-color);
+  color: white;
+}
+
+.element-line.transition .element-type-indicator {
+  background: var(--transition-color);
+  color: white;
+}
+
+/* Auto-resize textarea */
+.element-input {
+  field-sizing: content;
+  min-height: 1.5em;
+}
+
+/* Fallback for browsers without field-sizing */
+@supports not (field-sizing: content) {
+  .element-input {
+    overflow-y: hidden;
+  }
+}
