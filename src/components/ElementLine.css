@@ -1,12 +1,8 @@
+/* Element line container */
 .element-line {
   position: relative;
-  display: flex;
-  align-items: flex-start;
-  margin-bottom: 0;
+  margin: 0;
   padding: 0;
-  border-radius: 2px;
-  transition: background 0.1s ease;
-  width: 100%;
 }
 
 .element-line:hover {
@@ -17,41 +13,17 @@
   background: var(--element-selected-bg);
 }
 
-/* Element type indicator - subtle badge on the left */
-.element-type-indicator {
-  position: absolute;
-  left: -24px;
-  top: 2px;
-  width: 18px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 9px;
-  font-weight: 600;
-  color: var(--text-muted);
-  background: var(--indicator-bg);
-  border-radius: 3px;
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-
-.element-line:hover .element-type-indicator,
-.element-line.selected .element-type-indicator {
-  opacity: 1;
-}
-
-/* Main element input - Courier 12pt equivalent with proper line height */
+/* Base input styles - Courier 12pt */
 .element-input {
+  display: block;
   width: 100%;
-  min-height: 1em;
   padding: 0;
   border: none;
   background: transparent;
-  color: var(--screenplay-text, #000);
+  color: var(--script-text);
   font-family: 'Courier New', 'Courier Prime', Courier, monospace;
-  font-size: 12pt; /* Industry standard */
-  line-height: 1.0; /* Single spacing, ~12pt line height */
+  font-size: 13px;
+  line-height: 1.4;
   resize: none;
   overflow: hidden;
   box-sizing: border-box;
@@ -66,96 +38,101 @@
   opacity: 0.4;
 }
 
-/* Element type specific styles */
+/* ============================================
+   ELEMENT TYPE SPECIFIC STYLES
+   Based on Final Draft industry standards
+   ============================================ */
 
-/* Scene Heading - Bold, uppercase */
+/* Scene Heading - Bold, uppercase, at left margin */
+.element-line.scene-heading {
+  margin-top: 24px;
+}
+
+.element-line.scene-heading:first-child {
+  margin-top: 0;
+}
+
 .element-line.scene-heading .element-input {
   font-weight: 700;
-  margin-top: 12pt; /* Space before scene headings */
+  text-transform: uppercase;
 }
 
-.element-line.scene-heading:first-child .element-input {
-  margin-top: 0;
+/* Action - Normal weight, at left margin */
+.element-line.action {
+  margin-top: 12px;
 }
 
-.element-line.scene-heading .element-type-indicator {
-  background: var(--scene-heading-color);
-  color: white;
-}
-
-/* Action */
 .element-line.action .element-input {
-  margin-top: 12pt; /* Space before action */
+  /* Full width at margin */
 }
 
-.element-line.action .element-type-indicator {
-  background: var(--action-color);
-  color: white;
+/* Character - Uppercase, indented (approx 2.2" from margin = ~210px) */
+.element-line.character {
+  margin-top: 12px;
 }
 
-/* Character - Uppercase, positioned at 3.7" from left */
 .element-line.character .element-input {
+  margin-left: 210px;
+  width: calc(100% - 210px);
   font-weight: 600;
-  margin-top: 12pt; /* Space before character */
+  text-transform: uppercase;
 }
 
-.element-line.character .element-type-indicator {
-  background: var(--character-color);
-  color: white;
+/* Dialogue - Indented (approx 1" from margin = ~96px), narrower width */
+.element-line.dialogue {
+  margin-top: 0;
 }
 
-/* Dialogue - No extra space before (follows character) */
 .element-line.dialogue .element-input {
+  margin-left: 96px;
+  width: 336px; /* approximately 3.5" at 96dpi */
+  max-width: calc(100% - 96px);
+}
+
+/* Parenthetical - Indented more than dialogue */
+.element-line.parenthetical {
   margin-top: 0;
 }
 
-.element-line.dialogue .element-type-indicator {
-  background: var(--dialogue-color);
-  color: white;
-}
-
-/* Parenthetical - Italic, no extra space */
 .element-line.parenthetical .element-input {
+  margin-left: 154px;
+  width: 230px;
+  max-width: calc(100% - 154px);
   font-style: italic;
-  margin-top: 0;
-}
-
-.element-line.parenthetical .element-type-indicator {
-  background: var(--parenthetical-color);
-  color: white;
 }
 
 /* Transition - Right-aligned, uppercase */
+.element-line.transition {
+  margin-top: 12px;
+}
+
 .element-line.transition .element-input {
-  margin-top: 12pt;
+  text-align: right;
+  text-transform: uppercase;
 }
 
-.element-line.transition .element-type-indicator {
-  background: var(--transition-color);
-  color: white;
+/* Shot - Like scene heading */
+.element-line.shot {
+  margin-top: 12px;
 }
 
-/* Shot */
 .element-line.shot .element-input {
   font-weight: 700;
-  margin-top: 12pt;
+  text-transform: uppercase;
 }
 
-.element-line.shot .element-type-indicator {
-  background: var(--shot-color, #607d8b);
-  color: white;
+/* General - Default styling */
+.element-line.general {
+  margin-top: 12px;
 }
 
-/* General */
-.element-line.general .element-type-indicator {
-  background: var(--general-color, #78909c);
-  color: white;
-}
+/* ============================================
+   AUTO-RESIZE TEXTAREA
+   ============================================ */
 
-/* Auto-resize textarea using modern CSS */
 .element-input {
   field-sizing: content;
-  min-height: 1em;
+  min-height: 1.4em;
 }
 
 /* Fallback for browsers without field-sizing */
@@ -165,12 +142,11 @@
   }
 }
 
-/* Print styles - ensure proper formatting when printed */
-@media print {
-  .element-type-indicator {
-    display: none;
-  }
+/* ============================================
+   PRINT STYLES
+   ============================================ */
 
+@media print {
   .element-line:hover,
   .element-line.selected {
     background: transparent;

@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, type KeyboardEvent } from 'react';
 import type { ScreenplayElement, ElementType } from '../types/screenplay';
-import { ELEMENT_FORMATTING, ELEMENT_SHORTCUTS, PAGE_WIDTH_INCHES } from '../types/screenplay';
+import { ELEMENT_SHORTCUTS } from '../types/screenplay';
 import { getPlainText, createTextRuns } from '../utils/fdx';
 import { useScreenplayStore } from '../store/screenplayStore';
 import './ElementLine.css';
@@ -31,6 +31,21 @@ const getNextElementType = (currentType: ElementType): ElementType => {
   }
 };
 
+// Element type formatting info
+const ELEMENT_FORMAT: Record<ElementType, {
+  allCaps: boolean;
+  placeholder: string;
+}> = {
+  'Scene Heading': { allCaps: true, placeholder: 'INT./EXT. LOCATION - TIME' },
+  'Action': { allCaps: false, placeholder: 'Describe the action...' },
+  'Character': { allCaps: true, placeholder: 'CHARACTER NAME' },
+  'Dialogue': { allCaps: false, placeholder: 'Dialogue...' },
+  'Parenthetical': { allCaps: false, placeholder: '(wrily)' },
+  'Transition': { allCaps: true, placeholder: 'CUT TO:' },
+  'Shot': { allCaps: true, placeholder: 'ANGLE ON' },
+  'General': { allCaps: false, placeholder: '' },
+};
+
 export const ElementLine = ({ element, onFocus, isSelected }: ElementLineProps) => {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [localValue, setLocalValue] = useState(getPlainText(element.content));
@@ -45,7 +60,7 @@ export const ElementLine = ({ element, onFocus, isSelected }: ElementLineProps) 
     setCurrentElementType,
   } = useScreenplayStore();
 
-  const formatting = ELEMENT_FORMATTING[element.type];
+  const format = ELEMENT_FORMAT[element.type];
 
   // Sync local value with element content when element changes
   useEffect(() => {
@@ -63,7 +78,7 @@ export const ElementLine = ({ element, onFocus, isSelected }: ElementLineProps) 
     let value = e.target.value;
 
     // Auto-capitalize for certain element types
-    if (formatting.allCaps) {
+    if (format.allCaps) {
       value = value.toUpperCase();
     }
 
@@ -171,62 +186,24 @@ export const ElementLine = ({ element, onFocus, isSelected }: ElementLineProps) 
     setCurrentElementType(element.type);
   };
 
-  // Calculate dynamic styles based on industry-standard element positioning
-  // Positions are from left edge of page (8.5" width)
-  const getElementStyle = () => {
-    const pageWidth = PAGE_WIDTH_INCHES; // 8.5 inches
-
-    // Convert inch positions to percentages of page width
-    const leftPercent = (formatting.leftEdge / pageWidth) * 100;
-    const rightPercent = ((pageWidth - formatting.rightEdge) / pageWidth) * 100;
-
-    const baseStyle: React.CSSProperties = {
-      marginLeft: `${leftPercent}%`,
-      marginRight: `${rightPercent}%`,
-      textAlign: formatting.alignment.toLowerCase() as 'left' | 'center' | 'right',
-      textTransform: formatting.allCaps ? 'uppercase' : 'none',
-    };
-
-    return baseStyle;
-  };
-
-  // Get placeholder text based on element type
-  const getPlaceholder = () => {
-    switch (element.type) {
-      case 'Scene Heading':
-        return 'INT./EXT. LOCATION - TIME';
-      case 'Action':
-        return 'Describe the action...';
-      case 'Character':
-        return 'CHARACTER NAME';
-      case 'Dialogue':
-        return 'Dialogue...';
-      case 'Parenthetical':
-        return '(wrily)';
-      case 'Transition':
-        return 'CUT TO:';
-      default:
-        return '';
-    }
+  // Get CSS class name for element type
+  const getElementClass = () => {
+    return element.type.toLowerCase().replace(' ', '-');
   };
 
   return (
     <div
-      className={`element-line ${element.type.toLowerCase().replace(' ', '-')} ${isSelected ? 'selected' : ''}`}
+      className={`element-line ${getElementClass()} ${isSelected ? 'selected' : ''}`}
       data-type={element.type}
     >
-      <div className="element-type-indicator" title={element.type}>
-        {element.type.charAt(0)}
-      </div>
       <textarea
         ref={inputRef}
         value={localValue}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         onFocus={handleFocus}
-        placeholder={getPlaceholder()}
+        placeholder={format.placeholder}
         className="element-input"
-        style={getElementStyle()}
         rows={1}
         spellCheck
       />

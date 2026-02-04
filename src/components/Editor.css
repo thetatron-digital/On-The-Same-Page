@@ -9,97 +9,145 @@
 /* Main Editor Area */
 .editor {
   flex: 1;
-  overflow: hidden;
-  background: var(--editor-bg);
   display: flex;
   flex-direction: column;
-  position: relative;
+  overflow: hidden;
+  background: var(--script-bg);
 }
 
-/* Scrollable area for the page */
-.editor-scroll-area {
+/* Ruler at top */
+.ruler {
+  height: 24px;
+  background: var(--ruler-bg);
+  border-bottom: 1px solid var(--border-color);
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.ruler-content {
+  position: relative;
+  height: 100%;
+  margin-left: 144px; /* Align with script content left margin */
+}
+
+.ruler-mark {
+  position: absolute;
+  height: 100%;
+  border-left: 1px solid var(--border-color);
+}
+
+.ruler-number {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  font-size: 10px;
+  color: var(--ruler-text);
+}
+
+/* Script content area - continuous scrolling */
+.script-area {
   flex: 1;
   overflow-y: auto;
-  overflow-x: auto;
-  padding: 40px 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-/* Screenplay Page - represents actual 8.5" x 11" page */
-.screenplay-page {
-  background: white;
-  box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.12),
-    0 4px 12px rgba(0, 0, 0, 0.08),
-    0 0 0 1px rgba(0, 0, 0, 0.05);
-  border-radius: 2px;
-  flex-shrink: 0;
-  position: relative;
-  box-sizing: border-box;
+  overflow-x: hidden;
+  background: var(--script-bg);
   cursor: text;
 }
 
-/* Page content area */
-.page-content {
-  width: 100%;
+.script-content {
+  max-width: 680px;
+  margin: 0;
+  padding: 24px 48px 24px 144px; /* Left padding for 1.5" margin at 96dpi */
   min-height: 100%;
-  padding-left: 24px; /* Space for element type indicators */
 }
 
-/* Page number (for multi-page documents) */
-.page-number {
-  position: absolute;
-  top: 24px;
-  right: 48px;
-  color: #666;
-  font-family: 'Courier New', Courier, monospace;
+.script-end-area {
+  height: 300px;
+  cursor: text;
 }
 
-/* Page indicator at bottom */
-.page-indicator {
-  margin-top: 20px;
-  padding: 8px 16px;
-  background: var(--panel-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
+/* Status bar at bottom */
+.status-bar {
+  height: 28px;
+  background: var(--toolbar-bg);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
   font-size: 12px;
   color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.status-left,
+.status-center,
+.status-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.status-left {
+  flex: 1;
+}
+
+.status-center {
+  flex: 0;
+}
+
+.status-right {
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.status-page {
+  color: var(--text-muted);
+}
+
+.status-scene {
+  color: var(--text-muted);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-ready {
+  color: var(--text-muted);
+}
+
+.status-runtime {
+  color: var(--text-muted);
 }
 
 /* Scrollbar styling */
-.editor-scroll-area::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+.script-area::-webkit-scrollbar {
+  width: 12px;
 }
 
-.editor-scroll-area::-webkit-scrollbar-track {
-  background: var(--scrollbar-track, rgba(0, 0, 0, 0.05));
-  border-radius: 5px;
+.script-area::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
 }
 
-.editor-scroll-area::-webkit-scrollbar-thumb {
+.script-area::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
-  border-radius: 5px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
+  border-radius: 6px;
+  border: 3px solid var(--script-bg);
 }
 
-.editor-scroll-area::-webkit-scrollbar-thumb:hover {
+.script-area::-webkit-scrollbar-thumb:hover {
   background: var(--scrollbar-thumb-hover);
-  border: 2px solid transparent;
-  background-clip: padding-box;
-}
-
-.editor-scroll-area::-webkit-scrollbar-corner {
-  background: transparent;
 }
 
 /* Mobile responsiveness */
 @media (max-width: 900px) {
-  .editor-scroll-area {
-    padding: 20px 10px;
+  .script-content {
+    padding: 16px 24px 16px 48px;
+  }
+
+  .ruler-content {
+    margin-left: 48px;
   }
 }
 
@@ -108,12 +156,12 @@
     flex-direction: column;
   }
 
-  .editor-scroll-area {
-    padding: 16px 8px;
+  .script-content {
+    padding: 12px 16px;
   }
 
-  .page-content {
-    padding-left: 8px;
+  .ruler {
+    display: none;
   }
 }
 
@@ -127,27 +175,19 @@
     overflow: visible;
   }
 
-  .editor-scroll-area {
-    padding: 0;
+  .script-area {
     overflow: visible;
   }
 
-  .screenplay-page {
-    box-shadow: none;
-    border-radius: 0;
-    page-break-after: always;
-  }
-
-  .page-indicator {
+  .ruler,
+  .status-bar {
     display: none;
   }
-}
 
-/* Dark mode page adjustments */
-[data-theme="dark"] .screenplay-page {
-  background: white;
-  box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.3),
-    0 4px 12px rgba(0, 0, 0, 0.2),
-    0 0 0 1px rgba(255, 255, 255, 0.05);
+  .script-content {
+    max-width: 100%;
+    padding: 1in;
+    background: white;
+    color: black;
+  }
 }
