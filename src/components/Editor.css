@@ -28,7 +28,7 @@
 .ruler-content {
   position: relative;
   height: 100%;
-  margin-left: 144px; /* Align with script content left margin */
+  margin-left: 24px; /* Align with script content left margin */
 }
 
 .ruler-mark {
@@ -55,10 +55,12 @@
 }
 
 .script-content {
-  max-width: 680px;
+  width: 100%;
+  max-width: 100%;
   margin: 0;
-  padding: 24px 48px 24px 144px; /* Left padding for 1.5" margin at 96dpi */
+  padding: 24px 48px 24px 24px; /* Reduced left padding */
   min-height: 100%;
+  transform-origin: top left;
 }
 
 .script-end-area {
@@ -107,7 +109,7 @@
 
 .status-scene {
   color: var(--text-muted);
-  max-width: 200px;
+  max-width: 300px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -143,11 +145,11 @@
 /* Mobile responsiveness */
 @media (max-width: 900px) {
   .script-content {
-    padding: 16px 24px 16px 48px;
+    padding: 16px 24px 16px 16px;
   }
 
   .ruler-content {
-    margin-left: 48px;
+    margin-left: 16px;
   }
 }
 
@@ -189,5 +191,6 @@
     padding: 1in;
     background: white;
     color: black;
+    transform: none !important;
   }
 }

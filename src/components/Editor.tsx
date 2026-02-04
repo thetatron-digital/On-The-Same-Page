@@ -17,6 +17,7 @@ export const Editor = () => {
     addElement,
     panels,
     stats,
+    zoom,
   } = useScreenplayStore();
 
   // Auto-resize textareas
@@ -26,7 +27,7 @@ export const Editor = () => {
       textarea.style.height = 'auto';
       textarea.style.height = `${textarea.scrollHeight}px`;
     });
-  }, [screenplay.elements]);
+  }, [screenplay.elements, zoom]);
 
   // Handle click on empty area - create new element or focus last
   const handleEditorClick = (e: React.MouseEvent) => {
@@ -93,6 +94,12 @@ export const Editor = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Calculate zoom scale
+  const scale = zoom / 100;
+
+  // Find current scene heading for status bar
+  const currentSceneHeading = screenplay.elements.find(el => el.type === 'Scene Heading')?.content[0]?.text || 'No Scene';
+
   return (
     <div className="editor-container">
       {/* Left Panel - Navigator */}
@@ -105,7 +112,7 @@ export const Editor = () => {
 
         {/* Ruler */}
         <div className="ruler">
-          <div className="ruler-content">
+          <div className="ruler-content" style={{ transform: `scaleX(${scale})`, transformOrigin: 'left' }}>
             {[0, 1, 2, 3, 4, 5, 6, 7].map((inch) => (
               <div key={inch} className="ruler-mark" style={{ left: `${inch * 96}px` }}>
                 <span className="ruler-number">{inch}</span>
@@ -116,13 +123,22 @@ export const Editor = () => {
 
         {/* Script content area */}
         <div className="script-area" onClick={handleEditorClick}>
-          <div className="script-content" ref={contentRef}>
-            {screenplay.elements.map((element) => (
+          <div
+            className="script-content"
+            ref={contentRef}
+            style={{
+              transform: `scale(${scale})`,
+              transformOrigin: 'top left',
+              width: `${100 / scale}%`,
+            }}
+          >
+            {screenplay.elements.map((element, index) => (
               <ElementLine
                 key={element.id}
                 element={element}
                 isSelected={selectedElementId === element.id}
                 onFocus={() => selectElement(element.id)}
+                prevElementType={index > 0 ? screenplay.elements[index - 1].type : undefined}
               />
             ))}
             {/* Click area at bottom for adding new elements */}
@@ -134,9 +150,7 @@ export const Editor = () => {
         <div className="status-bar">
           <div className="status-left">
             <span className="status-page">{stats.pageCount} of {stats.pageCount}</span>
-            <span className="status-scene">
-              {screenplay.elements.find(el => el.type === 'Scene Heading')?.content[0]?.text?.substring(0, 30) || 'No Scene'}
-            </span>
+            <span className="status-scene">{currentSceneHeading.substring(0, 40)}</span>
           </div>
           <div className="status-center">
             <span className="status-ready">Ready</span>

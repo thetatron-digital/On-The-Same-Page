@@ -9,6 +9,7 @@ interface ElementLineProps {
   element: ScreenplayElement;
   onFocus: () => void;
   isSelected: boolean;
+  prevElementType?: ElementType;
 }
 
 // Determine next element type based on current type (smart element progression)
@@ -21,7 +22,7 @@ const getNextElementType = (currentType: ElementType): ElementType => {
     case 'Character':
       return 'Dialogue';
     case 'Dialogue':
-      return 'Character';
+      return 'Dialogue'; // Continue dialogue by default
     case 'Parenthetical':
       return 'Dialogue';
     case 'Transition':
@@ -39,14 +40,14 @@ const ELEMENT_FORMAT: Record<ElementType, {
   'Scene Heading': { allCaps: true, placeholder: 'INT./EXT. LOCATION - TIME' },
   'Action': { allCaps: false, placeholder: 'Describe the action...' },
   'Character': { allCaps: true, placeholder: 'CHARACTER NAME' },
-  'Dialogue': { allCaps: false, placeholder: 'Dialogue...' },
+  'Dialogue': { allCaps: false, placeholder: '' },
   'Parenthetical': { allCaps: false, placeholder: '(wrily)' },
   'Transition': { allCaps: true, placeholder: 'CUT TO:' },
   'Shot': { allCaps: true, placeholder: 'ANGLE ON' },
   'General': { allCaps: false, placeholder: '' },
 };
 
-export const ElementLine = ({ element, onFocus, isSelected }: ElementLineProps) => {
+export const ElementLine = ({ element, onFocus, isSelected, prevElementType }: ElementLineProps) => {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [localValue, setLocalValue] = useState(getPlainText(element.content));
 
@@ -111,9 +112,8 @@ export const ElementLine = ({ element, onFocus, isSelected }: ElementLineProps) 
         // Update current element with text before cursor
         updateElement(element.id, createTextRuns(beforeCursor));
 
-        // Create new element with text after cursor
-        const nextType = getNextElementType(element.type);
-        const newId = addElement(element.id, nextType);
+        // Create new element with same type for continuation
+        const newId = addElement(element.id, element.type);
 
         // Set the new element's content to the text after cursor
         setTimeout(() => {
@@ -191,9 +191,14 @@ export const ElementLine = ({ element, onFocus, isSelected }: ElementLineProps) 
     return element.type.toLowerCase().replace(' ', '-');
   };
 
+  // Determine if we should show selection highlight
+  // Don't highlight if it's a continuation of the same element type
+  const isContinuation = prevElementType === element.type;
+  const showSelectionHighlight = isSelected && !isContinuation;
+
   return (
     <div
-      className={`element-line ${getElementClass()} ${isSelected ? 'selected' : ''}`}
+      className={`element-line ${getElementClass()} ${showSelectionHighlight ? 'selected' : ''} ${isSelected ? 'focused' : ''}`}
       data-type={element.type}
     >
       <textarea
