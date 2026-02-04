@@ -1,6 +1,28 @@
 import { create } from 'zustand';
-import type { Screenplay, ScreenplayElement, ElementType, TextRun } from '../types/screenplay';
-import { createNewScreenplay, generateId, parseFDX, generateFDX } from '../utils/fdx';
+import type { Screenplay, ScreenplayElement, ElementType, TextRun, TitlePageInfo } from '../types/screenplay';
+import { LINES_PER_PAGE } from '../types/screenplay';
+import { createNewScreenplay, generateId, parseFDX, generateFDX, getPlainText } from '../utils/fdx';
+
+// Panel visibility options
+interface PanelState {
+  navigator: boolean;
+  elements: boolean;
+  writingStats: boolean;
+  titlePage: boolean;
+}
+
+// View modes
+type ViewMode = 'script' | 'outline' | 'split';
+
+// Writing statistics
+interface WritingStats {
+  pageCount: number;
+  wordCount: number;
+  characterCount: number;
+  sceneCount: number;
+  dialogueCount: number;
+  estimatedRuntime: string; // e.g., "1h 32m"
+}
 
 interface ScreenplayState {
   screenplay: Screenplay;
@@ -10,11 +32,20 @@ interface ScreenplayState {
   fileName: string;
   darkMode: boolean;
 
+  // UI State
+  zoom: number;
+  viewMode: ViewMode;
+  panels: PanelState;
+  stats: WritingStats;
+  currentPage: number;
+  cursorLine: number;
+
   // Actions
   setScreenplay: (screenplay: Screenplay) => void;
   newScreenplay: () => void;
   setTitle: (title: string) => void;
   setAuthor: (author: string) => void;
+  updateTitlePage: (titlePage: Partial<TitlePageInfo>) => void;
 
   // Element actions
   addElement: (afterId?: string, type?: ElementType) => string;
@@ -31,9 +62,61 @@ interface ScreenplayState {
   setFileName: (name: string) => void;
   setDirty: (dirty: boolean) => void;
 
+  // UI actions
+  setZoom: (zoom: number) => void;
+  setViewMode: (mode: ViewMode) => void;
+  togglePanel: (panel: keyof PanelState) => void;
+  setCurrentPage: (page: number) => void;
+  setCursorLine: (line: number) => void;
+  calculateStats: () => void;
+
   // Theme
   toggleDarkMode: () => void;
 }
+
+// Calculate writing statistics from screenplay
+const calculateWritingStats = (screenplay: Screenplay): WritingStats => {
+  let wordCount = 0;
+  let characterCount = 0;
+  let sceneCount = 0;
+  let dialogueCount = 0;
+  let totalLines = 0;
+
+  screenplay.elements.forEach((element) => {
+    const text = getPlainText(element.content);
+    const words = text.trim().split(/\s+/).filter(w => w.length > 0);
+    wordCount += words.length;
+    characterCount += text.length;
+
+    if (element.type === 'Scene Heading') {
+      sceneCount++;
+    }
+    if (element.type === 'Dialogue') {
+      dialogueCount++;
+    }
+
+    // Estimate lines (rough calculation based on 60 chars per line)
+    const lineCount = Math.max(1, Math.ceil(text.length / 60));
+    totalLines += lineCount;
+  });
+
+  const pageCount = Math.max(1, Math.ceil(totalLines / LINES_PER_PAGE));
+
+  // 1 page ≈ 1 minute of screen time
+  const totalMinutes = pageCount;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  const estimatedRuntime = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+
+  return {
+    pageCount,
+    wordCount,
+    characterCount,
+    sceneCount,
+    dialogueCount,
+    estimatedRuntime,
+  };
+};
 
 export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
   screenplay: createNewScreenplay(),
@@ -41,29 +124,72 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
   currentElementType: 'Scene Heading',
   isDirty: false,
   fileName: 'Untitled.fdx',
-  darkMode: true, // Default to dark mode
+  darkMode: true,
 
-  setScreenplay: (screenplay) => set({ screenplay, isDirty: true }),
+  // UI State defaults
+  zoom: 100,
+  viewMode: 'script',
+  panels: {
+    navigator: false,
+    elements: false,
+    writingStats: false,
+    titlePage: false,
+  },
+  stats: {
+    pageCount: 1,
+    wordCount: 0,
+    characterCount: 0,
+    sceneCount: 0,
+    dialogueCount: 0,
+    estimatedRuntime: '0m',
+  },
+  currentPage: 1,
+  cursorLine: 1,
+
+  setScreenplay: (screenplay) => {
+    const stats = calculateWritingStats(screenplay);
+    set({ screenplay, isDirty: true, stats });
+  },
 
   newScreenplay: () => {
     const newScript = createNewScreenplay();
+    const stats = calculateWritingStats(newScript);
     set({
       screenplay: newScript,
       selectedElementId: newScript.elements[0]?.id || null,
       isDirty: false,
       fileName: 'Untitled.fdx',
+      stats,
+      currentPage: 1,
     });
   },
 
   setTitle: (title) =>
     set((state) => ({
-      screenplay: { ...state.screenplay, title },
+      screenplay: {
+        ...state.screenplay,
+        title,
+        titlePage: { ...state.screenplay.titlePage, title }
+      },
       isDirty: true,
     })),
 
   setAuthor: (author) =>
     set((state) => ({
-      screenplay: { ...state.screenplay, author },
+      screenplay: {
+        ...state.screenplay,
+        author,
+        titlePage: { ...state.screenplay.titlePage, author }
+      },
+      isDirty: true,
+    })),
+
+  updateTitlePage: (titlePageUpdate) =>
+    set((state) => ({
+      screenplay: {
+        ...state.screenplay,
+        titlePage: { ...state.screenplay.titlePage, ...titlePageUpdate },
+      },
       isDirty: true,
     })),
 
@@ -89,10 +215,14 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
       elements.push(newElement);
     }
 
+    const newScreenplay = { ...state.screenplay, elements };
+    const stats = calculateWritingStats(newScreenplay);
+
     set({
-      screenplay: { ...state.screenplay, elements },
+      screenplay: newScreenplay,
       selectedElementId: newElement.id,
       isDirty: true,
+      stats,
     });
 
     return newElement.id;
@@ -103,9 +233,12 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
       const elements = state.screenplay.elements.map((el) =>
         el.id === id ? { ...el, content } : el
       );
+      const newScreenplay = { ...state.screenplay, elements };
+      const stats = calculateWritingStats(newScreenplay);
       return {
-        screenplay: { ...state.screenplay, elements },
+        screenplay: newScreenplay,
         isDirty: true,
+        stats,
       };
     }),
 
@@ -114,10 +247,13 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
       const elements = state.screenplay.elements.map((el) =>
         el.id === id ? { ...el, type } : el
       );
+      const newScreenplay = { ...state.screenplay, elements };
+      const stats = calculateWritingStats(newScreenplay);
       return {
-        screenplay: { ...state.screenplay, elements },
+        screenplay: newScreenplay,
         currentElementType: type,
         isDirty: true,
+        stats,
       };
     }),
 
@@ -125,7 +261,6 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
     set((state) => {
       const elements = state.screenplay.elements.filter((el) => el.id !== id);
 
-      // Ensure there's always at least one element
       if (elements.length === 0) {
         elements.push({
           id: generateId(),
@@ -134,7 +269,6 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
         });
       }
 
-      // Update selection
       let newSelectedId = state.selectedElementId;
       if (state.selectedElementId === id) {
         const deletedIndex = state.screenplay.elements.findIndex((el) => el.id === id);
@@ -145,10 +279,14 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
         }
       }
 
+      const newScreenplay = { ...state.screenplay, elements };
+      const stats = calculateWritingStats(newScreenplay);
+
       return {
-        screenplay: { ...state.screenplay, elements },
+        screenplay: newScreenplay,
         selectedElementId: newSelectedId,
         isDirty: true,
+        stats,
       };
     }),
 
@@ -166,7 +304,6 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
     const currentElement = elements[index];
     const previousElement = elements[index - 1];
 
-    // Merge content
     const mergedContent = [
       ...previousElement.content,
       ...currentElement.content,
@@ -179,10 +316,14 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
 
     elements.splice(index, 1);
 
+    const newScreenplay = { ...state.screenplay, elements };
+    const stats = calculateWritingStats(newScreenplay);
+
     set({
-      screenplay: { ...state.screenplay, elements },
+      screenplay: newScreenplay,
       selectedElementId: previousElement.id,
       isDirty: true,
+      stats,
     });
 
     return previousElement.id;
@@ -191,10 +332,13 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
   loadFromFDX: (content) => {
     try {
       const screenplay = parseFDX(content);
+      const stats = calculateWritingStats(screenplay);
       set({
         screenplay,
         selectedElementId: screenplay.elements[0]?.id || null,
         isDirty: false,
+        stats,
+        currentPage: 1,
       });
     } catch (error) {
       console.error('Failed to parse FDX file:', error);
@@ -210,6 +354,28 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
   setFileName: (name) => set({ fileName: name }),
 
   setDirty: (dirty) => set({ isDirty: dirty }),
+
+  // UI actions
+  setZoom: (zoom) => set({ zoom: Math.max(50, Math.min(200, zoom)) }),
+
+  setViewMode: (mode) => set({ viewMode: mode }),
+
+  togglePanel: (panel) =>
+    set((state) => ({
+      panels: {
+        ...state.panels,
+        [panel]: !state.panels[panel],
+      },
+    })),
+
+  setCurrentPage: (page) => set({ currentPage: page }),
+
+  setCursorLine: (line) => set({ cursorLine: line }),
+
+  calculateStats: () =>
+    set((state) => ({
+      stats: calculateWritingStats(state.screenplay),
+    })),
 
   toggleDarkMode: () => set((state) => ({ darkMode: !state.darkMode })),
 }));

@@ -2,10 +2,11 @@
   position: relative;
   display: flex;
   align-items: flex-start;
-  margin-bottom: 4px;
-  padding: 2px 0;
-  border-radius: 4px;
-  transition: background 0.15s ease;
+  margin-bottom: 0;
+  padding: 0;
+  border-radius: 2px;
+  transition: background 0.1s ease;
+  width: 100%;
 }
 
 .element-line:hover {
@@ -16,20 +17,21 @@
   background: var(--element-selected-bg);
 }
 
+/* Element type indicator - subtle badge on the left */
 .element-type-indicator {
   position: absolute;
-  left: -28px;
-  top: 6px;
-  width: 20px;
-  height: 20px;
+  left: -24px;
+  top: 2px;
+  width: 18px;
+  height: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
   color: var(--text-muted);
   background: var(--indicator-bg);
-  border-radius: 4px;
+  border-radius: 3px;
   opacity: 0;
   transition: opacity 0.15s ease;
 }
@@ -39,18 +41,20 @@
   opacity: 1;
 }
 
+/* Main element input - Courier 12pt equivalent with proper line height */
 .element-input {
   width: 100%;
-  min-height: 24px;
-  padding: 4px 8px;
+  min-height: 1em;
+  padding: 0;
   border: none;
   background: transparent;
-  color: var(--text-primary);
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 14px;
-  line-height: 1.5;
+  color: var(--screenplay-text, #000);
+  font-family: 'Courier New', 'Courier Prime', Courier, monospace;
+  font-size: 12pt; /* Industry standard */
+  line-height: 1.0; /* Single spacing, ~12pt line height */
   resize: none;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .element-input:focus {
@@ -59,13 +63,19 @@
 
 .element-input::placeholder {
   color: var(--text-muted);
-  opacity: 0.5;
+  opacity: 0.4;
 }
 
 /* Element type specific styles */
+
+/* Scene Heading - Bold, uppercase */
 .element-line.scene-heading .element-input {
   font-weight: 700;
-  letter-spacing: 0.5px;
+  margin-top: 12pt; /* Space before scene headings */
+}
+
+.element-line.scene-heading:first-child .element-input {
+  margin-top: 0;
 }
 
 .element-line.scene-heading .element-type-indicator {
@@ -73,13 +83,20 @@
   color: white;
 }
 
+/* Action */
+.element-line.action .element-input {
+  margin-top: 12pt; /* Space before action */
+}
+
 .element-line.action .element-type-indicator {
   background: var(--action-color);
   color: white;
 }
 
+/* Character - Uppercase, positioned at 3.7" from left */
 .element-line.character .element-input {
   font-weight: 600;
+  margin-top: 12pt; /* Space before character */
 }
 
 .element-line.character .element-type-indicator {
@@ -87,14 +104,20 @@
   color: white;
 }
 
+/* Dialogue - No extra space before (follows character) */
+.element-line.dialogue .element-input {
+  margin-top: 0;
+}
+
 .element-line.dialogue .element-type-indicator {
   background: var(--dialogue-color);
   color: white;
 }
 
+/* Parenthetical - Italic, no extra space */
 .element-line.parenthetical .element-input {
   font-style: italic;
-  opacity: 0.9;
+  margin-top: 0;
 }
 
 .element-line.parenthetical .element-type-indicator {
@@ -102,20 +125,58 @@
   color: white;
 }
 
+/* Transition - Right-aligned, uppercase */
+.element-line.transition .element-input {
+  margin-top: 12pt;
+}
+
 .element-line.transition .element-type-indicator {
   background: var(--transition-color);
   color: white;
 }
 
-/* Auto-resize textarea */
+/* Shot */
+.element-line.shot .element-input {
+  font-weight: 700;
+  margin-top: 12pt;
+}
+
+.element-line.shot .element-type-indicator {
+  background: var(--shot-color, #607d8b);
+  color: white;
+}
+
+/* General */
+.element-line.general .element-type-indicator {
+  background: var(--general-color, #78909c);
+  color: white;
+}
+
+/* Auto-resize textarea using modern CSS */
 .element-input {
   field-sizing: content;
-  min-height: 1.5em;
+  min-height: 1em;
 }
 
 /* Fallback for browsers without field-sizing */
 @supports not (field-sizing: content) {
   .element-input {
     overflow-y: hidden;
+  }
+}
+
+/* Print styles - ensure proper formatting when printed */
+@media print {
+  .element-type-indicator {
+    display: none;
+  }
+
+  .element-line:hover,
+  .element-line.selected {
+    background: transparent;
+  }
+
+  .element-input {
+    color: #000 !important;
   }
 }

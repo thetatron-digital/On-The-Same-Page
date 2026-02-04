@@ -1,9 +1,20 @@
-import type { Screenplay, ScreenplayElement, TextRun, ElementType } from '../types/screenplay';
+import type { Screenplay, ScreenplayElement, TextRun, ElementType, TitlePageInfo } from '../types/screenplay';
 
 // Generate a unique ID
 export const generateId = (): string => {
   return `elem_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 };
+
+// Create default title page
+const createDefaultTitlePage = (title: string = '', author: string = ''): TitlePageInfo => ({
+  title: title || 'Untitled Screenplay',
+  credit: 'Written by',
+  author: author || '',
+  source: '',
+  draftDate: new Date().toLocaleDateString(),
+  contact: '',
+  copyright: '',
+});
 
 // Parse FDX file content into Screenplay object
 export const parseFDX = (xmlContent: string): Screenplay => {
@@ -16,32 +27,69 @@ export const parseFDX = (xmlContent: string): Screenplay => {
     throw new Error('Invalid FDX file format');
   }
 
-  const screenplay: Screenplay = {
-    title: '',
-    author: '',
-    elements: [],
-  };
+  let title = '';
+  let author = '';
+  let credit = 'Written by';
+  let source = '';
+  let contact = '';
 
   // Parse title page info if available
-  const titlePage = doc.querySelector('TitlePage');
-  if (titlePage) {
-    const titleEl = titlePage.querySelector('Content Paragraph[Type="Title"] Text');
+  const titlePageEl = doc.querySelector('TitlePage');
+  if (titlePageEl) {
+    const titleEl = titlePageEl.querySelector('Content Paragraph[Type="Title"] Text');
     if (titleEl) {
-      screenplay.title = titleEl.textContent || '';
+      title = titleEl.textContent || '';
     }
-    const authorEl = titlePage.querySelector('Content Paragraph[Type="Author"] Text');
-    if (authorEl) {
-      screenplay.author = authorEl.textContent || '';
+
+    // Get all author paragraphs
+    const authorParagraphs = titlePageEl.querySelectorAll('Content Paragraph[Type="Author"]');
+    authorParagraphs.forEach((para) => {
+      const text = para.querySelector('Text')?.textContent || '';
+      if (text.toLowerCase().includes('written by') || text.toLowerCase().includes('screenplay by')) {
+        credit = text;
+      } else if (text.trim()) {
+        author = text;
+      }
+    });
+
+    // Get source/based on
+    const sourcePara = titlePageEl.querySelector('Content Paragraph[Type="Source"] Text');
+    if (sourcePara) {
+      source = sourcePara.textContent || '';
+    }
+
+    // Get contact
+    const contactPara = titlePageEl.querySelector('Content Paragraph[Type="Contact"] Text');
+    if (contactPara) {
+      contact = contactPara.textContent || '';
     }
   }
 
-  // Parse script content
-  const content = doc.querySelector('Content');
-  if (content) {
-    const paragraphs = content.querySelectorAll('Paragraph');
+  const titlePage = createDefaultTitlePage(title, author);
+  titlePage.credit = credit;
+  titlePage.source = source;
+  titlePage.contact = contact;
 
-    paragraphs.forEach((para) => {
+  const screenplay: Screenplay = {
+    title,
+    author,
+    titlePage,
+    elements: [],
+  };
+
+  // Parse script content (skip TitlePage content)
+  const content = doc.querySelector('FinalDraft > Content');
+  if (content) {
+    // Get paragraphs that are NOT inside TitlePage
+    const allParagraphs = content.querySelectorAll(':scope > Paragraph');
+
+    allParagraphs.forEach((para) => {
       const typeAttr = para.getAttribute('Type');
+      // Skip title page element types
+      if (typeAttr === 'Title' || typeAttr === 'Author' || typeAttr === 'Source' || typeAttr === 'Contact') {
+        return;
+      }
+
       const elementType = mapFDXTypeToElementType(typeAttr || 'Action');
 
       const textRuns: TextRun[] = [];
@@ -74,6 +122,15 @@ export const parseFDX = (xmlContent: string): Screenplay => {
     });
   }
 
+  // Ensure at least one element
+  if (screenplay.elements.length === 0) {
+    screenplay.elements.push({
+      id: generateId(),
+      type: 'Scene Heading',
+      content: [{ text: '' }],
+    });
+  }
+
   return screenplay;
 };
 
@@ -103,20 +160,38 @@ export const generateFDX = (screenplay: Screenplay): string => {
       .replace(/'/g, '&apos;');
   };
 
+  const tp = screenplay.titlePage;
+
   let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <FinalDraft DocumentType="Script" Template="No" Version="5">
 <Content>
 <TitlePage>
 <Content>
 <Paragraph Type="Title" Alignment="Center">
-<Text>${escapeXml(screenplay.title || 'Untitled')}</Text>
+<Text>${escapeXml(tp.title || screenplay.title || 'Untitled')}</Text>
 </Paragraph>
 <Paragraph Type="Author" Alignment="Center">
-<Text>Written by</Text>
+<Text>${escapeXml(tp.credit || 'Written by')}</Text>
 </Paragraph>
 <Paragraph Type="Author" Alignment="Center">
-<Text>${escapeXml(screenplay.author || '')}</Text>
-</Paragraph>
+<Text>${escapeXml(tp.author || screenplay.author || '')}</Text>
+</Paragraph>`;
+
+  if (tp.source) {
+    xml += `
+<Paragraph Type="Source" Alignment="Center">
+<Text>${escapeXml(tp.source)}</Text>
+</Paragraph>`;
+  }
+
+  if (tp.contact) {
+    xml += `
+<Paragraph Type="Contact" Alignment="Left">
+<Text>${escapeXml(tp.contact)}</Text>
+</Paragraph>`;
+  }
+
+  xml += `
 </Content>
 </TitlePage>
 `;
@@ -189,9 +264,11 @@ export const generateFDX = (screenplay: Screenplay): string => {
 
 // Create a new empty screenplay
 export const createNewScreenplay = (): Screenplay => {
+  const titlePage = createDefaultTitlePage();
   return {
     title: 'Untitled Screenplay',
     author: '',
+    titlePage,
     elements: [
       {
         id: generateId(),

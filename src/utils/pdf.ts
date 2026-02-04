@@ -15,17 +15,17 @@ const FONT_SIZE = 12;
 // Convert inches to points
 const inchesToPoints = (inches: number): number => inches * 72;
 
-// Get x position for element type
+// Get x position for element type (from left edge of page)
 const getXPosition = (elementType: ElementType): number => {
   const formatting = ELEMENT_FORMATTING[elementType];
-  return inchesToPoints(formatting.leftMargin);
+  return inchesToPoints(formatting.leftEdge);
 };
 
 // Get max width for element type
 const getMaxWidth = (elementType: ElementType): number => {
   const formatting = ELEMENT_FORMATTING[elementType];
-  const leftPos = inchesToPoints(formatting.leftMargin);
-  const rightPos = PAGE_WIDTH - inchesToPoints(formatting.rightMargin);
+  const leftPos = inchesToPoints(formatting.leftEdge);
+  const rightPos = inchesToPoints(formatting.rightEdge);
   return rightPos - leftPos;
 };
 
@@ -94,10 +94,21 @@ export const generatePDF = (screenplay: Screenplay): jsPDF => {
     doc.text(screenplay.title.toUpperCase(), PAGE_WIDTH / 2, titleY, { align: 'center' });
 
     doc.setFont('Courier', 'normal');
-    doc.text('Written by', PAGE_WIDTH / 2, titleY + LINE_HEIGHT * 3, { align: 'center' });
+    const credit = screenplay.titlePage?.credit || 'Written by';
+    doc.text(credit, PAGE_WIDTH / 2, titleY + LINE_HEIGHT * 3, { align: 'center' });
 
     if (screenplay.author) {
       doc.text(screenplay.author, PAGE_WIDTH / 2, titleY + LINE_HEIGHT * 5, { align: 'center' });
+    }
+
+    // Add contact info if available
+    if (screenplay.titlePage?.contact) {
+      const contactLines = screenplay.titlePage.contact.split('\n');
+      let contactY = PAGE_HEIGHT - BOTTOM_MARGIN - (contactLines.length * LINE_HEIGHT);
+      contactLines.forEach((line) => {
+        doc.text(line, inchesToPoints(1.5), contactY);
+        contactY += LINE_HEIGHT;
+      });
     }
 
     addNewPage();
@@ -112,7 +123,7 @@ export const generatePDF = (screenplay: Screenplay): jsPDF => {
 
     // Add space before (except at top of page)
     if (currentY > TOP_MARGIN) {
-      currentY += formatting.spaceBefore * LINE_HEIGHT;
+      currentY += formatting.spaceBeforeLines * LINE_HEIGHT;
     }
 
     // Get positioning
@@ -120,7 +131,7 @@ export const generatePDF = (screenplay: Screenplay): jsPDF => {
     const maxWidth = getMaxWidth(element.type);
 
     // Format text based on element type
-    let displayText = formatting.allCaps ? text.toUpperCase() : text;
+    const displayText = formatting.allCaps ? text.toUpperCase() : text;
 
     // Word wrap the text
     const lines = wrapText(doc, displayText, maxWidth);
@@ -130,10 +141,11 @@ export const generatePDF = (screenplay: Screenplay): jsPDF => {
 
     // Render each line
     lines.forEach((line, lineIndex) => {
-      if (formatting.alignment === 'Right') {
-        doc.text(line, PAGE_WIDTH - RIGHT_MARGIN, currentY, { align: 'right' });
-      } else if (formatting.alignment === 'Center') {
-        doc.text(line, PAGE_WIDTH / 2, currentY, { align: 'center' });
+      if (formatting.alignment === 'right') {
+        doc.text(line, inchesToPoints(formatting.rightEdge), currentY, { align: 'right' });
+      } else if (formatting.alignment === 'center') {
+        const centerX = (inchesToPoints(formatting.leftEdge) + inchesToPoints(formatting.rightEdge)) / 2;
+        doc.text(line, centerX, currentY, { align: 'center' });
       } else {
         doc.text(line, xPos, currentY);
       }
@@ -146,7 +158,9 @@ export const generatePDF = (screenplay: Screenplay): jsPDF => {
     });
 
     // Add space after
-    currentY += (formatting.spaceAfter - 1) * LINE_HEIGHT;
+    if (formatting.spaceAfterLines > 0) {
+      currentY += formatting.spaceAfterLines * LINE_HEIGHT;
+    }
   });
 
   return doc;

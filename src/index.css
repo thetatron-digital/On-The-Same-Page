@@ -3,29 +3,37 @@
   /* Light theme */
   --app-bg: #f5f5f5;
   --toolbar-bg: #ffffff;
-  --editor-bg: #e8e8e8;
+  --toolbar-secondary-bg: #fafafa;
+  --editor-bg: #e0e0e0;
+  --panel-bg: #ffffff;
   --page-bg: #ffffff;
   --page-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 
   --text-primary: #1a1a1a;
   --text-secondary: #4a4a4a;
   --text-muted: #888888;
+  --screenplay-text: #000000;
 
   --border-color: #e0e0e0;
   --hover-bg: #f0f0f0;
   --input-bg: #f8f8f8;
+  --button-bg: #f0f0f0;
+  --button-hover-bg: #e5e5e5;
+  --button-active-bg: #d5d5d5;
 
   --element-hover-bg: rgba(0, 0, 0, 0.03);
-  --element-selected-bg: rgba(0, 0, 0, 0.05);
+  --element-selected-bg: rgba(99, 102, 241, 0.1);
   --indicator-bg: #f0f0f0;
 
-  --accent-color: #6366f1;
-  --accent-color-alpha: rgba(99, 102, 241, 0.2);
+  --accent-color: #2563eb;
+  --accent-color-alpha: rgba(37, 99, 235, 0.2);
+  --accent-hover: #1d4ed8;
 
   --kbd-bg: #f0f0f0;
 
   --scrollbar-thumb: #c0c0c0;
   --scrollbar-thumb-hover: #a0a0a0;
+  --scrollbar-track: rgba(0, 0, 0, 0.05);
 
   /* Element type colors */
   --scene-heading-color: #3b82f6;
@@ -34,32 +42,41 @@
   --dialogue-color: #8b5cf6;
   --parenthetical-color: #ec4899;
   --transition-color: #ef4444;
+  --shot-color: #607d8b;
+  --general-color: #78909c;
 }
 
 /* Dark theme */
 [data-theme="dark"] {
   --app-bg: #0f0f0f;
   --toolbar-bg: #1a1a1a;
+  --toolbar-secondary-bg: #151515;
   --editor-bg: #121212;
+  --panel-bg: #1a1a1a;
   --page-bg: #1e1e1e;
   --page-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 
   --text-primary: #f0f0f0;
   --text-secondary: #b0b0b0;
   --text-muted: #666666;
+  --screenplay-text: #000000; /* Keep screenplay text black on white page */
 
   --border-color: #2a2a2a;
   --hover-bg: #252525;
   --input-bg: #252525;
+  --button-bg: #2a2a2a;
+  --button-hover-bg: #353535;
+  --button-active-bg: #404040;
 
   --element-hover-bg: rgba(255, 255, 255, 0.03);
-  --element-selected-bg: rgba(255, 255, 255, 0.06);
+  --element-selected-bg: rgba(99, 102, 241, 0.15);
   --indicator-bg: #2a2a2a;
 
   --kbd-bg: #2a2a2a;
 
   --scrollbar-thumb: #3a3a3a;
   --scrollbar-thumb-hover: #4a4a4a;
+  --scrollbar-track: rgba(255, 255, 255, 0.02);
 }
 
 /* Base styles */
@@ -72,6 +89,7 @@ html, body {
   padding: 0;
   height: 100%;
   width: 100%;
+  overflow: hidden;
 }
 
 body {
@@ -138,4 +156,86 @@ a:hover {
   font-family: 'Courier New';
   src: local('Courier New');
   font-display: swap;
+}
+
+/* Common button styles */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--button-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn:hover {
+  background: var(--button-hover-bg);
+}
+
+.btn:active {
+  background: var(--button-active-bg);
+}
+
+.btn.active {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  color: white;
+}
+
+.btn-icon {
+  padding: 6px;
+}
+
+.btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Panel styles */
+.panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--border-color);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.panel-header h3 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.panel-close {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.panel-close:hover {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.panel-content {
+  padding: 12px 16px;
 }

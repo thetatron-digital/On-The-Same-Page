@@ -5,12 +5,18 @@ import { useScreenplayStore } from './store/screenplayStore';
 import './App.css';
 
 function App() {
-  const { darkMode, isDirty } = useScreenplayStore();
+  const { darkMode, isDirty, fileName } = useScreenplayStore();
 
   // Apply dark mode class to document
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
   }, [darkMode]);
+
+  // Update document title with filename
+  useEffect(() => {
+    const baseName = fileName.replace('.fdx', '');
+    document.title = isDirty ? `${baseName}* - Re-writer` : `${baseName} - Re-writer`;
+  }, [fileName, isDirty]);
 
   // Warn before leaving with unsaved changes
   useEffect(() => {
@@ -29,14 +35,6 @@ function App() {
     <div className="app">
       <Toolbar />
       <Editor />
-      <footer className="app-footer">
-        <div className="shortcuts-hint">
-          <span><kbd>Tab</kbd> Cycle element types</span>
-          <span><kbd>Enter</kbd> New element</span>
-          <span><kbd>Ctrl+1-6</kbd> Quick element switch</span>
-          <span><kbd>Ctrl+S</kbd> Save</span>
-        </div>
-      </footer>
     </div>
   );
 }

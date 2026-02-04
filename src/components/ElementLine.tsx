@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, type KeyboardEvent } from 'react';
 import type { ScreenplayElement, ElementType } from '../types/screenplay';
-import { ELEMENT_FORMATTING, ELEMENT_SHORTCUTS } from '../types/screenplay';
+import { ELEMENT_FORMATTING, ELEMENT_SHORTCUTS, PAGE_WIDTH_INCHES } from '../types/screenplay';
 import { getPlainText, createTextRuns } from '../utils/fdx';
 import { useScreenplayStore } from '../store/screenplayStore';
 import './ElementLine.css';
@@ -171,33 +171,21 @@ export const ElementLine = ({ element, onFocus, isSelected }: ElementLineProps) 
     setCurrentElementType(element.type);
   };
 
-  // Calculate dynamic styles based on element type
+  // Calculate dynamic styles based on industry-standard element positioning
+  // Positions are from left edge of page (8.5" width)
   const getElementStyle = () => {
+    const pageWidth = PAGE_WIDTH_INCHES; // 8.5 inches
+
+    // Convert inch positions to percentages of page width
+    const leftPercent = (formatting.leftEdge / pageWidth) * 100;
+    const rightPercent = ((pageWidth - formatting.rightEdge) / pageWidth) * 100;
+
     const baseStyle: React.CSSProperties = {
+      marginLeft: `${leftPercent}%`,
+      marginRight: `${rightPercent}%`,
       textAlign: formatting.alignment.toLowerCase() as 'left' | 'center' | 'right',
       textTransform: formatting.allCaps ? 'uppercase' : 'none',
     };
-
-    // Apply indentation based on element type
-    // These values are relative to the editor width, simulating the screenplay format
-    switch (element.type) {
-      case 'Character':
-        baseStyle.paddingLeft = '35%';
-        break;
-      case 'Dialogue':
-        baseStyle.paddingLeft = '15%';
-        baseStyle.paddingRight = '20%';
-        break;
-      case 'Parenthetical':
-        baseStyle.paddingLeft = '25%';
-        baseStyle.paddingRight = '25%';
-        break;
-      case 'Transition':
-        baseStyle.paddingRight = '5%';
-        break;
-      default:
-        break;
-    }
 
     return baseStyle;
   };
@@ -227,7 +215,7 @@ export const ElementLine = ({ element, onFocus, isSelected }: ElementLineProps) 
       className={`element-line ${element.type.toLowerCase().replace(' ', '-')} ${isSelected ? 'selected' : ''}`}
       data-type={element.type}
     >
-      <div className="element-type-indicator">
+      <div className="element-type-indicator" title={element.type}>
         {element.type.charAt(0)}
       </div>
       <textarea
