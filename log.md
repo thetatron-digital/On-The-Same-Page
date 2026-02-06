@@ -88,6 +88,9 @@ Source: https://firebase.google.com/pricing
 14. Fixed page dimensions to match standard 8.5" x 11" screenplay format
 15. Courier 12pt font (16px at 96 DPI)
 16. Inch-based margins: 1.5" left, 1" right, 1" top/bottom
+17. Visible page borders with shadow (like Final Draft)
+18. Ruler shows full 8.5" width with highlighted end mark
+19. Undo (Cmd+Z) and Redo (Cmd+Shift+Z) functionality
 
 ### In Progress
 - Planning Firebase integration
@@ -98,6 +101,13 @@ Source: https://firebase.google.com/pricing
 ---
 
 ## Version History
+
+### v2.6 - February 6, 2026
+- Added visible page borders with shadow (clear page boundaries)
+- Darker background outside the page area (like Final Draft)
+- Ruler now shows full 8.5" width with highlighted end mark
+- Implemented undo (Cmd+Z) and redo (Cmd+Shift+Z / Cmd+Y)
+- Tracks up to 100 history entries
 
 ### v2.5 - February 6, 2026
 - Fixed page dimensions to match standard 8.5" x 11" US Letter size
