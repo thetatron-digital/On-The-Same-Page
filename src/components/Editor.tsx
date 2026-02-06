@@ -31,7 +31,7 @@ export const Editor = () => {
 
   // Handle click on empty area - create new element or focus last
   const handleEditorClick = (e: React.MouseEvent) => {
-    if (e.target === contentRef.current || (e.target as HTMLElement).classList.contains('script-content')) {
+    if (e.target === contentRef.current || (e.target as HTMLElement).classList.contains('script-content') || (e.target as HTMLElement).classList.contains('page')) {
       const lastElement = screenplay.elements[screenplay.elements.length - 1];
       if (lastElement) {
         selectElement(lastElement.id);
@@ -122,42 +122,44 @@ export const Editor = () => {
         {/* Title Page Editor Modal */}
         {panels.titlePage && <TitlePageEditor />}
 
-        {/* Ruler - shows 0 to 8.5 inches */}
-        <div className="ruler">
-          <div className="ruler-content" style={{ transform: `scaleX(${scale})`, transformOrigin: 'left' }}>
-            {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((inch) => (
-              <div key={inch} className="ruler-mark" style={{ left: `${inch * 96}px` }}>
-                <span className="ruler-number">{inch}</span>
-              </div>
-            ))}
-            {/* 8.5 inch mark at end of page */}
-            <div className="ruler-mark ruler-end" style={{ left: `${8.5 * 96}px` }}>
-              <span className="ruler-number">8.5"</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Script content area */}
+        {/* Script content area with ruler */}
         <div className="script-area" onClick={handleEditorClick}>
           <div
-            className="script-content"
-            ref={contentRef}
+            className="script-wrapper"
             style={{
               transform: `scale(${scale})`,
               transformOrigin: 'top center',
             }}
           >
-            {screenplay.elements.map((element, index) => (
-              <ElementLine
-                key={element.id}
-                element={element}
-                isSelected={selectedElementId === element.id}
-                onFocus={() => selectElement(element.id)}
-                prevElementType={index > 0 ? screenplay.elements[index - 1].type : undefined}
-              />
-            ))}
-            {/* Click area at bottom for adding new elements */}
-            <div className="script-end-area" />
+            {/* Ruler aligned with page */}
+            <div className="page-ruler">
+              {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((inch) => (
+                <div key={inch} className="ruler-mark" style={{ left: `${inch * 96}px` }}>
+                  <span className="ruler-number">{inch}</span>
+                </div>
+              ))}
+              <div className="ruler-mark ruler-end" style={{ left: `${8.5 * 96}px` }}>
+                <span className="ruler-number">8.5"</span>
+              </div>
+            </div>
+
+            {/* Pages */}
+            <div className="pages-container" ref={contentRef}>
+              <div className="page first-page">
+                <div className="page-content">
+                  {screenplay.elements.map((element, index) => (
+                    <ElementLine
+                      key={element.id}
+                      element={element}
+                      isSelected={selectedElementId === element.id}
+                      onFocus={() => selectElement(element.id)}
+                      prevElementType={index > 0 ? screenplay.elements[index - 1].type : undefined}
+                    />
+                  ))}
+                  <div className="script-end-area" />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
