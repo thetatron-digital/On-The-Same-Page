@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import './InfoTooltip.css';
 
 interface TooltipExample {
@@ -6,17 +7,16 @@ interface TooltipExample {
   source?: string;
 }
 
-interface TooltipOption {
+export interface TooltipContent {
+  examples?: TooltipExample[];
+  description?: string;
+}
+
+// Separate type for options data (used in dropdowns, not tooltips)
+export interface OptionData {
   name: string;
   description: string;
   examples?: string;
-}
-
-export interface TooltipContent {
-  title?: string;
-  examples?: TooltipExample[];
-  options?: TooltipOption[];
-  description?: string;
 }
 
 interface InfoTooltipProps {
@@ -25,37 +25,41 @@ interface InfoTooltipProps {
 
 export const InfoTooltip = ({ content }: InfoTooltipProps) => {
   const [isVisible, setIsVisible] = useState(false);
-  const [position, setPosition] = useState<'bottom' | 'top' | 'left' | 'right'>('bottom');
-  const tooltipRef = useRef<HTMLDivElement>(null);
+  const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
   const iconRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
-    if (isVisible && tooltipRef.current && iconRef.current) {
+    if (isVisible && iconRef.current) {
       const iconRect = iconRef.current.getBoundingClientRect();
-      const tooltipRect = tooltipRef.current.getBoundingClientRect();
-      const viewportHeight = window.innerHeight;
-      const viewportWidth = window.innerWidth;
+      const tooltipWidth = 320;
+      const tooltipHeight = 200; // Estimate
+      const padding = 12;
 
-      // Check if tooltip would go off screen and adjust position
-      if (iconRect.bottom + tooltipRect.height + 10 > viewportHeight) {
-        if (iconRect.top - tooltipRect.height - 10 > 0) {
-          setPosition('top');
-        } else if (iconRect.left - tooltipRect.width - 10 > 0) {
-          setPosition('left');
-        } else {
-          setPosition('right');
-        }
-      } else if (iconRect.left + tooltipRect.width / 2 > viewportWidth) {
-        setPosition('left');
-      } else if (iconRect.left - tooltipRect.width / 2 < 0) {
-        setPosition('right');
-      } else {
-        setPosition('bottom');
+      let left = iconRect.left + iconRect.width / 2 - tooltipWidth / 2;
+      let top = iconRect.bottom + padding;
+
+      // Keep within viewport horizontally
+      if (left < padding) {
+        left = padding;
+      } else if (left + tooltipWidth > window.innerWidth - padding) {
+        left = window.innerWidth - tooltipWidth - padding;
       }
+
+      // If tooltip would go below viewport, show above
+      if (top + tooltipHeight > window.innerHeight - padding) {
+        top = iconRect.top - tooltipHeight - padding;
+      }
+
+      setTooltipStyle({
+        position: 'fixed',
+        left: `${left}px`,
+        top: `${top}px`,
+        width: `${tooltipWidth}px`,
+      });
     }
   }, [isVisible]);
 
-  const hasContent = content.examples?.length || content.options?.length || content.description;
+  const hasContent = content.examples?.length || content.description;
   if (!hasContent) return null;
 
   return (
@@ -71,10 +75,8 @@ export const InfoTooltip = ({ content }: InfoTooltipProps) => {
           <line x1="12" y1="8" x2="12.01" y2="8" />
         </svg>
       </span>
-      {isVisible && (
-        <div className={`info-tooltip-popup ${position}`} ref={tooltipRef}>
-          {content.title && <div className="tooltip-title">{content.title}</div>}
-
+      {isVisible && ReactDOM.createPortal(
+        <div className="info-tooltip-popup" style={tooltipStyle}>
           {content.description && (
             <div className="tooltip-description">{content.description}</div>
           )}
@@ -92,30 +94,14 @@ export const InfoTooltip = ({ content }: InfoTooltipProps) => {
               </ul>
             </div>
           )}
-
-          {content.options && content.options.length > 0 && (
-            <div className="tooltip-options">
-              <div className="tooltip-section-title">Options</div>
-              <div className="options-list">
-                {content.options.map((option, i) => (
-                  <div key={i} className="option-item">
-                    <div className="option-name">{option.name}</div>
-                    <div className="option-description">{option.description}</div>
-                    {option.examples && (
-                      <div className="option-examples">Examples: {option.examples}</div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+        </div>,
+        document.body
       )}
     </span>
   );
 };
 
-// Tooltip data for all fields
+// Tooltip data for all fields - only examples, no redundant titles
 export const TOOLTIP_DATA = {
   // Plot Overview tooltips
   title: {
@@ -126,7 +112,6 @@ export const TOOLTIP_DATA = {
     ],
   },
   logline: {
-    title: 'Examples',
     examples: [
       { text: 'A divorced father and his ex-con older brother resort to a desperate scheme in order to save their family\'s ranch in West Texas.', source: 'Hell or High Water' },
       { text: 'A small-time Philadelphia boxer gets a supremely rare chance to fight the world heavyweight champion in a bout in which he strives to go the distance for his self-respect.', source: 'Rocky' },
@@ -134,7 +119,6 @@ export const TOOLTIP_DATA = {
     ],
   },
   themes: {
-    title: 'Examples',
     examples: [
       { text: 'How far should a man go to survive?', source: 'Hell or High Water' },
       { text: 'Are you a loser because people say you are?', source: 'Rocky' },
@@ -142,44 +126,19 @@ export const TOOLTIP_DATA = {
     ],
   },
   storyTypes: {
-    title: 'Example',
     examples: [
       { text: 'Road Story - a hero gathers a team to embark on a journey in search of a prize' },
       { text: 'Examples: Star Wars, Back to the Future, The Wizard of Oz' },
     ],
-    options: [
-      { name: 'Trapped with a Monster', description: 'A treacherous creature hunts sinful characters in a confined space.', examples: 'Jaws, Alien' },
-      { name: 'Road Story', description: 'A hero gathers a team to embark on a journey in search of a prize.', examples: 'Star Wars, Back to the Future, The Wizard of Oz, Stand by Me' },
-      { name: 'Magic Wish', description: 'The protagonist is granted a magical wish, but this comes with unforeseen consequences.', examples: 'Bruce Almighty, Blank Check' },
-      { name: 'Rite of Passage', description: 'Learning how to accept change in the face of adversity.', examples: 'Ordinary People, 10, Days of Wine, Sideways' },
-      { name: 'Love or Friend Story', description: 'When an incomplete hero meets their counterpart, they must each grow in order to live in harmony.', examples: 'Rain Man, Dumb and Dumber, The Hangover' },
-      { name: 'Detective', description: 'A detective must break the rules in order to uncover a dark secret.', examples: 'The Insider, JFK, Chinatown' },
-      { name: 'Institutionalized', description: 'An ingenious hero is forced to join an established order, or destroy it.', examples: 'The Godfather, Do the Right Thing, Sicario, Dr. Strangelove' },
-      { name: 'Superhero', description: 'A hero with special powers, opposed by a powerful adversary, and driven by destiny.', examples: 'Gladiator, Batman, Frankenstein' },
-    ],
   },
   genres: {
-    title: 'Examples',
     examples: [
       { text: 'Western, Heist' },
       { text: 'Drama, Sport' },
       { text: 'Drama' },
     ],
-    options: [
-      { name: 'Action', description: 'High-energy sequences with physical conflict.' },
-      { name: 'Horror', description: 'Stories designed to frighten and unsettle.' },
-      { name: 'Western', description: 'Set in the American Old West.' },
-      { name: 'Romance', description: 'Focus on romantic relationships.' },
-      { name: 'Comedy', description: 'Designed to make audiences laugh.' },
-      { name: 'Heist', description: 'Stories centered around elaborate theft.' },
-      { name: 'Mystery/Suspense', description: 'Focus on solving puzzles or crimes.' },
-      { name: 'Thriller', description: 'Intense suspense and excitement.' },
-      { name: 'Sci-Fi', description: 'Speculative fiction with futuristic technology.' },
-      { name: 'Fantasy', description: 'Stories with magical or supernatural elements.' },
-    ],
   },
   tone: {
-    title: 'Examples',
     examples: [
       { text: 'Violent, Tense, High-Energy, Relentless' },
       { text: 'Hopeful, Motivational and Rousing' },
@@ -187,7 +146,6 @@ export const TOOLTIP_DATA = {
     ],
   },
   audience: {
-    title: 'Examples',
     examples: [
       { text: 'Adult' },
       { text: 'Family' },
@@ -195,7 +153,6 @@ export const TOOLTIP_DATA = {
     ],
   },
   setting: {
-    title: 'Examples',
     examples: [
       { text: 'Texas; 2016' },
       { text: 'New York; 1970s' },
@@ -203,7 +160,6 @@ export const TOOLTIP_DATA = {
     ],
   },
   bStory: {
-    title: 'Examples',
     examples: [
       { text: 'Marcus\' impending retirement' },
       { text: 'Adrian\'s flaws mirror Rocky\'s. They are not losers because people say they are. Love will prevail' },
@@ -213,36 +169,13 @@ export const TOOLTIP_DATA = {
 
   // Character tooltips
   characterName: {
-    title: 'Examples',
     examples: [
       { text: 'Ellen Louise Ripley' },
       { text: 'Rocky Balboa' },
       { text: 'King T\'Challa' },
     ],
   },
-  role: {
-    options: [
-      { name: 'Protagonist', description: 'The main character driving the story.' },
-      { name: 'Antagonist', description: 'The primary force opposing the protagonist.' },
-      { name: 'Opponent', description: 'A secondary force creating obstacles.' },
-      { name: 'Mentor', description: 'Guides and teaches the protagonist.' },
-      { name: 'Love Interest', description: 'Romantic connection to the protagonist.' },
-      { name: 'Ally', description: 'Supports and assists the protagonist.' },
-      { name: 'Fake-Ally Opponent', description: 'Appears friendly but secretly works against the protagonist.' },
-      { name: 'Fake-Opponent Ally', description: 'Appears hostile but secretly helps the protagonist.' },
-      { name: 'Other', description: 'Supporting or minor character.' },
-    ],
-  },
-  characterArc: {
-    options: [
-      { name: 'Positive Arc', description: 'The character needs the moral lesson, they learn and embrace it and become a better member of society.' },
-      { name: 'Flat Arc', description: 'The hero remains virtuous and the villain evil with no transformation, teaching a depraved society to embrace the moral lesson of the story and become better for it.' },
-      { name: 'Spiral Arc', description: 'The character needs the moral lesson, but they learn and reject it to spiral into madness, depravity, or death.' },
-      { name: 'Corruption Arc', description: 'The character starts out virtuous, but they learn and reject the moral lesson and become a depraved member of society.' },
-    ],
-  },
   physicalDescription: {
-    title: 'Examples',
     examples: [
       { text: '46, Female, Korean, Skater' },
       { text: '30s, Male, Italian-American, Boxer' },
@@ -250,47 +183,20 @@ export const TOOLTIP_DATA = {
     ],
   },
   personality: {
-    title: 'Examples',
     examples: [
       { text: 'Focused, Calm, No nonsense' },
       { text: 'Dreamer' },
       { text: 'Talented, Driven, Obsessive' },
     ],
   },
-  archetypes: {
-    title: 'Examples',
+  archetypesExamples: {
     examples: [
       { text: 'Rebel' },
       { text: 'Orphan' },
       { text: 'The Hero' },
     ],
-    options: [
-      { name: 'Lover', description: 'Wants harmony in everything they do. Can lose their own identity while trying to please others. Afraid of feeling unloved.' },
-      { name: 'Magician', description: 'Wants to understand the laws of the universe. Can become manipulative or egotistical. Afraid of unintended consequences.' },
-      { name: 'Explorer', description: 'Wants to experience new things and learn. Can become aimless, with no follow-through. Afraid of being forced to conform.' },
-      { name: 'Sage', description: 'Wants to understand the world and teach others. Can be indecisive without information. Afraid of being ignorant.' },
-      { name: 'Innocent', description: 'Wants to be happy, and always looks for the silver lining. Can be too trusting. Afraid of being punished for doing wrong.' },
-      { name: 'Creator', description: 'Wants to create things of enduring value. Can be a perfectionist. Afraid of failing to create anything great.' },
-      { name: 'Ruler', description: 'Wants to create a prosperous family or community. Can become authoritarian. Afraid of chaos, or being overthrown.' },
-      { name: 'Caregiver', description: 'Wants to help others. Has lots of empathy and compassion - which can be exploited. Afraid of being considered selfish.' },
-      { name: 'Orphan', description: 'Wants to belong. Dependable, down to earth, realist. Can be too cynical. Afraid of being left out.' },
-      { name: 'Jester', description: 'Wants to be the life of the party. Can be frivolous, and hide emotions under humor. Afraid of being perceived as boring.' },
-      { name: 'Classic Villain', description: 'Wants to foil the Hero and Protagonist. No redeeming qualities. Evil for the sake of being evil.' },
-      { name: 'Anti-Villain', description: 'Has noble traits and values, but is convinced the ends justifies the means. Wants to achieve goals at any costs.' },
-      { name: 'Beast', description: 'Relies on instincts and destructive abilities to achieve their goals. Can\'t be reasoned with or controlled.' },
-      { name: 'Authority Figure', description: 'Wants wealth, prestige, or power. Will stop at nothing to get more of what they want. Tyrannical, cruel, ruthless.' },
-      { name: 'Bully', description: 'Wants to make life miserable for the Protagonist. Often became a bully as victim of abuse themselves, with insecurity resulting.' },
-      { name: 'Fanatic', description: 'Driven by extreme ideology. Can fail to realize the consequences of their actions.' },
-      { name: 'Machine', description: 'Technology designed to kill or obstruct the Protagonist. Emotionless, relentless, an almost-unstoppable force.' },
-      { name: 'Evil Personified', description: 'Evil incarnate. Can\'t be reasoned with, threatened, or ignored.' },
-      { name: 'Mastermind', description: 'Enjoys breaking other people\'s wills. Highly intelligent with a superiority complex. Obsesses over challenging the Protagonist.' },
-      { name: 'Henchman', description: 'Wants to carry out orders for their boss. Brawny but lacking in intelligence.' },
-      { name: 'Shadow', description: 'Near doppelganger to the Protagonist - sharing the same skills, abilities, and knowledge - but differing in ethics and morals.' },
-      { name: 'Corrupted', description: 'Once a paragon of justice, they succumb to fear and desire, and become evil.' },
-    ],
   },
   want: {
-    title: 'Examples',
     examples: [
       { text: 'To steal money from the bank that\'s stealing his mom\'s house' },
       { text: 'To stand his ground against Apollo Creed' },
@@ -298,7 +204,6 @@ export const TOOLTIP_DATA = {
     ],
   },
   need: {
-    title: 'Examples',
     examples: [
       { text: 'To learn that actions have consequences' },
       { text: 'To learn that he can be a champion' },
@@ -306,7 +211,6 @@ export const TOOLTIP_DATA = {
     ],
   },
   lie: {
-    title: 'Examples',
     examples: [
       { text: 'It\'s okay to steal from corrupt banks' },
       { text: 'That nobody will love him and he will never make anything of himself' },
@@ -314,7 +218,6 @@ export const TOOLTIP_DATA = {
     ],
   },
   ghost: {
-    title: 'Examples',
     examples: [
       { text: 'Generational poverty' },
       { text: 'Everybody in his life has told him he was a bum or a loser. He believes it' },
@@ -379,6 +282,9 @@ export const TOOLTIP_DATA = {
   midpoint: {
     description: 'A dramatic Wish Fulfillment for the Protagonist, who has not yet learned the Moral Lesson. Stakes are raised, and a deadline for the Goal is introduced. NOTE: This beat can alternatively be a Comeuppance, but either situation should contrast the drama of Pinch Point 2.',
   },
+  pinchPoint2: {
+    description: 'A dramatic event that psychologically affects the Protagonist and raises the stakes.',
+  },
 
   // Beat tooltips - Act 2B
   internalTension: {
@@ -404,6 +310,9 @@ export const TOOLTIP_DATA = {
   },
   momentOfClarity: {
     description: 'A beat where the Protagonist realizes the importance of the Moral Lesson, and how it relates to their plight.',
+  },
+  plotPoint2: {
+    description: 'A significant event that forces the Protagonist to make a crucial decision about their path forward.',
   },
   plotPoint3: {
     description: 'A beat where the Protagonist makes the decision to confront the Antagonist.',
@@ -442,6 +351,73 @@ export const TOOLTIP_DATA = {
   },
 };
 
+// Options data for dropdowns (separate from tooltip data)
+export const OPTIONS_DATA = {
+  storyTypes: [
+    { name: 'Trapped with a Monster', description: 'A treacherous creature hunts sinful characters in a confined space.', examples: 'Jaws, Alien' },
+    { name: 'Road Story', description: 'A hero gathers a team to embark on a journey in search of a prize.', examples: 'Star Wars, Back to the Future, The Wizard of Oz, Stand by Me' },
+    { name: 'Magic Wish', description: 'The protagonist is granted a magical wish, but this comes with unforeseen consequences.', examples: 'Bruce Almighty, Blank Check' },
+    { name: 'Rite of Passage', description: 'Learning how to accept change in the face of adversity.', examples: 'Ordinary People, 10, Days of Wine, Sideways' },
+    { name: 'Love or Friend Story', description: 'When an incomplete hero meets their counterpart, they must each grow in order to live in harmony.', examples: 'Rain Man, Dumb and Dumber, The Hangover' },
+    { name: 'Detective', description: 'A detective must break the rules in order to uncover a dark secret.', examples: 'The Insider, JFK, Chinatown' },
+    { name: 'Institutionalized', description: 'An ingenious hero is forced to join an established order, or destroy it.', examples: 'The Godfather, Do the Right Thing, Sicario, Dr. Strangelove' },
+    { name: 'Superhero', description: 'A hero with special powers, opposed by a powerful adversary, and driven by destiny.', examples: 'Gladiator, Batman, Frankenstein' },
+  ],
+  genres: [
+    { name: 'Action', description: 'High-energy sequences with physical conflict.' },
+    { name: 'Horror', description: 'Stories designed to frighten and unsettle.' },
+    { name: 'Western', description: 'Set in the American Old West.' },
+    { name: 'Romance', description: 'Focus on romantic relationships.' },
+    { name: 'Comedy', description: 'Designed to make audiences laugh.' },
+    { name: 'Heist', description: 'Stories centered around elaborate theft.' },
+    { name: 'Mystery/Suspense', description: 'Focus on solving puzzles or crimes.' },
+    { name: 'Thriller', description: 'Intense suspense and excitement.' },
+    { name: 'Sci-Fi', description: 'Speculative fiction with futuristic technology.' },
+    { name: 'Fantasy', description: 'Stories with magical or supernatural elements.' },
+  ],
+  role: [
+    { name: 'Protagonist', description: 'The main character driving the story.' },
+    { name: 'Antagonist', description: 'The primary force opposing the protagonist.' },
+    { name: 'Opponent', description: 'A secondary force creating obstacles.' },
+    { name: 'Mentor', description: 'Guides and teaches the protagonist.' },
+    { name: 'Love Interest', description: 'Romantic connection to the protagonist.' },
+    { name: 'Ally', description: 'Supports and assists the protagonist.' },
+    { name: 'Fake-Ally Opponent', description: 'Appears friendly but secretly works against the protagonist.' },
+    { name: 'Fake-Opponent Ally', description: 'Appears hostile but secretly helps the protagonist.' },
+    { name: 'Other', description: 'Supporting or minor character.' },
+  ],
+  characterArc: [
+    { name: 'Positive Arc', description: 'The character needs the moral lesson, they learn and embrace it and become a better member of society.' },
+    { name: 'Flat Arc', description: 'The hero remains virtuous and the villain evil with no transformation, teaching a depraved society to embrace the moral lesson of the story and become better for it.' },
+    { name: 'Spiral Arc', description: 'The character needs the moral lesson, but they learn and reject it to spiral into madness, depravity, or death.' },
+    { name: 'Corruption Arc', description: 'The character starts out virtuous, but they learn and reject the moral lesson and become a depraved member of society.' },
+  ],
+  archetypes: [
+    { name: 'Lover', description: 'Wants harmony in everything they do. Can lose their own identity while trying to please others. Afraid of feeling unloved.' },
+    { name: 'Magician', description: 'Wants to understand the laws of the universe. Can become manipulative or egotistical. Afraid of unintended consequences.' },
+    { name: 'Explorer', description: 'Wants to experience new things and learn. Can become aimless, with no follow-through. Afraid of being forced to conform.' },
+    { name: 'Sage', description: 'Wants to understand the world and teach others. Can be indecisive without information. Afraid of being ignorant.' },
+    { name: 'Innocent', description: 'Wants to be happy, and always looks for the silver lining. Can be too trusting. Afraid of being punished for doing wrong.' },
+    { name: 'Creator', description: 'Wants to create things of enduring value. Can be a perfectionist. Afraid of failing to create anything great.' },
+    { name: 'Ruler', description: 'Wants to create a prosperous family or community. Can become authoritarian. Afraid of chaos, or being overthrown.' },
+    { name: 'Caregiver', description: 'Wants to help others. Has lots of empathy and compassion - which can be exploited. Afraid of being considered selfish.' },
+    { name: 'Orphan', description: 'Wants to belong. Dependable, down to earth, realist. Can be too cynical. Afraid of being left out.' },
+    { name: 'Jester', description: 'Wants to be the life of the party. Can be frivolous, and hide emotions under humor. Afraid of being perceived as boring.' },
+    { name: 'Classic Villain', description: 'Wants to foil the Hero and Protagonist. No redeeming qualities. Evil for the sake of being evil.' },
+    { name: 'Anti-Villain', description: 'Has noble traits and values, but is convinced the ends justifies the means. Wants to achieve goals at any costs.' },
+    { name: 'Beast', description: 'Relies on instincts and destructive abilities to achieve their goals. Can\'t be reasoned with or controlled.' },
+    { name: 'Authority Figure', description: 'Wants wealth, prestige, or power. Will stop at nothing to get more of what they want. Tyrannical, cruel, ruthless.' },
+    { name: 'Bully', description: 'Wants to make life miserable for the Protagonist. Often became a bully as victim of abuse themselves, with insecurity resulting.' },
+    { name: 'Fanatic', description: 'Driven by extreme ideology. Can fail to realize the consequences of their actions.' },
+    { name: 'Machine', description: 'Technology designed to kill or obstruct the Protagonist. Emotionless, relentless, an almost-unstoppable force.' },
+    { name: 'Evil Personified', description: 'Evil incarnate. Can\'t be reasoned with, threatened, or ignored.' },
+    { name: 'Mastermind', description: 'Enjoys breaking other people\'s wills. Highly intelligent with a superiority complex. Obsesses over challenging the Protagonist.' },
+    { name: 'Henchman', description: 'Wants to carry out orders for their boss. Brawny but lacking in intelligence.' },
+    { name: 'Shadow', description: 'Near doppelganger to the Protagonist - sharing the same skills, abilities, and knowledge - but differing in ethics and morals.' },
+    { name: 'Corrupted', description: 'Once a paragon of justice, they succumb to fear and desire, and become evil.' },
+  ],
+};
+
 // Helper to get beat tooltip by beat name
 export const getBeatTooltip = (beatName: string): TooltipContent => {
   const beatNameMap: Record<string, keyof typeof TOOLTIP_DATA> = {
@@ -463,6 +439,7 @@ export const getBeatTooltip = (beatName: string): TooltipContent => {
     'Trials': 'trials',
     'Reach Inner Sanctum': 'reachInnerSanctum',
     'Midpoint': 'midpoint',
+    'Pinch Point 2': 'pinchPoint2',
     'Internal Tension': 'internalTension',
     'External Tension': 'externalTension',
     'Sacrifice Need for Want': 'sacrificeNeedForWant',
@@ -471,6 +448,7 @@ export const getBeatTooltip = (beatName: string): TooltipContent => {
     'Complete Failure': 'completeFailure',
     'Admit Defeat': 'admitDefeat',
     'Moment of Clarity': 'momentOfClarity',
+    'Plot Point 2': 'plotPoint2',
     'Plot Point 3': 'plotPoint3',
     'Make Amends': 'makeAmends',
     'Atone with Allies': 'atoneWithAllies',
@@ -488,5 +466,6 @@ export const getBeatTooltip = (beatName: string): TooltipContent => {
   if (key && TOOLTIP_DATA[key]) {
     return TOOLTIP_DATA[key];
   }
-  return {};
+  // Return a generic description for unmapped beats
+  return { description: `A story beat in the ${beatName} phase.` };
 };

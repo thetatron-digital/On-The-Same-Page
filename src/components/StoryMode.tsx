@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { useScreenplayStore } from '../store/screenplayStore';
 import type { CharacterRole, CharacterArc, CharacterArchetype } from '../types/screenplay';
-import { DEFAULT_BEAT_STRUCTURE } from '../types/screenplay';
-import { InfoTooltip, TOOLTIP_DATA, getBeatTooltip } from './InfoTooltip';
+import { InfoTooltip, TOOLTIP_DATA, OPTIONS_DATA, getBeatTooltip } from './InfoTooltip';
 import './StoryMode.css';
 
 type StoryTab = 'plot' | 'characters' | 'acts' | 'beats';
@@ -87,6 +87,74 @@ export const StoryMode = () => {
       </svg>
       {label}
     </button>
+  );
+
+  // Archetype button with hover tooltip
+  const ArchetypeButton = ({
+    archetype,
+    isSelected,
+    onClick,
+  }: {
+    archetype: string;
+    isSelected: boolean;
+    onClick: () => void;
+  }) => {
+    const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
+    const optionData = OPTIONS_DATA.archetypes.find((a) => a.name === archetype);
+
+    return (
+      <>
+        <button
+          className={`tag-btn ${isSelected ? 'selected' : ''}`}
+          onClick={onClick}
+          onMouseEnter={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            setHoverPos({ x: rect.left, y: rect.bottom + 8 });
+          }}
+          onMouseLeave={() => setHoverPos(null)}
+        >
+          {archetype}
+        </button>
+        {hoverPos && optionData && ReactDOM.createPortal(
+          <div
+            className="option-hover-tooltip"
+            style={{
+              left: Math.min(hoverPos.x, window.innerWidth - 300),
+              top: hoverPos.y,
+            }}
+          >
+            <div className="option-desc">{optionData.description}</div>
+          </div>,
+          document.body
+        )}
+      </>
+    );
+  };
+
+  // Archetype selector with individual hover tooltips
+  const ArchetypeSelector = ({
+    selected,
+    onChange,
+  }: {
+    selected: CharacterArchetype[];
+    onChange: (archetypes: CharacterArchetype[]) => void;
+  }) => (
+    <div className="tag-selector small">
+      {ARCHETYPES.map((archetype) => (
+        <ArchetypeButton
+          key={archetype}
+          archetype={archetype}
+          isSelected={selected.includes(archetype)}
+          onClick={() => {
+            if (selected.includes(archetype)) {
+              onChange(selected.filter((a) => a !== archetype));
+            } else {
+              onChange([...selected, archetype]);
+            }
+          }}
+        />
+      ))}
+    </div>
   );
 
   const renderPlotTab = () => (
@@ -292,15 +360,11 @@ export const StoryMode = () => {
                         onChange={(e) =>
                           updateCharacter(character.id, { name: e.target.value })
                         }
-                        placeholder="Character name..."
                       />
                     </div>
 
                     <div className="form-field">
-                      <label>
-                        Role
-                        <InfoTooltip content={TOOLTIP_DATA.role} />
-                      </label>
+                      <label>Role</label>
                       <select
                         value={character.role}
                         onChange={(e) =>
@@ -318,10 +382,7 @@ export const StoryMode = () => {
                     </div>
 
                     <div className="form-field">
-                      <label>
-                        Character Arc
-                        <InfoTooltip content={TOOLTIP_DATA.characterArc} />
-                      </label>
+                      <label>Character Arc</label>
                       <select
                         value={character.characterArc}
                         onChange={(e) =>
@@ -341,31 +402,14 @@ export const StoryMode = () => {
                     <div className="form-field full-width">
                       <label>
                         Archetypes
-                        <InfoTooltip content={TOOLTIP_DATA.archetypes} />
+                        <InfoTooltip content={TOOLTIP_DATA.archetypesExamples} />
                       </label>
-                      <div className="tag-selector small">
-                        {ARCHETYPES.map((archetype) => (
-                          <button
-                            key={archetype}
-                            className={`tag-btn ${
-                              character.archetypes.includes(archetype) ? 'selected' : ''
-                            }`}
-                            onClick={() => {
-                              if (character.archetypes.includes(archetype)) {
-                                updateCharacter(character.id, {
-                                  archetypes: character.archetypes.filter((a) => a !== archetype),
-                                });
-                              } else {
-                                updateCharacter(character.id, {
-                                  archetypes: [...character.archetypes, archetype],
-                                });
-                              }
-                            }}
-                          >
-                            {archetype}
-                          </button>
-                        ))}
-                      </div>
+                      <ArchetypeSelector
+                        selected={character.archetypes}
+                        onChange={(archetypes) =>
+                          updateCharacter(character.id, { archetypes })
+                        }
+                      />
                     </div>
 
                     <div className="form-field full-width">
@@ -380,7 +424,6 @@ export const StoryMode = () => {
                             physicalDescription: e.target.value,
                           })
                         }
-                        placeholder="Age, appearance, distinguishing features..."
                         rows={2}
                       />
                     </div>
@@ -395,7 +438,6 @@ export const StoryMode = () => {
                         onChange={(e) =>
                           updateCharacter(character.id, { personality: e.target.value })
                         }
-                        placeholder="Traits, quirks, mannerisms..."
                         rows={2}
                       />
                     </div>
@@ -410,7 +452,6 @@ export const StoryMode = () => {
                         onChange={(e) =>
                           updateCharacter(character.id, { want: e.target.value })
                         }
-                        placeholder="External goal..."
                         rows={2}
                       />
                     </div>
@@ -425,7 +466,6 @@ export const StoryMode = () => {
                         onChange={(e) =>
                           updateCharacter(character.id, { need: e.target.value })
                         }
-                        placeholder="Internal truth they need..."
                         rows={2}
                       />
                     </div>
@@ -440,7 +480,6 @@ export const StoryMode = () => {
                         onChange={(e) =>
                           updateCharacter(character.id, { lie: e.target.value })
                         }
-                        placeholder="False belief they hold..."
                         rows={2}
                       />
                     </div>
@@ -455,7 +494,6 @@ export const StoryMode = () => {
                         onChange={(e) =>
                           updateCharacter(character.id, { ghost: e.target.value })
                         }
-                        placeholder="Past wound or trauma..."
                         rows={2}
                       />
                     </div>
@@ -467,7 +505,6 @@ export const StoryMode = () => {
                         onChange={(e) =>
                           updateCharacter(character.id, { notes: e.target.value })
                         }
-                        placeholder="Additional notes..."
                         rows={2}
                       />
                     </div>
@@ -551,11 +588,6 @@ export const StoryMode = () => {
     const act2bBeats = storyOutline.beats.filter((b) => b.act === 'act2b');
     const act3Beats = storyOutline.beats.filter((b) => b.act === 'act3');
 
-    const getBeatHint = (beatName: string) => {
-      const template = DEFAULT_BEAT_STRUCTURE.find((b) => b.name === beatName);
-      return template?.hint || '';
-    };
-
     const renderBeatList = (beats: typeof storyOutline.beats, actLabel: string) => (
       <div className="beat-section">
         <h3>{actLabel}</h3>
@@ -566,14 +598,11 @@ export const StoryMode = () => {
               <div key={beat.id} className="beat-item">
                 <div className="beat-header">
                   <span className="beat-name">{beat.name}</span>
-                  {tooltipContent.description && (
-                    <InfoTooltip content={tooltipContent} />
-                  )}
+                  <InfoTooltip content={tooltipContent} />
                 </div>
                 <textarea
                   value={beat.description}
                   onChange={(e) => updateBeatContent(beat.id, e.target.value)}
-                  placeholder={getBeatHint(beat.name)}
                   rows={2}
                 />
               </div>

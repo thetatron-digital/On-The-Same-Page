@@ -353,11 +353,11 @@
   background: var(--input-bg);
 }
 
-/* Acts Grid */
+/* Acts Grid - Full width stacked layout */
 .acts-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
 .act-card {
