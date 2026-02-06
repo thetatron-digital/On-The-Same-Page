@@ -116,7 +116,12 @@ Source: https://firebase.google.com/pricing
 ### v3.0 - February 6, 2026
 Major feature release with Story Development and enhanced workflow tools:
 
-**Story Mode (Outline Development)**
+**Production Flow (Toolbar Reorder)**
+- Buttons ordered: Development → Corkboard → Script (follows natural production path)
+- "Story" renamed to "Development" for clarity
+- "Cards" renamed to "Corkboard" for better description
+
+**Development (Outline Mode)**
 - Plot Overview: Title, logline, themes, story types, genres, tone, audience, setting, B-story
 - Characters: Name, role, arc, archetypes, physical description, personality, want/need/lie/ghost
 - Acts Overview: ACT 1, ACT 2A, ACT 2B, ACT 3 with structured summaries
@@ -124,17 +129,20 @@ Major feature release with Story Development and enhanced workflow tools:
 - Tag selectors for multi-select fields (themes, genres, archetypes)
 - Generate buttons prepared for future AI integration (Coming Soon)
 
+**Corkboard Cards**
+- Beat Sheet tab auto-populates from Development → Beats
+- Cards arranged by act with color coding (Act 1 blue, 2A green, 2B yellow, 3 red)
+- Editable beat descriptions directly on cards
+- Create additional custom boards for alternate storylines, ideas, etc.
+- Drag handle allows moving cards while editing
+- Resize handle for adjustable card dimensions
+- Send to Script navigates to the created scene
+
 **Split View (Audio/Visual)**
 - Two-column view for commercial scripts, music videos, documentaries
 - Synced Mode: Automatically splits script into audio/video columns (read-only)
 - Independent Mode: Edit audio/video content separately from main script
 - Swap Sides button to flip columns
-
-**Cards (Beat Board Improvements)**
-- Drag handle allows moving cards while editing
-- Resize handle for adjustable card dimensions
-- Send to Script now navigates to the created scene
-- Visual improvements for drag and resize states
 
 **Scene Navigator Fixes**
 - Scenes now appear immediately as you type (real-time updates)
@@ -144,8 +152,6 @@ Major feature release with Story Development and enhanced workflow tools:
 **Toolbar Improvements**
 - Element dropdown truly centered using absolute positioning
 - Balanced left/right sections
-- Story button for accessing Outline Mode
-- Renamed "Beat Board" to "Cards" for clarity
 
 **Version Management**
 - Create named script versions

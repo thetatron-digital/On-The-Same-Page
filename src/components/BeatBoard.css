@@ -153,6 +153,112 @@
   z-index: 100;
 }
 
+.beat-card.story-beat {
+  border-left: 3px solid var(--accent-color);
+}
+
+/* Beat Sheet Tab */
+.beat-sheet-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.beat-sheet-tab svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Beat Sheet Header */
+.beat-sheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+}
+
+.beat-sheet-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.info-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.info-count {
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 2px 8px;
+  background: var(--border-color);
+  border-radius: 10px;
+}
+
+.act-legend {
+  display: flex;
+  gap: 16px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.legend-item::before {
+  content: '';
+  width: 12px;
+  height: 12px;
+  background: var(--legend-color);
+  border-radius: 3px;
+}
+
+/* Story Beat Card Mode */
+.beat-story-mode {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.beat-story-name {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10px;
+  font-weight: bold;
+  color: var(--accent-color);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.beat-story-desc {
+  width: 100%;
+  padding: 6px;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  color: var(--text-primary);
+  font-size: 11px;
+  resize: none;
+  box-sizing: border-box;
+  line-height: 1.4;
+}
+
+.beat-story-desc:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+.beat-story-act {
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 /* Drag Handle */
 .beat-drag-handle {
   position: absolute;

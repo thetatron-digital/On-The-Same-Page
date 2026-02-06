@@ -179,16 +179,35 @@ export const Toolbar = () => {
 
           <div className="menu-divider" />
 
-          {/* Collaboration (placeholder) */}
-          <button className="menu-btn" title="Collaboration (Coming Soon)" disabled>
+          {/* Development (Outline Mode) - First in production flow */}
+          <button
+            className={`menu-btn ${viewMode === 'story' ? 'active' : ''}`}
+            onClick={() => setViewMode(viewMode === 'story' ? 'script' : 'story')}
+            title="Story Development (Plot, Characters, Acts, Beats)"
+          >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-              <circle cx="9" cy="7" r="4" />
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
             </svg>
-            <span>Collab</span>
+            <span>Development</span>
           </button>
+
+          {/* Corkboard Cards - Second in production flow */}
+          <button
+            className={`menu-btn ${viewMode === 'beatBoard' ? 'active' : ''}`}
+            onClick={() => setViewMode(viewMode === 'beatBoard' ? 'script' : 'beatBoard')}
+            title="Corkboard Cards (Visual scene planning)"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="3" width="7" height="9" rx="1" />
+              <rect x="14" y="3" width="7" height="9" rx="1" />
+              <rect x="3" y="14" width="7" height="7" rx="1" />
+              <rect x="14" y="14" width="7" height="7" rx="1" />
+            </svg>
+            <span>Corkboard</span>
+          </button>
+
+          <div className="menu-divider" />
 
           {/* Split View */}
           <button
@@ -201,34 +220,6 @@ export const Toolbar = () => {
               <line x1="12" y1="3" x2="12" y2="21" />
             </svg>
             <span>Split</span>
-          </button>
-
-          {/* Cards (Beat Board) */}
-          <button
-            className={`menu-btn ${viewMode === 'beatBoard' ? 'active' : ''}`}
-            onClick={() => setViewMode(viewMode === 'beatBoard' ? 'script' : 'beatBoard')}
-            title="Story Cards"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="3" width="7" height="9" rx="1" />
-              <rect x="14" y="3" width="7" height="9" rx="1" />
-              <rect x="3" y="14" width="7" height="7" rx="1" />
-              <rect x="14" y="14" width="7" height="7" rx="1" />
-            </svg>
-            <span>Cards</span>
-          </button>
-
-          {/* Story (Outline Mode) */}
-          <button
-            className={`menu-btn ${viewMode === 'story' ? 'active' : ''}`}
-            onClick={() => setViewMode(viewMode === 'story' ? 'script' : 'story')}
-            title="Story Development (Outline Mode)"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-            </svg>
-            <span>Story</span>
           </button>
 
           {/* Title Page */}
