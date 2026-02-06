@@ -76,10 +76,10 @@ export interface ScriptNote {
 export interface PlotOverview {
   title: string;
   logline: string;
-  themes: string[];
-  storyTypes: string[];  // Coming of Age, Quest, Redemption, etc.
+  themes: string;        // Free text for themes
+  storyTypes: string[];  // Story type patterns
   genres: string[];      // Drama, Comedy, Thriller, etc.
-  tone: string;          // Light, Dark, Satirical, etc.
+  tones: string[];       // Multiple tones
   audience: string;      // Target audience
   setting: string;       // Time period and location
   bStory: string;        // Subplot/thematic mirror
@@ -88,8 +88,8 @@ export interface PlotOverview {
 
 // Character development
 export type CharacterRole = 'Protagonist' | 'Antagonist' | 'Love Interest' | 'Mentor' | 'Sidekick' | 'Ally' | 'Guardian' | 'Other';
-export type CharacterArc = 'Positive' | 'Flat' | 'Negative' | 'Corruption' | 'Spiral' | 'Fall' | 'Redemption';
-export type CharacterArchetype = 'Hero' | 'Rebel' | 'Lover' | 'Caregiver' | 'Jester' | 'Sage' | 'Magician' | 'Ruler' | 'Creator' | 'Innocent' | 'Explorer' | 'Outlaw' | 'Other';
+export type CharacterArc = 'Positive Arc' | 'Flat Arc' | 'Spiral Arc' | 'Corruption Arc';
+export type CharacterArchetype = 'Lover' | 'Magician' | 'Explorer' | 'Sage' | 'Innocent' | 'Creator' | 'Ruler' | 'Caregiver' | 'Orphan' | 'Jester' | 'Classic Villain' | 'Anti-Villain' | 'Beast' | 'Authority Figure' | 'Bully' | 'Fanatic' | 'Machine' | 'Evil Personified' | 'Mastermind' | 'Henchman' | 'Shadow' | 'Corrupted';
 
 export interface StoryCharacter {
   id: string;

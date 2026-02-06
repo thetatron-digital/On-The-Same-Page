@@ -8,13 +8,12 @@ import './StoryMode.css';
 type StoryTab = 'plot' | 'characters' | 'acts' | 'beats';
 
 // Predefined options for dropdowns
-const THEMES = ['Redemption', 'Love', 'Sacrifice', 'Identity', 'Freedom', 'Power', 'Family', 'Survival', 'Justice', 'Truth', 'Growth', 'Loss', 'Hope', 'Fear', 'Betrayal'];
-const STORY_TYPES = ['Coming of Age', 'Quest', 'Redemption', 'Rags to Riches', 'Tragedy', 'Rebirth', 'Voyage and Return', 'Monster', 'Comedy', 'Overcoming the Monster'];
-const GENRES = ['Drama', 'Comedy', 'Thriller', 'Horror', 'Romance', 'Action', 'Sci-Fi', 'Fantasy', 'Western', 'Crime', 'Mystery', 'Documentary', 'Animation', 'Musical', 'War'];
-const TONES = ['Light', 'Dark', 'Satirical', 'Dramatic', 'Comedic', 'Suspenseful', 'Romantic', 'Melancholic', 'Hopeful', 'Gritty', 'Whimsical'];
+const STORY_TYPES = ['Trapped with a Monster', 'Road Story', 'Magic Wish', 'Rite of Passage', 'Love or Friend Story', 'Detective', 'Institutionalized', 'Superhero'];
+const GENRES = ['Drama', 'Comedy', 'Thriller', 'Horror', 'Romance', 'Action', 'Sci-Fi', 'Fantasy', 'Western', 'Crime', 'Mystery', 'Documentary', 'Animation', 'Musical', 'War', 'Heist'];
+const TONES = ['Light', 'Dark', 'Satirical', 'Dramatic', 'Comedic', 'Suspenseful', 'Romantic', 'Melancholic', 'Hopeful', 'Gritty', 'Whimsical', 'Violent', 'Tense', 'High-Energy', 'Relentless', 'Motivational', 'Rousing', 'Feverish', 'Frenzied', 'Maniacal'];
 const ROLES: CharacterRole[] = ['Protagonist', 'Antagonist', 'Love Interest', 'Mentor', 'Sidekick', 'Ally', 'Guardian', 'Other'];
-const CHARACTER_ARCS: CharacterArc[] = ['Positive', 'Flat', 'Negative', 'Corruption', 'Spiral', 'Fall', 'Redemption'];
-const ARCHETYPES: CharacterArchetype[] = ['Hero', 'Rebel', 'Lover', 'Caregiver', 'Jester', 'Sage', 'Magician', 'Ruler', 'Creator', 'Innocent', 'Explorer', 'Outlaw', 'Other'];
+const CHARACTER_ARCS: CharacterArc[] = ['Positive Arc', 'Flat Arc', 'Spiral Arc', 'Corruption Arc'];
+const ARCHETYPES: CharacterArchetype[] = ['Lover', 'Magician', 'Explorer', 'Sage', 'Innocent', 'Creator', 'Ruler', 'Caregiver', 'Orphan', 'Jester', 'Classic Villain', 'Anti-Villain', 'Beast', 'Authority Figure', 'Bully', 'Fanatic', 'Machine', 'Evil Personified', 'Mastermind', 'Henchman', 'Shadow', 'Corrupted'];
 
 export const StoryMode = () => {
   const [activeTab, setActiveTab] = useState<StoryTab>('plot');
@@ -89,18 +88,20 @@ export const StoryMode = () => {
     </button>
   );
 
-  // Archetype button with hover tooltip
-  const ArchetypeButton = ({
-    archetype,
+  // Generic hover button with tooltip from options data
+  const HoverButton = ({
+    name,
     isSelected,
     onClick,
+    optionsKey,
   }: {
-    archetype: string;
+    name: string;
     isSelected: boolean;
     onClick: () => void;
+    optionsKey: keyof typeof OPTIONS_DATA;
   }) => {
     const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
-    const optionData = OPTIONS_DATA.archetypes.find((a) => a.name === archetype);
+    const optionData = OPTIONS_DATA[optionsKey].find((a) => a.name === name);
 
     return (
       <>
@@ -113,7 +114,7 @@ export const StoryMode = () => {
           }}
           onMouseLeave={() => setHoverPos(null)}
         >
-          {archetype}
+          {name}
         </button>
         {hoverPos && optionData && ReactDOM.createPortal(
           <div
@@ -124,12 +125,63 @@ export const StoryMode = () => {
             }}
           >
             <div className="option-desc">{optionData.description}</div>
+            {(optionData as { examples?: string }).examples && (
+              <div className="option-examples">Examples: {(optionData as { examples?: string }).examples}</div>
+            )}
           </div>,
           document.body
         )}
       </>
     );
   };
+
+  // Story Type selector with hover tooltips
+  const StoryTypeSelector = ({
+    selected,
+    onChange,
+  }: {
+    selected: string[];
+    onChange: (types: string[]) => void;
+  }) => (
+    <div className="tag-selector">
+      {STORY_TYPES.map((storyType) => (
+        <HoverButton
+          key={storyType}
+          name={storyType}
+          isSelected={selected.includes(storyType)}
+          onClick={() => {
+            if (selected.includes(storyType)) {
+              onChange(selected.filter((t) => t !== storyType));
+            } else {
+              onChange([...selected, storyType]);
+            }
+          }}
+          optionsKey="storyTypes"
+        />
+      ))}
+    </div>
+  );
+
+  // Character Arc selector with hover tooltips
+  const CharacterArcSelector = ({
+    selected,
+    onChange,
+  }: {
+    selected: CharacterArc;
+    onChange: (arc: CharacterArc) => void;
+  }) => (
+    <div className="tag-selector small">
+      {CHARACTER_ARCS.map((arc) => (
+        <HoverButton
+          key={arc}
+          name={arc}
+          isSelected={selected === arc}
+          onClick={() => onChange(arc)}
+          optionsKey="characterArc"
+        />
+      ))}
+    </div>
+  );
 
   // Archetype selector with individual hover tooltips
   const ArchetypeSelector = ({
@@ -141,9 +193,9 @@ export const StoryMode = () => {
   }) => (
     <div className="tag-selector small">
       {ARCHETYPES.map((archetype) => (
-        <ArchetypeButton
+        <HoverButton
           key={archetype}
-          archetype={archetype}
+          name={archetype}
           isSelected={selected.includes(archetype)}
           onClick={() => {
             if (selected.includes(archetype)) {
@@ -152,6 +204,7 @@ export const StoryMode = () => {
               onChange([...selected, archetype]);
             }
           }}
+          optionsKey="archetypes"
         />
       ))}
     </div>
@@ -191,21 +244,28 @@ export const StoryMode = () => {
           />
         </div>
 
-        <TagInput
-          label="Themes"
-          options={THEMES}
-          selected={storyOutline.plot.themes}
-          onChange={(themes) => updatePlotOverview({ themes })}
-          tooltipKey="themes"
-        />
+        <div className="form-field full-width">
+          <label>
+            Themes
+            <InfoTooltip content={TOOLTIP_DATA.themes} />
+          </label>
+          <textarea
+            value={storyOutline.plot.themes}
+            onChange={(e) => updatePlotOverview({ themes: e.target.value })}
+            rows={2}
+          />
+        </div>
 
-        <TagInput
-          label="Story Types"
-          options={STORY_TYPES}
-          selected={storyOutline.plot.storyTypes}
-          onChange={(storyTypes) => updatePlotOverview({ storyTypes })}
-          tooltipKey="storyTypes"
-        />
+        <div className="form-field full-width">
+          <label>
+            Story Types
+            <InfoTooltip content={TOOLTIP_DATA.storyTypes} />
+          </label>
+          <StoryTypeSelector
+            selected={storyOutline.plot.storyTypes}
+            onChange={(storyTypes) => updatePlotOverview({ storyTypes })}
+          />
+        </div>
 
         <TagInput
           label="Genres"
@@ -215,22 +275,28 @@ export const StoryMode = () => {
           tooltipKey="genres"
         />
 
-        <div className="form-field">
+        <div className="form-field full-width">
           <label>
             Tone
             <InfoTooltip content={TOOLTIP_DATA.tone} />
           </label>
-          <select
-            value={storyOutline.plot.tone}
-            onChange={(e) => updatePlotOverview({ tone: e.target.value })}
-          >
-            <option value="">Select tone...</option>
+          <div className="tag-selector">
             {TONES.map((tone) => (
-              <option key={tone} value={tone}>
+              <button
+                key={tone}
+                className={`tag-btn ${storyOutline.plot.tones.includes(tone) ? 'selected' : ''}`}
+                onClick={() => {
+                  if (storyOutline.plot.tones.includes(tone)) {
+                    updatePlotOverview({ tones: storyOutline.plot.tones.filter((t) => t !== tone) });
+                  } else {
+                    updatePlotOverview({ tones: [...storyOutline.plot.tones, tone] });
+                  }
+                }}
+              >
                 {tone}
-              </option>
+              </button>
             ))}
-          </select>
+          </div>
         </div>
 
         <div className="form-field">
@@ -381,22 +447,14 @@ export const StoryMode = () => {
                       </select>
                     </div>
 
-                    <div className="form-field">
+                    <div className="form-field full-width">
                       <label>Character Arc</label>
-                      <select
-                        value={character.characterArc}
-                        onChange={(e) =>
-                          updateCharacter(character.id, {
-                            characterArc: e.target.value as CharacterArc,
-                          })
+                      <CharacterArcSelector
+                        selected={character.characterArc}
+                        onChange={(arc) =>
+                          updateCharacter(character.id, { characterArc: arc })
                         }
-                      >
-                        {CHARACTER_ARCS.map((arc) => (
-                          <option key={arc} value={arc}>
-                            {arc}
-                          </option>
-                        ))}
-                      </select>
+                      />
                     </div>
 
                     <div className="form-field full-width">
@@ -442,7 +500,7 @@ export const StoryMode = () => {
                       />
                     </div>
 
-                    <div className="form-field">
+                    <div className="form-field full-width">
                       <label>
                         Want
                         <InfoTooltip content={TOOLTIP_DATA.want} />
@@ -456,7 +514,7 @@ export const StoryMode = () => {
                       />
                     </div>
 
-                    <div className="form-field">
+                    <div className="form-field full-width">
                       <label>
                         Need
                         <InfoTooltip content={TOOLTIP_DATA.need} />
@@ -470,7 +528,7 @@ export const StoryMode = () => {
                       />
                     </div>
 
-                    <div className="form-field">
+                    <div className="form-field full-width">
                       <label>
                         Lie
                         <InfoTooltip content={TOOLTIP_DATA.lie} />
@@ -484,7 +542,7 @@ export const StoryMode = () => {
                       />
                     </div>
 
-                    <div className="form-field">
+                    <div className="form-field full-width">
                       <label>
                         Ghost
                         <InfoTooltip content={TOOLTIP_DATA.ghost} />
