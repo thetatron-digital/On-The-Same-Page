@@ -92,8 +92,9 @@ export const SceneNavigator = () => {
     setHoveredScene(null);
   };
 
-  // Group scenes by page
-  const pageCount = stats.pageCount || 1;
+  // Group scenes by page - use the max page from scenes OR stats, whichever is higher
+  const maxScenePage = scenes.length > 0 ? Math.max(...scenes.map(s => s.pageNumber)) : 1;
+  const pageCount = Math.max(stats.pageCount || 1, maxScenePage);
   const pages = Array.from({ length: pageCount }, (_, i) => i + 1);
 
   return (

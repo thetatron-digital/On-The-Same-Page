@@ -7,6 +7,7 @@ import { TitlePageEditor } from './TitlePageEditor';
 import { SceneNavigator } from './SceneNavigator';
 import { BeatBoard } from './BeatBoard';
 import { SplitView } from './SplitView';
+import { StoryMode } from './StoryMode';
 import './Editor.css';
 
 // Page dimensions at 96 DPI
@@ -213,6 +214,10 @@ export const Editor = () => {
 
   // Render the appropriate view based on viewMode
   const renderMainContent = () => {
+    if (viewMode === 'story') {
+      return <StoryMode />;
+    }
+
     if (viewMode === 'beatBoard') {
       return <BeatBoard />;
     }

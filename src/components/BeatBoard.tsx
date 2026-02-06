@@ -20,6 +20,14 @@ interface DragState {
   offsetY: number;
 }
 
+interface ResizeState {
+  beatId: string;
+  startWidth: number;
+  startHeight: number;
+  startX: number;
+  startY: number;
+}
+
 export const BeatBoard = () => {
   const {
     beatBoards,
@@ -31,12 +39,15 @@ export const BeatBoard = () => {
     updateBeat,
     deleteBeat,
     sendBeatToScript,
+    setViewMode,
   } = useScreenplayStore();
 
   const [editingBeat, setEditingBeat] = useState<string | null>(null);
   const [newBoardName, setNewBoardName] = useState('');
   const [showNewBoardInput, setShowNewBoardInput] = useState(false);
   const [dragState, setDragState] = useState<DragState | null>(null);
+  const [resizeState, setResizeState] = useState<ResizeState | null>(null);
+  const [beatSizes, setBeatSizes] = useState<Record<string, { width: number; height: number }>>({});
   const boardRef = useRef<HTMLDivElement>(null);
 
   const activeBoard = beatBoards.find((b) => b.id === activeBeatBoardId);
@@ -66,10 +77,11 @@ export const BeatBoard = () => {
     setEditingBeat(beatId);
   };
 
-  const handleBeatMouseDown = useCallback(
+  // Handle drag from drag handle (works even in edit mode)
+  const handleDragHandleMouseDown = useCallback(
     (e: React.MouseEvent, beat: Beat) => {
-      if (editingBeat === beat.id) return;
       e.preventDefault();
+      e.stopPropagation();
 
       const rect = (e.target as HTMLElement).closest('.beat-card')?.getBoundingClientRect();
       if (!rect) return;
@@ -80,29 +92,66 @@ export const BeatBoard = () => {
         offsetY: e.clientY - rect.top,
       });
     },
-    [editingBeat]
+    []
+  );
+
+  // Handle resize from resize handle
+  const handleResizeMouseDown = useCallback(
+    (e: React.MouseEvent, beat: Beat) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const size = beatSizes[beat.id] || { width: 180, height: 100 };
+
+      setResizeState({
+        beatId: beat.id,
+        startWidth: size.width,
+        startHeight: size.height,
+        startX: e.clientX,
+        startY: e.clientY,
+      });
+    },
+    [beatSizes]
   );
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent) => {
+      // Handle resize
+      if (resizeState) {
+        const deltaX = e.clientX - resizeState.startX;
+        const deltaY = e.clientY - resizeState.startY;
+
+        setBeatSizes((prev) => ({
+          ...prev,
+          [resizeState.beatId]: {
+            width: Math.max(150, resizeState.startWidth + deltaX),
+            height: Math.max(80, resizeState.startHeight + deltaY),
+          },
+        }));
+        return;
+      }
+
+      // Handle drag
       if (!dragState || !activeBeatBoardId || !boardRef.current) return;
 
       const boardRect = boardRef.current.getBoundingClientRect();
+      const beatSize = beatSizes[dragState.beatId] || { width: 180, height: 100 };
       const x = e.clientX - boardRect.left - dragState.offsetX;
       const y = e.clientY - boardRect.top - dragState.offsetY;
 
       updateBeat(activeBeatBoardId, dragState.beatId, {
         position: {
-          x: Math.max(0, Math.min(x, boardRect.width - 180)),
-          y: Math.max(0, Math.min(y, boardRect.height - 120)),
+          x: Math.max(0, Math.min(x, boardRect.width - beatSize.width)),
+          y: Math.max(0, Math.min(y, boardRect.height - beatSize.height)),
         },
       });
     },
-    [dragState, activeBeatBoardId, updateBeat]
+    [dragState, resizeState, activeBeatBoardId, updateBeat, beatSizes]
   );
 
   const handleMouseUp = useCallback(() => {
     setDragState(null);
+    setResizeState(null);
   }, []);
 
   const handleBeatChange = (beatId: string, field: 'title' | 'description', value: string) => {
@@ -117,7 +166,18 @@ export const BeatBoard = () => {
 
   const handleSendToScript = (beatId: string) => {
     if (!activeBeatBoardId) return;
-    sendBeatToScript(activeBeatBoardId, beatId);
+    const sceneId = sendBeatToScript(activeBeatBoardId, beatId);
+
+    if (sceneId) {
+      // Switch to script view
+      setViewMode('script');
+
+      // Scroll to the created element after a short delay (for view to render)
+      setTimeout(() => {
+        const element = document.querySelector(`[data-element-id="${sceneId}"]`);
+        element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    }
   };
 
   const handleDeleteBeat = (beatId: string) => {
@@ -198,20 +258,39 @@ export const BeatBoard = () => {
           </div>
 
           {/* Beat Cards */}
-          {activeBoard.beats.map((beat) => (
+          {activeBoard.beats.map((beat) => {
+            const size = beatSizes[beat.id] || { width: 180, height: 100 };
+            return (
             <div
               key={beat.id}
               className={`beat-card ${dragState?.beatId === beat.id ? 'dragging' : ''} ${
-                editingBeat === beat.id ? 'editing' : ''
-              }`}
+                resizeState?.beatId === beat.id ? 'resizing' : ''
+              } ${editingBeat === beat.id ? 'editing' : ''}`}
               style={{
                 left: beat.position.x,
                 top: beat.position.y,
+                width: size.width,
+                minHeight: size.height,
                 borderTopColor: beat.color,
               }}
-              onMouseDown={(e) => handleBeatMouseDown(e, beat)}
               onDoubleClick={() => setEditingBeat(beat.id)}
             >
+              {/* Drag Handle - always visible */}
+              <div
+                className="beat-drag-handle"
+                onMouseDown={(e) => handleDragHandleMouseDown(e, beat)}
+                title="Drag to move"
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <circle cx="9" cy="6" r="1.5" />
+                  <circle cx="15" cy="6" r="1.5" />
+                  <circle cx="9" cy="12" r="1.5" />
+                  <circle cx="15" cy="12" r="1.5" />
+                  <circle cx="9" cy="18" r="1.5" />
+                  <circle cx="15" cy="18" r="1.5" />
+                </svg>
+              </div>
+
               {/* Color Indicator */}
               <div className="beat-color-bar" style={{ background: beat.color }} />
 
@@ -282,8 +361,20 @@ export const BeatBoard = () => {
                   )}
                 </div>
               )}
+
+              {/* Resize Handle */}
+              <div
+                className="beat-resize-handle"
+                onMouseDown={(e) => handleResizeMouseDown(e, beat)}
+                title="Drag to resize"
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M22 22H20V20H22V22ZM22 18H20V16H22V18ZM18 22H16V20H18V22ZM22 14H20V12H22V14ZM18 18H16V16H18V18ZM14 22H12V20H14V22Z" />
+                </svg>
+              </div>
             </div>
-          ))}
+          );
+          })}
 
           {/* Empty State */}
           {activeBoard.beats.length === 0 && (

@@ -68,6 +68,112 @@ export interface ScriptNote {
   resolved: boolean;
 }
 
+// ============================================
+// OUTLINE MODE TYPES (Story Development)
+// ============================================
+
+// Plot Overview - General story information
+export interface PlotOverview {
+  title: string;
+  logline: string;
+  themes: string[];
+  storyTypes: string[];  // Coming of Age, Quest, Redemption, etc.
+  genres: string[];      // Drama, Comedy, Thriller, etc.
+  tone: string;          // Light, Dark, Satirical, etc.
+  audience: string;      // Target audience
+  setting: string;       // Time period and location
+  bStory: string;        // Subplot/thematic mirror
+  otherDetails: string;  // Additional notes
+}
+
+// Character development
+export type CharacterRole = 'Protagonist' | 'Antagonist' | 'Love Interest' | 'Mentor' | 'Sidekick' | 'Ally' | 'Guardian' | 'Other';
+export type CharacterArc = 'Positive' | 'Flat' | 'Negative' | 'Corruption' | 'Spiral' | 'Fall' | 'Redemption';
+export type CharacterArchetype = 'Hero' | 'Rebel' | 'Lover' | 'Caregiver' | 'Jester' | 'Sage' | 'Magician' | 'Ruler' | 'Creator' | 'Innocent' | 'Explorer' | 'Outlaw' | 'Other';
+
+export interface StoryCharacter {
+  id: string;
+  name: string;
+  role: CharacterRole;
+  characterArc: CharacterArc;
+  archetypes: CharacterArchetype[];
+  physicalDescription: string;
+  personality: string;
+  want: string;          // External goal
+  need: string;          // Internal goal (thematic truth)
+  lie: string;           // False belief they hold
+  ghost: string;         // Past wound/trauma
+  notes: string;
+}
+
+// Acts Overview - High-level act summaries
+export interface ActsOverview {
+  act1: string;    // Setup (0-25%)
+  act2a: string;   // Rising Action (25-50%)
+  act2b: string;   // Midpoint to Low Point (50-75%)
+  act3: string;    // Resolution (75-100%)
+}
+
+// Structured Beat Sheet
+// Based on common story structure (Blake Snyder, Save the Cat, etc.)
+export interface StoryBeat {
+  id: string;
+  name: string;      // Beat name (e.g., "Inciting Incident")
+  act: 'act1' | 'act2a' | 'act2b' | 'act3';
+  description: string;  // User's content for this beat
+  pageTarget?: number;  // Suggested page number
+  linkedSceneId?: string; // Link to actual scene in script
+}
+
+// Full Outline structure
+export interface StoryOutline {
+  plot: PlotOverview;
+  characters: StoryCharacter[];
+  acts: ActsOverview;
+  beats: StoryBeat[];
+}
+
+// Predefined beat template (for generating default beats)
+export const DEFAULT_BEAT_STRUCTURE: Array<{ name: string; act: 'act1' | 'act2a' | 'act2b' | 'act3'; hint: string }> = [
+  // Act 1 - Setup (0-25%)
+  { name: 'Prologue', act: 'act1', hint: 'Optional opening that sets mood or stakes' },
+  { name: 'Protagonist Introduction', act: 'act1', hint: 'Show protagonist in their ordinary world' },
+  { name: 'Want & Need Established', act: 'act1', hint: 'What protagonist wants vs what they truly need' },
+  { name: 'Inciting Incident', act: 'act1', hint: 'The event that disrupts the ordinary world' },
+  { name: 'Hesitation', act: 'act1', hint: 'Protagonist resists the call to adventure' },
+  { name: 'Preparation', act: 'act1', hint: 'Protagonist prepares to pursue the goal' },
+  { name: 'Plot Point 1', act: 'act1', hint: 'Protagonist commits to the journey (no turning back)' },
+
+  // Act 2A - Rising Action (25-50%)
+  { name: 'Enter New World', act: 'act2a', hint: 'Protagonist enters unfamiliar territory' },
+  { name: 'B-Story Begins', act: 'act2a', hint: 'Subplot and/or love interest introduced' },
+  { name: 'Fun & Games', act: 'act2a', hint: 'The "promise of the premise" - genre-specific fun' },
+  { name: 'First Trials', act: 'act2a', hint: 'Early obstacles and small victories' },
+  { name: 'Gain Allies/Skills', act: 'act2a', hint: 'Protagonist builds support system' },
+  { name: 'Pinch Point 1', act: 'act2a', hint: 'Antagonist shows true power/threat' },
+  { name: 'Midpoint', act: 'act2a', hint: 'Major shift - false victory or false defeat' },
+
+  // Act 2B - Complications (50-75%)
+  { name: 'Rising Stakes', act: 'act2b', hint: 'Tension increases, obstacles get harder' },
+  { name: 'Internal Conflict', act: 'act2b', hint: 'Protagonist battles inner demons' },
+  { name: 'Pinch Point 2', act: 'act2b', hint: 'Antagonist applies more pressure' },
+  { name: 'Major Setback', act: 'act2b', hint: 'Things fall apart for the protagonist' },
+  { name: 'All Is Lost', act: 'act2b', hint: 'The lowest point - seems impossible to win' },
+  { name: 'Dark Night of the Soul', act: 'act2b', hint: 'Protagonist confronts their deepest fears' },
+  { name: 'Moment of Clarity', act: 'act2b', hint: 'Protagonist realizes what they truly need' },
+  { name: 'Plot Point 2', act: 'act2b', hint: 'Protagonist finds new resolve' },
+
+  // Act 3 - Resolution (75-100%)
+  { name: 'Rally the Team', act: 'act3', hint: 'Protagonist gathers allies for final push' },
+  { name: 'Create the Plan', act: 'act3', hint: 'Strategy for the final confrontation' },
+  { name: 'Execute the Plan', act: 'act3', hint: 'Putting the plan into action' },
+  { name: 'Climax', act: 'act3', hint: 'The final battle - protagonist faces antagonist' },
+  { name: 'Proof of Growth', act: 'act3', hint: 'Protagonist demonstrates change' },
+  { name: 'Resolution', act: 'act3', hint: 'Conflict is resolved' },
+  { name: 'New Normal', act: 'act3', hint: 'Show the transformed world/protagonist' },
+  { name: 'Epilogue', act: 'act3', hint: 'Optional closing that ties up loose ends' },
+];
+
 export interface Screenplay {
   title: string;
   author: string;

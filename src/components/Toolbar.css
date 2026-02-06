@@ -15,6 +15,8 @@
 .menu-bar {
   border-bottom: 1px solid var(--border-color);
   min-height: 56px;
+  position: relative;
+  justify-content: space-between;
 }
 
 .format-bar {
@@ -28,21 +30,19 @@
   gap: 4px;
 }
 
-.menu-center-left {
+.menu-left {
   gap: 2px;
 }
 
 .menu-center {
-  flex: 1;
-  justify-content: center;
-}
-
-.menu-center-right {
-  gap: 2px;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
 }
 
 .menu-right {
-  margin-left: auto;
+  gap: 2px;
 }
 
 .toolbar-brand {

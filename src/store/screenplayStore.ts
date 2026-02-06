@@ -1,6 +1,10 @@
 import { create } from 'zustand';
-import type { Screenplay, ScreenplayElement, ElementType, TextRun, TitlePageInfo, Beat, BeatBoard, ScriptVersion, ScriptNote } from '../types/screenplay';
-import { LINES_PER_PAGE } from '../types/screenplay';
+import type {
+  Screenplay, ScreenplayElement, ElementType, TextRun, TitlePageInfo,
+  Beat, BeatBoard, ScriptVersion, ScriptNote,
+  StoryOutline, PlotOverview, StoryCharacter, ActsOverview, StoryBeat
+} from '../types/screenplay';
+import { LINES_PER_PAGE, DEFAULT_BEAT_STRUCTURE } from '../types/screenplay';
 import { createNewScreenplay, generateId, parseFDX, generateFDX, getPlainText } from '../utils/fdx';
 
 // Panel visibility options
@@ -20,7 +24,7 @@ interface VisibilityState {
 }
 
 // View modes
-type ViewMode = 'script' | 'split' | 'beatBoard';
+type ViewMode = 'script' | 'split' | 'beatBoard' | 'story';
 
 // Split View content (independent from main script)
 interface SplitEntry {
@@ -87,6 +91,9 @@ interface ScreenplayState {
   // Split View
   splitContent: SplitContent;
 
+  // Story Outline
+  storyOutline: StoryOutline;
+
   // Actions
   setScreenplay: (screenplay: Screenplay) => void;
   newScreenplay: () => void;
@@ -132,7 +139,7 @@ interface ScreenplayState {
   addBeat: (boardId: string, beat: Omit<Beat, 'id'>) => string;
   updateBeat: (boardId: string, beatId: string, updates: Partial<Beat>) => void;
   deleteBeat: (boardId: string, beatId: string) => void;
-  sendBeatToScript: (boardId: string, beatId: string) => void;
+  sendBeatToScript: (boardId: string, beatId: string) => string | undefined;
 
   // Version Management actions
   createVersion: (name: string) => string;
@@ -154,6 +161,16 @@ interface ScreenplayState {
   addSplitEntry: (column: 'audio' | 'video', text?: string) => string;
   updateSplitEntry: (column: 'audio' | 'video', id: string, text: string) => void;
   deleteSplitEntry: (column: 'audio' | 'video', id: string) => void;
+
+  // Story Outline actions
+  updatePlotOverview: (updates: Partial<PlotOverview>) => void;
+  addCharacter: () => string;
+  updateCharacter: (id: string, updates: Partial<StoryCharacter>) => void;
+  deleteCharacter: (id: string) => void;
+  updateActs: (updates: Partial<ActsOverview>) => void;
+  updateBeatContent: (beatId: string, description: string) => void;
+  linkBeatToScene: (beatId: string, sceneId: string | undefined) => void;
+  initializeBeats: () => void;
 
   // Theme
   toggleDarkMode: () => void;
@@ -262,6 +279,30 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
     video: [{ id: generateId(), text: '' }],
     isIndependent: false,
     swapped: false,
+  },
+
+  // Story Outline state
+  storyOutline: {
+    plot: {
+      title: '',
+      logline: '',
+      themes: [],
+      storyTypes: [],
+      genres: [],
+      tone: '',
+      audience: '',
+      setting: '',
+      bStory: '',
+      otherDetails: '',
+    },
+    characters: [],
+    acts: {
+      act1: '',
+      act2a: '',
+      act2b: '',
+      act3: '',
+    },
+    beats: [],
   },
 
   // Save current state to history (call before making changes)
@@ -644,7 +685,7 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
     const state = get();
     const board = state.beatBoards.find((b) => b.id === boardId);
     const beat = board?.beats.find((b) => b.id === beatId);
-    if (!beat) return;
+    if (!beat) return undefined;
 
     // Create a scene heading from the beat
     const sceneId = state.addElement(undefined, 'Scene Heading');
@@ -658,6 +699,8 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
 
     // Link the beat to the scene
     state.updateBeat(boardId, beatId, { linkedSceneId: sceneId });
+
+    return sceneId;
   },
 
   // Version Management actions
@@ -807,6 +850,112 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
         splitContent: {
           ...state.splitContent,
           [column]: entries,
+        },
+      };
+    }),
+
+  // Story Outline actions
+  updatePlotOverview: (updates) =>
+    set((state) => ({
+      storyOutline: {
+        ...state.storyOutline,
+        plot: { ...state.storyOutline.plot, ...updates },
+      },
+      isDirty: true,
+    })),
+
+  addCharacter: () => {
+    const id = generateId();
+    const newCharacter: StoryCharacter = {
+      id,
+      name: '',
+      role: 'Other',
+      characterArc: 'Positive',
+      archetypes: [],
+      physicalDescription: '',
+      personality: '',
+      want: '',
+      need: '',
+      lie: '',
+      ghost: '',
+      notes: '',
+    };
+    set((state) => ({
+      storyOutline: {
+        ...state.storyOutline,
+        characters: [...state.storyOutline.characters, newCharacter],
+      },
+      isDirty: true,
+    }));
+    return id;
+  },
+
+  updateCharacter: (id, updates) =>
+    set((state) => ({
+      storyOutline: {
+        ...state.storyOutline,
+        characters: state.storyOutline.characters.map((c) =>
+          c.id === id ? { ...c, ...updates } : c
+        ),
+      },
+      isDirty: true,
+    })),
+
+  deleteCharacter: (id) =>
+    set((state) => ({
+      storyOutline: {
+        ...state.storyOutline,
+        characters: state.storyOutline.characters.filter((c) => c.id !== id),
+      },
+      isDirty: true,
+    })),
+
+  updateActs: (updates) =>
+    set((state) => ({
+      storyOutline: {
+        ...state.storyOutline,
+        acts: { ...state.storyOutline.acts, ...updates },
+      },
+      isDirty: true,
+    })),
+
+  updateBeatContent: (beatId, description) =>
+    set((state) => ({
+      storyOutline: {
+        ...state.storyOutline,
+        beats: state.storyOutline.beats.map((b) =>
+          b.id === beatId ? { ...b, description } : b
+        ),
+      },
+      isDirty: true,
+    })),
+
+  linkBeatToScene: (beatId, sceneId) =>
+    set((state) => ({
+      storyOutline: {
+        ...state.storyOutline,
+        beats: state.storyOutline.beats.map((b) =>
+          b.id === beatId ? { ...b, linkedSceneId: sceneId } : b
+        ),
+      },
+    })),
+
+  initializeBeats: () =>
+    set((state) => {
+      // Only initialize if beats are empty
+      if (state.storyOutline.beats.length > 0) return state;
+
+      const beats: StoryBeat[] = DEFAULT_BEAT_STRUCTURE.map((template) => ({
+        id: generateId(),
+        name: template.name,
+        act: template.act,
+        description: '',
+      }));
+
+      return {
+        storyOutline: {
+          ...state.storyOutline,
+          beats,
         },
       };
     }),

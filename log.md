@@ -96,6 +96,12 @@ Source: https://firebase.google.com/pricing
 22. Element indicator in status bar with [Tab] and [Enter] hints
 23. Click anywhere on page to focus editor and start typing
 24. Visual page breaks with page numbers (starting from page 2)
+25. Story Mode with Plot, Characters, Acts, and Beats development
+26. Split View with synced and independent editing modes
+27. Cards (Beat Board) with drag/resize and script navigation
+28. Scene Navigator with real-time scene updates
+29. Version Management for script snapshots
+30. Truly centered element dropdown in toolbar
 
 ### In Progress
 - Planning Firebase integration
@@ -106,6 +112,45 @@ Source: https://firebase.google.com/pricing
 ---
 
 ## Version History
+
+### v3.0 - February 6, 2026
+Major feature release with Story Development and enhanced workflow tools:
+
+**Story Mode (Outline Development)**
+- Plot Overview: Title, logline, themes, story types, genres, tone, audience, setting, B-story
+- Characters: Name, role, arc, archetypes, physical description, personality, want/need/lie/ghost
+- Acts Overview: ACT 1, ACT 2A, ACT 2B, ACT 3 with structured summaries
+- Beat Sheet: 28 structured story beats across all acts with hints and descriptions
+- Tag selectors for multi-select fields (themes, genres, archetypes)
+- Generate buttons prepared for future AI integration (Coming Soon)
+
+**Split View (Audio/Visual)**
+- Two-column view for commercial scripts, music videos, documentaries
+- Synced Mode: Automatically splits script into audio/video columns (read-only)
+- Independent Mode: Edit audio/video content separately from main script
+- Swap Sides button to flip columns
+
+**Cards (Beat Board Improvements)**
+- Drag handle allows moving cards while editing
+- Resize handle for adjustable card dimensions
+- Send to Script now navigates to the created scene
+- Visual improvements for drag and resize states
+
+**Scene Navigator Fixes**
+- Scenes now appear immediately as you type (real-time updates)
+- Fixed page count calculation to show all pages correctly
+- Page numbers row with scene heading chips
+
+**Toolbar Improvements**
+- Element dropdown truly centered using absolute positioning
+- Balanced left/right sections
+- Story button for accessing Outline Mode
+- Renamed "Beat Board" to "Cards" for clarity
+
+**Version Management**
+- Create named script versions
+- Switch between versions
+- Delete unused versions
 
 ### v2.10 - February 6, 2026
 - Added page break spacers that automatically push content to next page margins

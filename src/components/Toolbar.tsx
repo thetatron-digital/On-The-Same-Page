@@ -132,8 +132,8 @@ export const Toolbar = () => {
     <div className="toolbar">
       {/* Main Menu Bar */}
       <div className="toolbar-row menu-bar">
-        {/* Left Section - Brand and File Operations */}
-        <div className="menu-section">
+        {/* Left Side - Brand, File Ops, View Tools */}
+        <div className="menu-section menu-left">
           <div className="toolbar-brand">
             <span className="brand-icon">R</span>
             <span className="brand-name">Re-writer</span>
@@ -176,10 +176,9 @@ export const Toolbar = () => {
             </svg>
             <span>PDF</span>
           </button>
-        </div>
 
-        {/* Center-Left Section - View Tools */}
-        <div className="menu-section menu-center-left">
+          <div className="menu-divider" />
+
           {/* Collaboration (placeholder) */}
           <button className="menu-btn" title="Collaboration (Coming Soon)" disabled>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -204,11 +203,11 @@ export const Toolbar = () => {
             <span>Split</span>
           </button>
 
-          {/* Beat Board */}
+          {/* Cards (Beat Board) */}
           <button
             className={`menu-btn ${viewMode === 'beatBoard' ? 'active' : ''}`}
             onClick={() => setViewMode(viewMode === 'beatBoard' ? 'script' : 'beatBoard')}
-            title="Beat Board"
+            title="Story Cards"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="3" y="3" width="7" height="9" rx="1" />
@@ -216,7 +215,20 @@ export const Toolbar = () => {
               <rect x="3" y="14" width="7" height="7" rx="1" />
               <rect x="14" y="14" width="7" height="7" rx="1" />
             </svg>
-            <span>Beat Board</span>
+            <span>Cards</span>
+          </button>
+
+          {/* Story (Outline Mode) */}
+          <button
+            className={`menu-btn ${viewMode === 'story' ? 'active' : ''}`}
+            onClick={() => setViewMode(viewMode === 'story' ? 'script' : 'story')}
+            title="Story Development (Outline Mode)"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+            </svg>
+            <span>Story</span>
           </button>
 
           {/* Title Page */}
@@ -235,7 +247,7 @@ export const Toolbar = () => {
           </button>
         </div>
 
-        {/* Center Section - Element Type Dropdown (Prominent) */}
+        {/* Center Section - Element Type Dropdown (Absolutely Centered) */}
         <div className="menu-section menu-center">
           <div className="dropdown-container element-dropdown-container">
             <button
@@ -265,8 +277,8 @@ export const Toolbar = () => {
           </div>
         </div>
 
-        {/* Center-Right Section - Utility Tools */}
-        <div className="menu-section menu-center-right">
+        {/* Right Side - Utility Tools */}
+        <div className="menu-section menu-right">
           {/* Writing Stats */}
           <button
             className={`menu-btn ${panels.writingStats ? 'active' : ''}`}
@@ -377,10 +389,10 @@ export const Toolbar = () => {
               </div>
             )}
           </div>
-        </div>
 
-        {/* Right Section */}
-        <div className="menu-section menu-right">
+          <div className="menu-divider" />
+
+          {/* Dark Mode Toggle */}
           <button
             className="menu-btn icon-only"
             onClick={toggleDarkMode}

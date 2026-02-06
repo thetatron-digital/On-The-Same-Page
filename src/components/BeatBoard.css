@@ -125,8 +125,8 @@
   border: 1px solid var(--border-color);
   border-radius: 6px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  cursor: grab;
-  transition: box-shadow 0.15s ease;
+  cursor: default;
+  transition: box-shadow 0.15s ease, width 0.1s ease, min-height 0.1s ease;
   overflow: hidden;
 }
 
@@ -135,14 +135,79 @@
 }
 
 .beat-card.dragging {
-  cursor: grabbing;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   z-index: 100;
+}
+
+.beat-card.dragging .beat-drag-handle {
+  cursor: grabbing;
 }
 
 .beat-card.editing {
   cursor: default;
   z-index: 50;
+}
+
+.beat-card.resizing {
+  cursor: se-resize;
+  z-index: 100;
+}
+
+/* Drag Handle */
+.beat-drag-handle {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  color: var(--text-muted);
+  opacity: 0.5;
+  transition: opacity 0.15s ease;
+  z-index: 10;
+}
+
+.beat-drag-handle:hover {
+  opacity: 1;
+  color: var(--text-secondary);
+}
+
+.beat-drag-handle:active {
+  cursor: grabbing;
+}
+
+.beat-drag-handle svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Resize Handle */
+.beat-resize-handle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: se-resize;
+  color: var(--text-muted);
+  opacity: 0.3;
+  transition: opacity 0.15s ease;
+}
+
+.beat-resize-handle:hover {
+  opacity: 1;
+  color: var(--accent-color);
+}
+
+.beat-resize-handle svg {
+  width: 12px;
+  height: 12px;
 }
 
 /* Color Bar */
