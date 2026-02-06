@@ -1,0 +1,187 @@
+.autocomplete-dropdown {
+  background: var(--panel-bg, #1e1e1e);
+  border: 1px solid var(--border-color, #3a3a3a);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  min-width: 200px;
+  max-width: 320px;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+}
+
+.autocomplete-header {
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted, #888);
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--border-color, #3a3a3a);
+}
+
+.autocomplete-list {
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.autocomplete-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+
+.autocomplete-item:hover,
+.autocomplete-item.selected {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.autocomplete-item.selected {
+  background: var(--accent-color, #4a9eff);
+  color: white;
+}
+
+.autocomplete-item.selected .suggestion-count {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.autocomplete-item.selected .suggestion-source svg,
+.autocomplete-item.selected .suggestion-type svg {
+  stroke: white;
+}
+
+.suggestion-type {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.suggestion-type svg {
+  width: 14px;
+  height: 14px;
+  stroke: var(--text-muted, #888);
+}
+
+.suggestion-type.character svg {
+  stroke: #ef4444;
+}
+
+.suggestion-type.location svg {
+  stroke: #22c55e;
+}
+
+.suggestion-value {
+  flex: 1;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.suggestion-count {
+  font-size: 11px;
+  color: var(--text-muted, #888);
+  margin-left: auto;
+}
+
+.suggestion-source {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+.suggestion-source svg {
+  width: 12px;
+  height: 12px;
+  stroke: var(--text-muted, #888);
+}
+
+.suggestion-source.blueprint svg {
+  stroke: #8b5cf6;
+}
+
+.suggestion-source.script svg {
+  stroke: #3b82f6;
+}
+
+.autocomplete-footer {
+  display: flex;
+  gap: 12px;
+  padding: 6px 12px;
+  font-size: 10px;
+  color: var(--text-muted, #666);
+  background: rgba(255, 255, 255, 0.03);
+  border-top: 1px solid var(--border-color, #3a3a3a);
+}
+
+.autocomplete-footer kbd {
+  display: inline-block;
+  padding: 1px 4px;
+  font-family: inherit;
+  font-size: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  margin-right: 2px;
+}
+
+/* Scrollbar styling */
+.autocomplete-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.autocomplete-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.autocomplete-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.autocomplete-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Light mode overrides */
+@media (prefers-color-scheme: light) {
+  .autocomplete-dropdown {
+    background: #ffffff;
+    border-color: #e0e0e0;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  }
+
+  .autocomplete-header {
+    background: rgba(0, 0, 0, 0.03);
+    border-bottom-color: #e0e0e0;
+  }
+
+  .autocomplete-item:hover,
+  .autocomplete-item.selected:not(.selected) {
+    background: rgba(0, 0, 0, 0.05);
+  }
+
+  .autocomplete-footer {
+    background: rgba(0, 0, 0, 0.03);
+    border-top-color: #e0e0e0;
+  }
+
+  .autocomplete-footer kbd {
+    background: rgba(0, 0, 0, 0.08);
+  }
+
+  .autocomplete-list::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+  }
+}

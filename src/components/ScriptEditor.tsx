@@ -2,6 +2,8 @@ import { useRef, useCallback, useEffect } from 'react';
 import type { ScreenplayElement, ElementType } from '../types/screenplay';
 import { useScreenplayStore } from '../store/screenplayStore';
 import { generateId, createTextRuns } from '../utils/fdx';
+import { detectAutoCompleteTrigger } from '../utils/scriptParser';
+import { AutoComplete } from './AutoComplete';
 import './ScriptEditor.css';
 
 // Page layout constants (must match Editor.tsx)
@@ -65,6 +67,10 @@ export const ScriptEditor = () => {
     screenplay,
     selectElement,
     setCurrentElementType,
+    autoComplete,
+    openAutoComplete,
+    closeAutoComplete,
+    refreshScriptData,
   } = useScreenplayStore();
 
   // Get the text offset within an element from a node
@@ -285,6 +291,54 @@ export const ScriptEditor = () => {
     return null;
   }, [screenplay.elements, getTextOffset]);
 
+  // Get cursor position in viewport coordinates
+  const getCursorPosition = useCallback((): { x: number; y: number } | null => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return null;
+
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+
+    // If collapsed cursor, rect might be empty - use the element position
+    if (rect.width === 0 && rect.height === 0) {
+      const current = getCurrentElement();
+      if (current?.div) {
+        const divRect = current.div.getBoundingClientRect();
+        return {
+          x: divRect.left + current.offset * 9.6, // Approximate char width in Courier
+          y: divRect.top + divRect.height,
+        };
+      }
+      return null;
+    }
+
+    return {
+      x: rect.left,
+      y: rect.bottom,
+    };
+  }, [getCurrentElement]);
+
+  // Check for auto-complete trigger on input
+  const checkAutoComplete = useCallback(() => {
+    const current = getCurrentElement();
+    if (!current) {
+      closeAutoComplete();
+      return;
+    }
+
+    const text = getPlainText(current.element.content);
+    const trigger = detectAutoCompleteTrigger(current.element, current.offset, text);
+
+    if (trigger.triggerType && trigger.searchText.length >= 0) {
+      const pos = getCursorPosition();
+      if (pos) {
+        openAutoComplete(trigger.triggerType, trigger.searchText, pos);
+      }
+    } else {
+      closeAutoComplete();
+    }
+  }, [getCurrentElement, getCursorPosition, openAutoComplete, closeAutoComplete]);
+
   // Handle input changes - parse DOM back to data
   const handleInput = useCallback(() => {
     if (isUpdatingRef.current) return;
@@ -325,9 +379,11 @@ export const ScriptEditor = () => {
       });
       setTimeout(() => {
         isUpdatingRef.current = false;
+        // Check for auto-complete trigger after input
+        checkAutoComplete();
       }, 0);
     }
-  }, []);
+  }, [checkAutoComplete]);
 
   // Set cursor position in an element
   const setCursorPosition = useCallback((elementId: string, offset: number) => {
@@ -392,6 +448,14 @@ export const ScriptEditor = () => {
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
     const state = useScreenplayStore.getState();
     const current = getCurrentElement();
+
+    // If auto-complete is open, let it handle navigation keys
+    if (autoComplete.isOpen) {
+      if (['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(e.key)) {
+        // AutoComplete handles these via capture phase
+        return;
+      }
+    }
 
     // Shift+Enter - insert newline within same element
     if (e.key === 'Enter' && e.shiftKey) {
@@ -634,17 +698,80 @@ export const ScriptEditor = () => {
     }
   }, []);
 
+  // Refresh script data (characters/locations) when screenplay changes
+  useEffect(() => {
+    refreshScriptData();
+  }, [screenplay.elements, refreshScriptData]);
+
+  // Handle auto-complete selection
+  const handleAutoCompleteSelect = useCallback((value: string) => {
+    const current = getCurrentElement();
+    if (!current) {
+      closeAutoComplete();
+      return;
+    }
+
+    const state = useScreenplayStore.getState();
+    const text = getPlainText(current.element.content);
+
+    // For Character elements, replace entire content with selection
+    // For Scene Heading, replace the location portion
+    let newText = value;
+
+    if (current.element.type === 'Scene Heading') {
+      // Parse existing scene heading and replace location
+      const match = text.match(/^(INT\.?|EXT\.?|INT\/EXT\.?|I\/E\.?)\s*/i);
+      if (match) {
+        newText = match[0] + value;
+        // Check if there was a time of day after " - "
+        const timeMatch = text.match(/\s+-\s+(.+)$/);
+        if (timeMatch) {
+          newText += ' - ' + timeMatch[1];
+        }
+      }
+    }
+
+    const format = ELEMENT_FORMAT[current.element.type];
+    const processedText = format?.allCaps ? newText.toUpperCase() : newText;
+
+    state.saveToHistory();
+
+    const elements = state.screenplay.elements.map(el =>
+      el.id === current.element.id
+        ? { ...el, content: createTextRuns(processedText) }
+        : el
+    );
+
+    state.setScreenplay({ ...state.screenplay, elements });
+    closeAutoComplete();
+
+    // Position cursor at end
+    setCursorPosition(current.element.id, processedText.length);
+  }, [getCurrentElement, closeAutoComplete, setCursorPosition]);
+
+  // Handle auto-complete close
+  const handleAutoCompleteClose = useCallback(() => {
+    closeAutoComplete();
+    editorRef.current?.focus();
+  }, [closeAutoComplete]);
+
   return (
-    <div
-      ref={editorRef}
-      className="script-editor-content"
-      contentEditable
-      suppressContentEditableWarning
-      onInput={handleInput}
-      onKeyDown={handleKeyDown}
-      onClick={handleClick}
-      onPaste={handlePaste}
-      spellCheck
-    />
+    <>
+      <div
+        ref={editorRef}
+        className="script-editor-content"
+        contentEditable
+        suppressContentEditableWarning
+        onInput={handleInput}
+        onKeyDown={handleKeyDown}
+        onClick={handleClick}
+        onPaste={handlePaste}
+        spellCheck
+      />
+      <AutoComplete
+        onSelect={handleAutoCompleteSelect}
+        onClose={handleAutoCompleteClose}
+      />
+    </>
   );
 };
