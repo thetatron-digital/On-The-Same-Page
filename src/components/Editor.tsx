@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useScreenplayStore } from '../store/screenplayStore';
 import { ScriptEditor } from './ScriptEditor';
 import { Navigator } from './Navigator';
@@ -6,8 +6,11 @@ import { WritingStats } from './WritingStats';
 import { TitlePageEditor } from './TitlePageEditor';
 import './Editor.css';
 
+// Page dimensions at 96 DPI
+const PAGE_HEIGHT = 1056; // 11 inches
+const PAGE_GAP = 40; // Gap between pages for page break visual
+
 // Element type hints for the status bar (Tab cycles through this order)
-// Tab order: Scene Heading → Action → Character → Dialogue → Parenthetical → Transition → Scene Heading
 const ELEMENT_HINTS: Record<string, { tab: string; enter: string }> = {
   'Scene Heading': { tab: 'Action', enter: 'Action' },
   'Action': { tab: 'Character', enter: 'Action' },
@@ -23,6 +26,7 @@ export const Editor = () => {
   const editorRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const scriptEditorRef = useRef<HTMLDivElement>(null);
+  const [contentHeight, setContentHeight] = useState(PAGE_HEIGHT);
 
   const {
     screenplay,
@@ -34,35 +38,91 @@ export const Editor = () => {
     zoom,
   } = useScreenplayStore();
 
-  // Handle click on page area to focus editor
+  // Monitor content height to determine page count
+  useEffect(() => {
+    const checkContentHeight = () => {
+      const scriptContent = scriptEditorRef.current?.querySelector('.script-editor-content');
+      if (scriptContent) {
+        const height = scriptContent.scrollHeight + 192; // Add padding
+        setContentHeight(Math.max(PAGE_HEIGHT, height));
+      }
+    };
+
+    checkContentHeight();
+
+    // Also observe for mutations
+    const observer = new MutationObserver(checkContentHeight);
+    const scriptContent = scriptEditorRef.current?.querySelector('.script-editor-content');
+    if (scriptContent) {
+      observer.observe(scriptContent, { childList: true, subtree: true, characterData: true });
+    }
+
+    return () => observer.disconnect();
+  }, [screenplay.elements]);
+
+  // Calculate page count from content height
+  const pageCount = Math.max(1, Math.ceil(contentHeight / PAGE_HEIGHT));
+
+  // Calculate total container height including gaps
+  const totalHeight = pageCount * PAGE_HEIGHT + (pageCount - 1) * PAGE_GAP;
+
+  // Focus and position cursor at end of content
+  const focusAtEnd = useCallback(() => {
+    const scriptEditor = scriptEditorRef.current?.querySelector('.script-editor-content') as HTMLElement;
+    if (!scriptEditor) return;
+
+    scriptEditor.focus();
+
+    const elements = screenplay.elements;
+    if (elements.length > 0) {
+      const lastElement = elements[elements.length - 1];
+      selectElement(lastElement.id);
+
+      // Position cursor at end of last element
+      setTimeout(() => {
+        const lastDiv = scriptEditor.querySelector(`[data-element-id="${lastElement.id}"]`);
+        if (lastDiv) {
+          const textNode = lastDiv.firstChild;
+          const selection = window.getSelection();
+          const range = document.createRange();
+
+          try {
+            if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+              const len = textNode.textContent?.length || 0;
+              range.setStart(textNode, len);
+              range.collapse(true);
+            } else {
+              range.selectNodeContents(lastDiv);
+              range.collapse(false);
+            }
+            selection?.removeAllRanges();
+            selection?.addRange(range);
+          } catch {
+            // Ignore
+          }
+        }
+      }, 10);
+    } else {
+      addElement(undefined, 'Scene Heading');
+    }
+  }, [screenplay.elements, selectElement, addElement]);
+
+  // Handle click on page area to focus editor and position cursor at end
   const handlePageClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
 
-    // Check if click is on page area (not on script content)
+    // Check if click is on page area (not on actual script content elements)
     if (
       target.classList.contains('page') ||
       target.classList.contains('page-content') ||
       target.classList.contains('pages-container') ||
       target.classList.contains('script-area') ||
       target.classList.contains('script-wrapper') ||
-      target.classList.contains('page-break') ||
-      target.classList.contains('script-end-area')
+      target.classList.contains('page-break-marker') ||
+      target.classList.contains('script-end-area') ||
+      target.classList.contains('page-background')
     ) {
-      // Focus the script editor
-      const scriptEditor = scriptEditorRef.current?.querySelector('.script-editor-content') as HTMLElement;
-      if (scriptEditor) {
-        scriptEditor.focus();
-
-        // Position cursor at end of last element
-        const elements = screenplay.elements;
-        if (elements.length > 0) {
-          const lastElement = elements[elements.length - 1];
-          selectElement(lastElement.id);
-        } else {
-          // Create first element if empty
-          addElement(undefined, 'Scene Heading');
-        }
-      }
+      focusAtEnd();
     }
   };
 
@@ -117,7 +177,7 @@ export const Editor = () => {
               const content = await file.text();
               useScreenplayStore.getState().loadFromFDX(content);
               useScreenplayStore.getState().setFileName(file.name);
-            } catch (error) {
+            } catch {
               alert('Failed to open file.');
             }
           }
@@ -138,9 +198,6 @@ export const Editor = () => {
 
   // Get element hints for status bar
   const hints = ELEMENT_HINTS[currentElementType] || ELEMENT_HINTS['Action'];
-
-  // Calculate number of pages based on content
-  const pageCount = Math.max(1, stats.pageCount);
 
   return (
     <div className="editor-container">
@@ -173,26 +230,43 @@ export const Editor = () => {
               </div>
             </div>
 
-            {/* Pages */}
-            <div className="pages-container" ref={contentRef}>
-              {/* First page */}
-              <div className="page first-page">
+            {/* Pages container with fixed height pages */}
+            <div
+              className="pages-container"
+              ref={contentRef}
+              style={{ height: `${totalHeight}px` }}
+            >
+              {/* Page backgrounds - positioned absolutely */}
+              {Array.from({ length: pageCount }, (_, i) => (
+                <div
+                  key={`page-bg-${i}`}
+                  className="page page-background"
+                  style={{
+                    top: `${i * (PAGE_HEIGHT + PAGE_GAP)}px`,
+                  }}
+                >
+                  {i > 0 && <div className="page-number">{i + 1}.</div>}
+                </div>
+              ))}
+
+              {/* Page break markers between pages */}
+              {Array.from({ length: pageCount - 1 }, (_, i) => (
+                <div
+                  key={`break-${i}`}
+                  className="page-break-marker"
+                  style={{
+                    top: `${(i + 1) * PAGE_HEIGHT + i * PAGE_GAP}px`,
+                  }}
+                />
+              ))}
+
+              {/* Content layer - flows continuously */}
+              <div className="page first-page" style={{ height: 'auto', minHeight: `${PAGE_HEIGHT}px` }}>
                 <div className="page-content" ref={scriptEditorRef}>
                   <ScriptEditor />
                   <div className="script-end-area" />
                 </div>
               </div>
-
-              {/* Additional pages rendered as visual breaks */}
-              {pageCount > 1 && Array.from({ length: pageCount - 1 }, (_, i) => (
-                <div key={i + 2} className="page-break">
-                  <div className="page-break-line" />
-                  <div className="page subsequent-page">
-                    <div className="page-number">{i + 2}.</div>
-                    <div className="page-content continuation" />
-                  </div>
-                </div>
-              ))}
             </div>
           </div>
         </div>
@@ -200,7 +274,7 @@ export const Editor = () => {
         {/* Status bar */}
         <div className="status-bar">
           <div className="status-left">
-            <span className="status-page">{stats.pageCount} of {stats.pageCount}</span>
+            <span className="status-page">{pageCount} of {pageCount}</span>
             <span className="status-scene">{currentSceneHeading.substring(0, 40)}</span>
           </div>
           <div className="status-center">

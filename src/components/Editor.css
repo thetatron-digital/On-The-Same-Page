@@ -73,22 +73,28 @@
   left: -24px;
 }
 
-/* Pages container */
+/* Pages container - holds visual page backgrounds */
 .pages-container {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+  position: relative;
+  width: 816px;
 }
 
-/* Individual page - 8.5" x 11" at 96 DPI */
+/* Individual page - 8.5" x 11" at 96 DPI - FIXED height */
 .page {
   width: 816px;
-  min-height: 1056px;
+  height: 1056px; /* Fixed 11" at 96 DPI - does NOT grow */
   background: var(--script-bg);
   border: 1px solid var(--page-border, #444);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
   position: relative;
   box-sizing: border-box;
+  overflow: visible; /* Content can flow past page visually */
+}
+
+/* When page is part of multi-page layout, position absolutely */
+.page.page-background {
+  position: absolute;
+  left: 0;
 }
 
 /* Page number in top right (for pages after first) */
@@ -99,14 +105,17 @@
   font-family: 'Courier New', Courier, monospace;
   font-size: 16px;
   color: var(--script-text);
+  z-index: 1;
 }
 
 /* Page content area with margins */
 .page-content {
   /* Margins: 1" top, 1" bottom, 1.5" left, 1" right */
   padding: 96px 96px 96px 144px;
-  min-height: calc(1056px - 192px); /* Full height minus top/bottom padding */
+  min-height: calc(1056px - 192px); /* Minimum for first page */
   box-sizing: border-box;
+  position: relative;
+  z-index: 2; /* Content above page backgrounds */
 }
 
 /* First page has no page number */
@@ -114,36 +123,22 @@
   display: none;
 }
 
+/* Script end area for clicking below content */
 .script-end-area {
-  height: 200px;
+  height: 300px;
   cursor: text;
 }
 
-/* Page break between pages */
-.page-break {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+/* Page break visual separator */
+.page-break-marker {
+  position: absolute;
+  left: 0;
   width: 816px;
-}
-
-.page-break-line {
-  width: 100%;
   height: 40px;
   background: var(--editor-bg, #141414);
   border-top: 1px dashed var(--border-color);
   border-bottom: 1px dashed var(--border-color);
-}
-
-/* Subsequent pages (not first page) - full 11" height */
-.subsequent-page {
-  margin-top: 0;
-  min-height: 1056px; /* Full 11" page at 96 DPI */
-}
-
-.subsequent-page .page-content.continuation {
-  min-height: calc(1056px - 192px); /* Full height minus top/bottom padding */
-  padding-top: 96px;
+  z-index: 5;
 }
 
 /* Status bar at bottom */
@@ -320,7 +315,7 @@
 
   .page {
     width: 100%;
-    min-height: auto;
+    height: auto;
     border: none;
     box-shadow: none;
     page-break-after: always;
@@ -334,5 +329,9 @@
 
   .page-number {
     color: black;
+  }
+
+  .page-break-marker {
+    display: none;
   }
 }
