@@ -1,0 +1,138 @@
+/* Script Editor - Single contenteditable for cross-element selection */
+.script-editor-content {
+  min-height: 100%;
+  outline: none;
+  cursor: text;
+  caret-color: var(--script-text);
+}
+
+/* Ensure the editor can receive focus */
+.script-editor-content:focus {
+  outline: none;
+}
+
+/* Base element styles - Courier 12pt (16px at 96 DPI) */
+.script-element {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  font-family: 'Courier New', 'Courier Prime', Courier, monospace;
+  font-size: 16px;
+  line-height: 1.0;
+  color: var(--script-text);
+  outline: none;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  min-height: 1.35em;
+}
+
+/* Placeholder for empty elements */
+.script-element:empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-muted);
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* Hover highlight */
+.script-element:hover {
+  background: var(--element-hover-bg);
+}
+
+/* Selection highlight */
+.script-element.selected {
+  background: var(--element-selected-bg);
+}
+
+/* ============================================
+   ELEMENT TYPE SPECIFIC STYLES
+   ============================================ */
+
+/* Scene Heading - Bold, uppercase, at left margin */
+.script-element.scene-heading {
+  margin-top: 32px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.script-element.scene-heading:first-child {
+  margin-top: 0;
+}
+
+/* Action - Normal weight, at left margin, full width */
+.script-element.action {
+  margin-top: 16px;
+}
+
+/* Character - Uppercase, indented */
+.script-element.character {
+  margin-top: 16px;
+  margin-left: 37%;
+  width: 63%;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* Dialogue - Indented, narrower width */
+.script-element.dialogue {
+  margin-top: 0;
+  margin-left: 17%;
+  width: 58%;
+}
+
+/* Parenthetical - Indented more than dialogue */
+.script-element.parenthetical {
+  margin-top: 0;
+  margin-left: 27%;
+  width: 38%;
+  font-style: italic;
+}
+
+/* Transition - Right-aligned, uppercase */
+.script-element.transition {
+  margin-top: 16px;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+/* Shot - Like scene heading */
+.script-element.shot {
+  margin-top: 32px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+/* General - Default styling */
+.script-element.general {
+  margin-top: 16px;
+}
+
+/* ============================================
+   SELECTION STYLES
+   ============================================ */
+
+/* Ensure selection color is visible */
+.script-element::selection {
+  background: var(--accent-color);
+  color: white;
+}
+
+.script-element *::selection {
+  background: var(--accent-color);
+  color: white;
+}
+
+/* ============================================
+   PRINT STYLES
+   ============================================ */
+
+@media print {
+  .script-element:hover,
+  .script-element.selected {
+    background: transparent;
+  }
+
+  .script-element {
+    color: #000 !important;
+  }
+}

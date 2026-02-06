@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useScreenplayStore } from '../store/screenplayStore';
-import { ElementLine } from './ElementLine';
+import { ScriptEditor } from './ScriptEditor';
 import { Navigator } from './Navigator';
 import { WritingStats } from './WritingStats';
 import { TitlePageEditor } from './TitlePageEditor';
@@ -12,22 +12,12 @@ export const Editor = () => {
 
   const {
     screenplay,
-    selectedElementId,
     selectElement,
     addElement,
     panels,
     stats,
     zoom,
   } = useScreenplayStore();
-
-  // Auto-resize textareas
-  useEffect(() => {
-    const textareas = editorRef.current?.querySelectorAll('textarea');
-    textareas?.forEach((textarea) => {
-      textarea.style.height = 'auto';
-      textarea.style.height = `${textarea.scrollHeight}px`;
-    });
-  }, [screenplay.elements, zoom]);
 
   // Handle click on empty area - create new element or focus last
   const handleEditorClick = (e: React.MouseEvent) => {
@@ -147,15 +137,7 @@ export const Editor = () => {
             <div className="pages-container" ref={contentRef}>
               <div className="page first-page">
                 <div className="page-content">
-                  {screenplay.elements.map((element, index) => (
-                    <ElementLine
-                      key={element.id}
-                      element={element}
-                      isSelected={selectedElementId === element.id}
-                      onFocus={() => selectElement(element.id)}
-                      prevElementType={index > 0 ? screenplay.elements[index - 1].type : undefined}
-                    />
-                  ))}
+                  <ScriptEditor />
                   <div className="script-end-area" />
                 </div>
               </div>

@@ -91,6 +91,7 @@ Source: https://firebase.google.com/pricing
 17. Visible page borders with shadow (like Final Draft)
 18. Ruler shows full 8.5" width with highlighted end mark
 19. Undo (Cmd+Z) and Redo (Cmd+Shift+Z) functionality
+20. Cross-element text selection (can select text across multiple elements like Word/Google Docs)
 
 ### In Progress
 - Planning Firebase integration
@@ -101,6 +102,13 @@ Source: https://firebase.google.com/pricing
 ---
 
 ## Version History
+
+### v2.7 - February 6, 2026
+- Cross-element text selection enabled (major architecture change)
+- Replaced individual textarea elements with single contenteditable editor
+- Text can now be selected across multiple elements (like Word/Google Docs)
+- Improved cursor navigation between elements
+- Maintained all existing keyboard shortcuts (Tab, Enter, Backspace)
 
 ### v2.6 - February 6, 2026
 - Added visible page borders with shadow (clear page boundaries)
