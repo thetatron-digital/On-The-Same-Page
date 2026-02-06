@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useScreenplayStore } from '../store/screenplayStore';
 import type { CharacterRole, CharacterArc, CharacterArchetype } from '../types/screenplay';
 import { DEFAULT_BEAT_STRUCTURE } from '../types/screenplay';
+import { InfoTooltip, TOOLTIP_DATA, getBeatTooltip } from './InfoTooltip';
 import './StoryMode.css';
 
 type StoryTab = 'plot' | 'characters' | 'acts' | 'beats';
@@ -41,21 +42,19 @@ export const StoryMode = () => {
     options,
     selected,
     onChange,
-    hint,
+    tooltipKey,
   }: {
     label: string;
     options: string[];
     selected: string[];
     onChange: (tags: string[]) => void;
-    hint?: string;
+    tooltipKey?: keyof typeof TOOLTIP_DATA;
   }) => (
     <div className="form-field">
       <label>
         {label}
-        {hint && (
-          <span className="field-hint" title={hint}>
-            ⓘ
-          </span>
+        {tooltipKey && TOOLTIP_DATA[tooltipKey] && (
+          <InfoTooltip content={TOOLTIP_DATA[tooltipKey]} />
         )}
       </label>
       <div className="tag-selector">
@@ -99,7 +98,10 @@ export const StoryMode = () => {
 
       <div className="form-grid">
         <div className="form-field full-width">
-          <label>Title</label>
+          <label>
+            Title
+            <InfoTooltip content={TOOLTIP_DATA.title} />
+          </label>
           <input
             type="text"
             value={storyOutline.plot.title}
@@ -111,9 +113,7 @@ export const StoryMode = () => {
         <div className="form-field full-width">
           <label>
             Logline
-            <span className="field-hint" title="A one or two sentence summary that captures the essence of your story">
-              ⓘ
-            </span>
+            <InfoTooltip content={TOOLTIP_DATA.logline} />
           </label>
           <textarea
             value={storyOutline.plot.logline}
@@ -128,7 +128,7 @@ export const StoryMode = () => {
           options={THEMES}
           selected={storyOutline.plot.themes}
           onChange={(themes) => updatePlotOverview({ themes })}
-          hint="The underlying messages or ideas explored in your story"
+          tooltipKey="themes"
         />
 
         <TagInput
@@ -136,7 +136,7 @@ export const StoryMode = () => {
           options={STORY_TYPES}
           selected={storyOutline.plot.storyTypes}
           onChange={(storyTypes) => updatePlotOverview({ storyTypes })}
-          hint="The fundamental story structure or pattern"
+          tooltipKey="storyTypes"
         />
 
         <TagInput
@@ -144,10 +144,14 @@ export const StoryMode = () => {
           options={GENRES}
           selected={storyOutline.plot.genres}
           onChange={(genres) => updatePlotOverview({ genres })}
+          tooltipKey="genres"
         />
 
         <div className="form-field">
-          <label>Tone</label>
+          <label>
+            Tone
+            <InfoTooltip content={TOOLTIP_DATA.tone} />
+          </label>
           <select
             value={storyOutline.plot.tone}
             onChange={(e) => updatePlotOverview({ tone: e.target.value })}
@@ -162,7 +166,10 @@ export const StoryMode = () => {
         </div>
 
         <div className="form-field">
-          <label>Target Audience</label>
+          <label>
+            Audience
+            <InfoTooltip content={TOOLTIP_DATA.audience} />
+          </label>
           <input
             type="text"
             value={storyOutline.plot.audience}
@@ -174,9 +181,7 @@ export const StoryMode = () => {
         <div className="form-field full-width">
           <label>
             Setting
-            <span className="field-hint" title="The time period and location of your story">
-              ⓘ
-            </span>
+            <InfoTooltip content={TOOLTIP_DATA.setting} />
           </label>
           <textarea
             value={storyOutline.plot.setting}
@@ -188,10 +193,8 @@ export const StoryMode = () => {
 
         <div className="form-field full-width">
           <label>
-            B-Story
-            <span className="field-hint" title="The subplot that often carries the thematic message and mirrors the main plot">
-              ⓘ
-            </span>
+            B Story
+            <InfoTooltip content={TOOLTIP_DATA.bStory} />
           </label>
           <textarea
             value={storyOutline.plot.bStory}
@@ -279,7 +282,10 @@ export const StoryMode = () => {
                 <div className="character-details">
                   <div className="form-grid">
                     <div className="form-field">
-                      <label>Name</label>
+                      <label>
+                        Name
+                        <InfoTooltip content={TOOLTIP_DATA.characterName} />
+                      </label>
                       <input
                         type="text"
                         value={character.name}
@@ -291,7 +297,10 @@ export const StoryMode = () => {
                     </div>
 
                     <div className="form-field">
-                      <label>Role</label>
+                      <label>
+                        Role
+                        <InfoTooltip content={TOOLTIP_DATA.role} />
+                      </label>
                       <select
                         value={character.role}
                         onChange={(e) =>
@@ -309,7 +318,10 @@ export const StoryMode = () => {
                     </div>
 
                     <div className="form-field">
-                      <label>Character Arc</label>
+                      <label>
+                        Character Arc
+                        <InfoTooltip content={TOOLTIP_DATA.characterArc} />
+                      </label>
                       <select
                         value={character.characterArc}
                         onChange={(e) =>
@@ -327,7 +339,10 @@ export const StoryMode = () => {
                     </div>
 
                     <div className="form-field full-width">
-                      <label>Archetypes</label>
+                      <label>
+                        Archetypes
+                        <InfoTooltip content={TOOLTIP_DATA.archetypes} />
+                      </label>
                       <div className="tag-selector small">
                         {ARCHETYPES.map((archetype) => (
                           <button
@@ -354,7 +369,10 @@ export const StoryMode = () => {
                     </div>
 
                     <div className="form-field full-width">
-                      <label>Physical Description</label>
+                      <label>
+                        Physical Description
+                        <InfoTooltip content={TOOLTIP_DATA.physicalDescription} />
+                      </label>
                       <textarea
                         value={character.physicalDescription}
                         onChange={(e) =>
@@ -368,7 +386,10 @@ export const StoryMode = () => {
                     </div>
 
                     <div className="form-field full-width">
-                      <label>Personality</label>
+                      <label>
+                        Personality
+                        <InfoTooltip content={TOOLTIP_DATA.personality} />
+                      </label>
                       <textarea
                         value={character.personality}
                         onChange={(e) =>
@@ -382,9 +403,7 @@ export const StoryMode = () => {
                     <div className="form-field">
                       <label>
                         Want
-                        <span className="field-hint" title="External goal - what the character consciously pursues">
-                          ⓘ
-                        </span>
+                        <InfoTooltip content={TOOLTIP_DATA.want} />
                       </label>
                       <textarea
                         value={character.want}
@@ -399,9 +418,7 @@ export const StoryMode = () => {
                     <div className="form-field">
                       <label>
                         Need
-                        <span className="field-hint" title="Internal goal - the truth they must learn to grow">
-                          ⓘ
-                        </span>
+                        <InfoTooltip content={TOOLTIP_DATA.need} />
                       </label>
                       <textarea
                         value={character.need}
@@ -416,9 +433,7 @@ export const StoryMode = () => {
                     <div className="form-field">
                       <label>
                         Lie
-                        <span className="field-hint" title="The false belief the character holds that prevents growth">
-                          ⓘ
-                        </span>
+                        <InfoTooltip content={TOOLTIP_DATA.lie} />
                       </label>
                       <textarea
                         value={character.lie}
@@ -433,9 +448,7 @@ export const StoryMode = () => {
                     <div className="form-field">
                       <label>
                         Ghost
-                        <span className="field-hint" title="Past wound or trauma that shaped the character's lie">
-                          ⓘ
-                        </span>
+                        <InfoTooltip content={TOOLTIP_DATA.ghost} />
                       </label>
                       <textarea
                         value={character.ghost}
@@ -448,7 +461,7 @@ export const StoryMode = () => {
                     </div>
 
                     <div className="form-field full-width">
-                      <label>Notes</label>
+                      <label>Other Details</label>
                       <textarea
                         value={character.notes}
                         onChange={(e) =>
@@ -547,22 +560,25 @@ export const StoryMode = () => {
       <div className="beat-section">
         <h3>{actLabel}</h3>
         <div className="beat-list">
-          {beats.map((beat) => (
-            <div key={beat.id} className="beat-item">
-              <div className="beat-header">
-                <span className="beat-name">{beat.name}</span>
-                <span className="beat-hint" title={getBeatHint(beat.name)}>
-                  ⓘ
-                </span>
+          {beats.map((beat) => {
+            const tooltipContent = getBeatTooltip(beat.name);
+            return (
+              <div key={beat.id} className="beat-item">
+                <div className="beat-header">
+                  <span className="beat-name">{beat.name}</span>
+                  {tooltipContent.description && (
+                    <InfoTooltip content={tooltipContent} />
+                  )}
+                </div>
+                <textarea
+                  value={beat.description}
+                  onChange={(e) => updateBeatContent(beat.id, e.target.value)}
+                  placeholder={getBeatHint(beat.name)}
+                  rows={2}
+                />
               </div>
-              <textarea
-                value={beat.description}
-                onChange={(e) => updateBeatContent(beat.id, e.target.value)}
-                placeholder={getBeatHint(beat.name)}
-                rows={2}
-              />
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     );
