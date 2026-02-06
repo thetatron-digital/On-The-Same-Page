@@ -80,12 +80,13 @@ Source: https://firebase.google.com/pricing
 6. Navigator panel for scene outline
 7. Writing Stats panel (page count, word count, runtime)
 8. Title Page editor
-9. Zoom controls (now functional)
+9. Zoom controls (slider in status bar)
 10. Continuous scrolling document view (matching Final Draft's Normal View)
 11. Selection highlighting fixed (no highlight for continued same-type elements)
+12. Toolbar buttons use vertical layout (icon above text) like Final Draft
+13. Panels dropdown menu with checkmark toggles
 
 ### In Progress
-- Refining UI to more closely match Final Draft's appearance
 - Planning Firebase integration
 
 ### Known Issues
@@ -94,6 +95,12 @@ Source: https://firebase.google.com/pricing
 ---
 
 ## Version History
+
+### v2.4 - February 6, 2026
+- Toolbar buttons now use vertical layout (icon above text) matching Final Draft
+- Added Panels dropdown menu with checkmark toggles
+- Replaced zoom +/- buttons with slider control
+- Moved zoom slider to status bar (bottom right)
 
 ### v2.3 - February 6, 2026
 - Reduced dead space on sides
