@@ -107,6 +107,13 @@ Source: https://firebase.google.com/pricing
 
 ## Version History
 
+### v2.10 - February 6, 2026
+- Added page break spacers that automatically push content to next page margins
+- Content now respects Final Draft standard 1" top and bottom margins
+- Fixed visual artifact line that appeared on page 2
+- Page backgrounds remain fixed at exactly 11" (1056px) height
+- Text no longer obscured at page breaks - proper spacing calculated
+
 ### v2.9 - February 6, 2026
 - Fixed page height to stay exactly 11 inches (1056px) - pages no longer grow
 - Page backgrounds now render at fixed positions with visual breaks between
