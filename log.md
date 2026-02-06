@@ -121,8 +121,18 @@ App naming standardization and planned feature additions:
 - Future apps planned: BreakDown (script breakdown), ViewFinder (director's tools)
 - Updated all display names in Toolbar.tsx and related files
 
-**Planned Features (Next Phases)**
-- Smart Type / Auto-Complete: Auto-suggest character names and locations as you type
+**Smart Type Foundation (Phase 1 Complete)**
+- Added types for auto-complete: ParsedSceneHeading, ScriptLocation, ScriptCharacter
+- Created scriptParser.ts utility with scene heading parsing, character/location extraction
+- Added auto-complete state to store with suggestion management
+- Types ready for: BreakdownCategory (14 industry-standard), Shot, ScriptLine
+
+**Next: Phase 2 - Smart Type UI**
+- Create AutoComplete.tsx component (portal-based dropdown)
+- Integrate with ScriptEditor.tsx (keyboard navigation)
+- Test with BluePrint characters
+
+**Future Phases**
 - BreakDown App: Industry-standard script breakdown with element tagging
 - ViewFinder App: Shot list, script lining, camera blocking tools
 
