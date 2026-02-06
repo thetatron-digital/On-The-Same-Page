@@ -4,6 +4,9 @@ import { ScriptEditor } from './ScriptEditor';
 import { Navigator } from './Navigator';
 import { WritingStats } from './WritingStats';
 import { TitlePageEditor } from './TitlePageEditor';
+import { SceneNavigator } from './SceneNavigator';
+import { BeatBoard } from './BeatBoard';
+import { SplitView } from './SplitView';
 import './Editor.css';
 
 // Page dimensions at 96 DPI
@@ -38,6 +41,8 @@ export const Editor = () => {
     selectElement,
     addElement,
     panels,
+    visibility,
+    viewMode,
     stats,
     zoom,
   } = useScreenplayStore();
@@ -206,15 +211,24 @@ export const Editor = () => {
   // Get element hints for status bar
   const hints = ELEMENT_HINTS[currentElementType] || ELEMENT_HINTS['Action'];
 
-  return (
-    <div className="editor-container">
-      {/* Left Panel - Navigator */}
-      {panels.navigator && <Navigator />}
+  // Render the appropriate view based on viewMode
+  const renderMainContent = () => {
+    if (viewMode === 'beatBoard') {
+      return <BeatBoard />;
+    }
 
-      {/* Main Editor Area */}
-      <div className="editor" ref={editorRef}>
+    if (viewMode === 'split') {
+      return <SplitView />;
+    }
+
+    // Default: script view
+    return (
+      <>
         {/* Title Page Editor Modal */}
         {panels.titlePage && <TitlePageEditor />}
+
+        {/* Scene Navigator - fixed at top */}
+        <SceneNavigator />
 
         {/* Script content area with ruler */}
         <div className="script-area" onClick={handlePageClick}>
@@ -226,16 +240,18 @@ export const Editor = () => {
             }}
           >
             {/* Ruler aligned with page */}
-            <div className="page-ruler">
-              {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((inch) => (
-                <div key={inch} className="ruler-mark" style={{ left: `${inch * 96}px` }}>
-                  <span className="ruler-number">{inch}</span>
+            {visibility.ruler && (
+              <div className="page-ruler">
+                {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((inch) => (
+                  <div key={inch} className="ruler-mark" style={{ left: `${inch * 96}px` }}>
+                    <span className="ruler-number">{inch}</span>
+                  </div>
+                ))}
+                <div className="ruler-mark ruler-end" style={{ left: `${8.5 * 96}px` }}>
+                  <span className="ruler-number">8.5"</span>
                 </div>
-              ))}
-              <div className="ruler-mark ruler-end" style={{ left: `${8.5 * 96}px` }}>
-                <span className="ruler-number">8.5"</span>
               </div>
-            </div>
+            )}
 
             {/* Pages container with fixed height pages */}
             <div
@@ -306,6 +322,18 @@ export const Editor = () => {
             </div>
           </div>
         </div>
+      </>
+    );
+  };
+
+  return (
+    <div className="editor-container">
+      {/* Left Panel - Navigator */}
+      {panels.navigator && <Navigator />}
+
+      {/* Main Editor Area */}
+      <div className="editor" ref={editorRef}>
+        {renderMainContent()}
       </div>
 
       {/* Right Panel - Writing Stats */}

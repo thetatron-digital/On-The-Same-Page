@@ -29,6 +29,43 @@ export interface TitlePageInfo {
   draftDate?: string;
   contact?: string;
   copyright?: string;
+  image?: string; // Base64 encoded image for title page
+}
+
+// Beat Board types
+export interface Beat {
+  id: string;
+  title: string;
+  description: string;
+  color: string;
+  position: { x: number; y: number };
+  linkedSceneId?: string; // Links to a scene heading element
+  imageUrl?: string;
+}
+
+export interface BeatBoard {
+  id: string;
+  name: string;
+  beats: Beat[];
+}
+
+// Script Version for version management
+export interface ScriptVersion {
+  id: string;
+  name: string;
+  timestamp: Date;
+  screenplay: Screenplay;
+  isActive: boolean;
+}
+
+// Script Note for collaborators
+export interface ScriptNote {
+  id: string;
+  elementId: string; // Which element the note is attached to
+  author: string;
+  content: string;
+  timestamp: Date;
+  resolved: boolean;
 }
 
 export interface Screenplay {

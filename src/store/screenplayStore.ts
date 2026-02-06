@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Screenplay, ScreenplayElement, ElementType, TextRun, TitlePageInfo } from '../types/screenplay';
+import type { Screenplay, ScreenplayElement, ElementType, TextRun, TitlePageInfo, Beat, BeatBoard, ScriptVersion, ScriptNote } from '../types/screenplay';
 import { LINES_PER_PAGE } from '../types/screenplay';
 import { createNewScreenplay, generateId, parseFDX, generateFDX, getPlainText } from '../utils/fdx';
 
@@ -9,10 +9,18 @@ interface PanelState {
   elements: boolean;
   writingStats: boolean;
   titlePage: boolean;
+  beatBoard: boolean;
+}
+
+// Visibility toggles for Show/Hide menu
+interface VisibilityState {
+  ruler: boolean;
+  sceneNavigator: boolean;
+  scriptNotes: boolean;
 }
 
 // View modes
-type ViewMode = 'script' | 'outline' | 'split';
+type ViewMode = 'script' | 'split' | 'beatBoard';
 
 // Writing statistics
 interface WritingStats {
@@ -47,9 +55,21 @@ interface ScreenplayState {
   zoom: number;
   viewMode: ViewMode;
   panels: PanelState;
+  visibility: VisibilityState;
   stats: WritingStats;
   currentPage: number;
   cursorLine: number;
+
+  // Beat Board
+  beatBoards: BeatBoard[];
+  activeBeatBoardId: string | null;
+
+  // Version Management
+  versions: ScriptVersion[];
+  activeVersionId: string | null;
+
+  // Script Notes
+  scriptNotes: ScriptNote[];
 
   // Actions
   setScreenplay: (screenplay: Screenplay) => void;
@@ -84,9 +104,31 @@ interface ScreenplayState {
   setZoom: (zoom: number) => void;
   setViewMode: (mode: ViewMode) => void;
   togglePanel: (panel: keyof PanelState) => void;
+  toggleVisibility: (item: keyof VisibilityState) => void;
   setCurrentPage: (page: number) => void;
   setCursorLine: (line: number) => void;
   calculateStats: () => void;
+
+  // Beat Board actions
+  createBeatBoard: (name: string) => string;
+  deleteBeatBoard: (id: string) => void;
+  setActiveBeatBoard: (id: string | null) => void;
+  addBeat: (boardId: string, beat: Omit<Beat, 'id'>) => string;
+  updateBeat: (boardId: string, beatId: string, updates: Partial<Beat>) => void;
+  deleteBeat: (boardId: string, beatId: string) => void;
+  sendBeatToScript: (boardId: string, beatId: string) => void;
+
+  // Version Management actions
+  createVersion: (name: string) => string;
+  switchVersion: (versionId: string) => void;
+  deleteVersion: (versionId: string) => void;
+  renameVersion: (versionId: string, name: string) => void;
+
+  // Script Notes actions
+  addNote: (elementId: string, content: string, author?: string) => string;
+  updateNote: (noteId: string, content: string) => void;
+  deleteNote: (noteId: string) => void;
+  resolveNote: (noteId: string) => void;
 
   // Theme
   toggleDarkMode: () => void;
@@ -160,6 +202,12 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
     elements: false,
     writingStats: false,
     titlePage: false,
+    beatBoard: false,
+  },
+  visibility: {
+    ruler: true,
+    sceneNavigator: true,
+    scriptNotes: true,
   },
   stats: {
     pageCount: 1,
@@ -171,6 +219,17 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
   },
   currentPage: 1,
   cursorLine: 1,
+
+  // Beat Board state
+  beatBoards: [],
+  activeBeatBoardId: null,
+
+  // Version Management state
+  versions: [],
+  activeVersionId: null,
+
+  // Script Notes state
+  scriptNotes: [],
 
   // Save current state to history (call before making changes)
   saveToHistory: () => {
@@ -475,6 +534,14 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
       },
     })),
 
+  toggleVisibility: (item) =>
+    set((state) => ({
+      visibility: {
+        ...state.visibility,
+        [item]: !state.visibility[item],
+      },
+    })),
+
   setCurrentPage: (page) => set({ currentPage: page }),
 
   setCursorLine: (line) => set({ cursorLine: line }),
@@ -482,6 +549,172 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
   calculateStats: () =>
     set((state) => ({
       stats: calculateWritingStats(state.screenplay),
+    })),
+
+  // Beat Board actions
+  createBeatBoard: (name) => {
+    const id = generateId();
+    set((state) => ({
+      beatBoards: [...state.beatBoards, { id, name, beats: [] }],
+      activeBeatBoardId: id,
+    }));
+    return id;
+  },
+
+  deleteBeatBoard: (id) =>
+    set((state) => ({
+      beatBoards: state.beatBoards.filter((b) => b.id !== id),
+      activeBeatBoardId: state.activeBeatBoardId === id ? null : state.activeBeatBoardId,
+    })),
+
+  setActiveBeatBoard: (id) => set({ activeBeatBoardId: id }),
+
+  addBeat: (boardId, beat) => {
+    const id = generateId();
+    set((state) => ({
+      beatBoards: state.beatBoards.map((board) =>
+        board.id === boardId
+          ? { ...board, beats: [...board.beats, { ...beat, id }] }
+          : board
+      ),
+      isDirty: true,
+    }));
+    return id;
+  },
+
+  updateBeat: (boardId, beatId, updates) =>
+    set((state) => ({
+      beatBoards: state.beatBoards.map((board) =>
+        board.id === boardId
+          ? {
+              ...board,
+              beats: board.beats.map((beat) =>
+                beat.id === beatId ? { ...beat, ...updates } : beat
+              ),
+            }
+          : board
+      ),
+      isDirty: true,
+    })),
+
+  deleteBeat: (boardId, beatId) =>
+    set((state) => ({
+      beatBoards: state.beatBoards.map((board) =>
+        board.id === boardId
+          ? { ...board, beats: board.beats.filter((b) => b.id !== beatId) }
+          : board
+      ),
+      isDirty: true,
+    })),
+
+  sendBeatToScript: (boardId, beatId) => {
+    const state = get();
+    const board = state.beatBoards.find((b) => b.id === boardId);
+    const beat = board?.beats.find((b) => b.id === beatId);
+    if (!beat) return;
+
+    // Create a scene heading from the beat
+    const sceneId = state.addElement(undefined, 'Scene Heading');
+    state.updateElement(sceneId, [{ text: beat.title }]);
+
+    // If there's a description, add it as action
+    if (beat.description) {
+      const actionId = state.addElement(sceneId, 'Action');
+      state.updateElement(actionId, [{ text: beat.description }]);
+    }
+
+    // Link the beat to the scene
+    state.updateBeat(boardId, beatId, { linkedSceneId: sceneId });
+  },
+
+  // Version Management actions
+  createVersion: (name) => {
+    const state = get();
+    const id = generateId();
+    const version: ScriptVersion = {
+      id,
+      name,
+      timestamp: new Date(),
+      screenplay: JSON.parse(JSON.stringify(state.screenplay)),
+      isActive: false,
+    };
+    set((state) => ({
+      versions: [...state.versions, version],
+    }));
+    return id;
+  },
+
+  switchVersion: (versionId) => {
+    const state = get();
+    const version = state.versions.find((v) => v.id === versionId);
+    if (!version) return;
+
+    // Save current to active version before switching
+    const updatedVersions = state.versions.map((v) =>
+      v.id === state.activeVersionId
+        ? { ...v, screenplay: JSON.parse(JSON.stringify(state.screenplay)), isActive: false }
+        : v.id === versionId
+        ? { ...v, isActive: true }
+        : v
+    );
+
+    const stats = calculateWritingStats(version.screenplay);
+    set({
+      screenplay: JSON.parse(JSON.stringify(version.screenplay)),
+      versions: updatedVersions,
+      activeVersionId: versionId,
+      stats,
+      isDirty: false,
+    });
+  },
+
+  deleteVersion: (versionId) =>
+    set((state) => ({
+      versions: state.versions.filter((v) => v.id !== versionId),
+      activeVersionId: state.activeVersionId === versionId ? null : state.activeVersionId,
+    })),
+
+  renameVersion: (versionId, name) =>
+    set((state) => ({
+      versions: state.versions.map((v) =>
+        v.id === versionId ? { ...v, name } : v
+      ),
+    })),
+
+  // Script Notes actions
+  addNote: (elementId, content, author = 'You') => {
+    const id = generateId();
+    const note: ScriptNote = {
+      id,
+      elementId,
+      author,
+      content,
+      timestamp: new Date(),
+      resolved: false,
+    };
+    set((state) => ({
+      scriptNotes: [...state.scriptNotes, note],
+    }));
+    return id;
+  },
+
+  updateNote: (noteId, content) =>
+    set((state) => ({
+      scriptNotes: state.scriptNotes.map((n) =>
+        n.id === noteId ? { ...n, content } : n
+      ),
+    })),
+
+  deleteNote: (noteId) =>
+    set((state) => ({
+      scriptNotes: state.scriptNotes.filter((n) => n.id !== noteId),
+    })),
+
+  resolveNote: (noteId) =>
+    set((state) => ({
+      scriptNotes: state.scriptNotes.map((n) =>
+        n.id === noteId ? { ...n, resolved: true } : n
+      ),
     })),
 
   toggleDarkMode: () => set((state) => ({ darkMode: !state.darkMode })),
