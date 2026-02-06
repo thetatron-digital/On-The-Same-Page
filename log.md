@@ -107,6 +107,12 @@ Source: https://firebase.google.com/pricing
 
 ## Version History
 
+### v2.9 - February 6, 2026
+- Fixed page height to stay exactly 11 inches (1056px) - pages no longer grow
+- Page backgrounds now render at fixed positions with visual breaks between
+- Click anywhere on page positions cursor at end of content (like Pages/Google Docs)
+- Content flows continuously over fixed page backgrounds for proper multi-page support
+
 ### v2.8 - February 6, 2026
 - Fixed smart element type progression (Scene Heading → Action, Character → Dialogue, etc.)
 - Added element indicator in status bar showing [Tab] and [Enter] hints
