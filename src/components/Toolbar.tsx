@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useScreenplayStore } from '../store/screenplayStore';
 import { downloadPDF } from '../utils/pdf';
 import type { ElementType } from '../types/screenplay';
@@ -15,6 +15,15 @@ const ELEMENT_TYPES: ElementType[] = [
 
 export const Toolbar = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+
+  const toggleDropdown = (name: string) => {
+    setOpenDropdown(openDropdown === name ? null : name);
+  };
+
+  const closeDropdowns = () => {
+    setOpenDropdown(null);
+  };
 
   const {
     screenplay,
@@ -22,7 +31,6 @@ export const Toolbar = () => {
     isDirty,
     fileName,
     darkMode,
-    zoom,
     panels,
     stats,
     newScreenplay,
@@ -34,7 +42,6 @@ export const Toolbar = () => {
     selectedElementId,
     updateElementType,
     toggleDarkMode,
-    setZoom,
     togglePanel,
   } = useScreenplayStore();
 
@@ -101,9 +108,6 @@ export const Toolbar = () => {
     }
   };
 
-  const handleZoomIn = () => setZoom(zoom + 10);
-  const handleZoomOut = () => setZoom(zoom - 10);
-
   return (
     <div className="toolbar">
       {/* Main Menu Bar */}
@@ -144,60 +148,56 @@ export const Toolbar = () => {
 
           <div className="menu-divider" />
 
-          <button
-            className={`menu-btn ${panels.titlePage ? 'active' : ''}`}
-            onClick={() => togglePanel('titlePage')}
-            title="Title Page"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-              <line x1="9" y1="9" x2="15" y2="9" />
-              <line x1="9" y1="13" x2="15" y2="13" />
-            </svg>
-            <span>Title Page</span>
-          </button>
-
-          <button
-            className={`menu-btn ${panels.elements ? 'active' : ''}`}
-            onClick={() => togglePanel('elements')}
-            title="Elements"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="8" y1="6" x2="21" y2="6" />
-              <line x1="8" y1="12" x2="21" y2="12" />
-              <line x1="8" y1="18" x2="21" y2="18" />
-              <line x1="3" y1="6" x2="3.01" y2="6" />
-              <line x1="3" y1="12" x2="3.01" y2="12" />
-              <line x1="3" y1="18" x2="3.01" y2="18" />
-            </svg>
-            <span>Elements</span>
-          </button>
-
-          <button
-            className={`menu-btn ${panels.writingStats ? 'active' : ''}`}
-            onClick={() => togglePanel('writingStats')}
-            title="Writing Stats"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="18" y1="20" x2="18" y2="10" />
-              <line x1="12" y1="20" x2="12" y2="4" />
-              <line x1="6" y1="20" x2="6" y2="14" />
-            </svg>
-            <span>Stats</span>
-          </button>
-
-          <button
-            className={`menu-btn ${panels.navigator ? 'active' : ''}`}
-            onClick={() => togglePanel('navigator')}
-            title="Navigator"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" />
-              <line x1="9" y1="3" x2="9" y2="18" />
-              <line x1="15" y1="6" x2="15" y2="21" />
-            </svg>
-            <span>Navigator</span>
-          </button>
+          {/* Panels Dropdown */}
+          <div className="dropdown-container">
+            <button
+              className={`menu-btn dropdown-trigger ${openDropdown === 'panels' ? 'active' : ''}`}
+              onClick={() => toggleDropdown('panels')}
+              title="Show/Hide Panels"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <line x1="9" y1="3" x2="9" y2="21" />
+              </svg>
+              <span>Panels</span>
+              <svg className="dropdown-arrow" viewBox="0 0 12 12" fill="currentColor">
+                <path d="M2 4l4 4 4-4" />
+              </svg>
+            </button>
+            {openDropdown === 'panels' && (
+              <div className="dropdown-menu" onClick={closeDropdowns}>
+                <button
+                  className={`dropdown-item ${panels.navigator ? 'checked' : ''}`}
+                  onClick={() => togglePanel('navigator')}
+                >
+                  <span className="check-mark">{panels.navigator ? '✓' : ''}</span>
+                  Navigator
+                </button>
+                <button
+                  className={`dropdown-item ${panels.writingStats ? 'checked' : ''}`}
+                  onClick={() => togglePanel('writingStats')}
+                >
+                  <span className="check-mark">{panels.writingStats ? '✓' : ''}</span>
+                  Writing Stats
+                </button>
+                <button
+                  className={`dropdown-item ${panels.elements ? 'checked' : ''}`}
+                  onClick={() => togglePanel('elements')}
+                >
+                  <span className="check-mark">{panels.elements ? '✓' : ''}</span>
+                  Elements
+                </button>
+                <div className="dropdown-divider" />
+                <button
+                  className={`dropdown-item ${panels.titlePage ? 'checked' : ''}`}
+                  onClick={() => togglePanel('titlePage')}
+                >
+                  <span className="check-mark">{panels.titlePage ? '✓' : ''}</span>
+                  Title Page
+                </button>
+              </div>
+            )}
+          </div>
 
           <div className="menu-divider" />
 
@@ -263,16 +263,6 @@ export const Toolbar = () => {
         </div>
 
         <div className="format-section format-right">
-          <div className="zoom-controls">
-            <button className="zoom-btn" onClick={handleZoomOut} title="Zoom Out" disabled={zoom <= 50}>
-              −
-            </button>
-            <span className="zoom-level">{zoom}%</span>
-            <button className="zoom-btn" onClick={handleZoomIn} title="Zoom In" disabled={zoom >= 200}>
-              +
-            </button>
-          </div>
-
           <div className="page-info">
             <span>{stats.pageCount} {stats.pageCount === 1 ? 'page' : 'pages'}</span>
             <span className="info-separator">|</span>

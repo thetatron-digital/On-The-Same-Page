@@ -157,6 +157,19 @@ export const Editor = () => {
           </div>
           <div className="status-right">
             <span className="status-runtime">{stats.estimatedRuntime}</span>
+            <div className="status-zoom">
+              <input
+                type="range"
+                className="zoom-slider"
+                min="50"
+                max="200"
+                step="10"
+                value={zoom}
+                onChange={(e) => useScreenplayStore.getState().setZoom(parseInt(e.target.value, 10))}
+                title={`Zoom: ${zoom}%`}
+              />
+              <span className="zoom-level">{zoom}%</span>
+            </div>
           </div>
         </div>
       </div>
