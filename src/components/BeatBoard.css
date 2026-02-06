@@ -485,10 +485,113 @@
   filter: brightness(1.1);
 }
 
+/* Add Beat Modal */
+.add-beat-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.add-beat-modal {
+  background: var(--panel-bg, var(--toolbar-bg));
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 24px;
+  min-width: 320px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.add-beat-modal h3 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  color: var(--text-primary);
+}
+
+.modal-field {
+  margin-bottom: 16px;
+}
+
+.modal-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.modal-field input,
+.modal-field select {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.modal-field input:focus,
+.modal-field select:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.modal-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.modal-btn.cancel {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+}
+
+.modal-btn.cancel:hover {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.modal-btn.confirm {
+  background: var(--accent-color);
+  color: white;
+}
+
+.modal-btn.confirm:hover {
+  filter: brightness(1.1);
+}
+
 /* Responsive */
 @media (max-width: 600px) {
   .beat-card {
     width: 150px;
     min-height: 80px;
+  }
+
+  .add-beat-modal {
+    min-width: 280px;
+    margin: 16px;
   }
 }

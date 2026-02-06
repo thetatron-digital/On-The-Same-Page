@@ -256,12 +256,55 @@ export const BeatBoard = () => {
     }
   };
 
-  // Convert story beats to card format
-  const storyBeatCards: StoryBeatCard[] = storyOutline.beats.map((beat) => ({
+  // Convert story beats to card format - only show beats with content
+  const filledBeats = storyOutline.beats.filter((beat) => beat.description.trim() !== '');
+  const storyBeatCards: StoryBeatCard[] = filledBeats.map((beat) => ({
     ...beat,
     position: storyBeatPositions[beat.id] || { x: 50, y: 50 },
     color: ACT_COLORS[beat.act] || '#4a9eff',
   }));
+
+  // For manual card adding to beat sheet
+  const [showAddBeatModal, setShowAddBeatModal] = useState(false);
+  const [newBeatTitle, setNewBeatTitle] = useState('');
+  const [newBeatAct, setNewBeatAct] = useState<'act1' | 'act2a' | 'act2b' | 'act3'>('act1');
+
+  const handleAddBeatSheetCard = () => {
+    if (!newBeatTitle.trim()) return;
+
+    // Add a new beat to the story outline
+    const newBeat: StoryBeat = {
+      id: `manual-${Date.now()}`,
+      name: newBeatTitle.trim(),
+      act: newBeatAct,
+      description: '',
+    };
+
+    // Add the beat via store (we need to add this method)
+    useScreenplayStore.getState().addStoryBeat(newBeat);
+
+    // Calculate position for new card
+    const actCounts = { act1: 0, act2a: 0, act2b: 0, act3: 0 };
+    const CARD_HEIGHT = 130;
+    const PADDING = 20;
+    const ACT_START_Y = { act1: 60, act2a: 60, act2b: 60, act3: 60 };
+    const ACT_START_X = { act1: 20, act2a: 250, act2b: 480, act3: 710 };
+
+    storyOutline.beats.forEach((beat) => {
+      actCounts[beat.act]++;
+    });
+
+    setStoryBeatPositions((prev) => ({
+      ...prev,
+      [newBeat.id]: {
+        x: ACT_START_X[newBeatAct],
+        y: ACT_START_Y[newBeatAct] + actCounts[newBeatAct] * (CARD_HEIGHT + PADDING),
+      },
+    }));
+
+    setNewBeatTitle('');
+    setShowAddBeatModal(false);
+  };
 
   // Render a beat card (shared between story beats and custom beats)
   const renderBeatCard = (
@@ -483,9 +526,17 @@ export const BeatBoard = () => {
             {/* Beat Sheet Header */}
             <div className="board-toolbar beat-sheet-header">
               <div className="beat-sheet-info">
-                <span className="info-label">Cards from Development → Beats</span>
-                <span className="info-count">{storyBeatCards.length} beats</span>
+                <span className="info-label">Filled beats from Blueprint → Beats</span>
+                <span className="info-count">{storyBeatCards.length} of {storyOutline.beats.length} beats</span>
               </div>
+              <button className="board-btn" onClick={() => setShowAddBeatModal(true)}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <line x1="12" y1="8" x2="12" y2="16" />
+                  <line x1="8" y1="12" x2="16" y2="12" />
+                </svg>
+                Add Card
+              </button>
               <div className="act-legend">
                 <span className="legend-item" style={{ '--legend-color': ACT_COLORS.act1 } as React.CSSProperties}>Act 1</span>
                 <span className="legend-item" style={{ '--legend-color': ACT_COLORS.act2a } as React.CSSProperties}>Act 2A</span>
@@ -494,15 +545,51 @@ export const BeatBoard = () => {
               </div>
             </div>
 
+            {/* Add Beat Modal */}
+            {showAddBeatModal && (
+              <div className="add-beat-modal-overlay" onClick={() => setShowAddBeatModal(false)}>
+                <div className="add-beat-modal" onClick={(e) => e.stopPropagation()}>
+                  <h3>Add Custom Beat</h3>
+                  <div className="modal-field">
+                    <label>Beat Name</label>
+                    <input
+                      type="text"
+                      value={newBeatTitle}
+                      onChange={(e) => setNewBeatTitle(e.target.value)}
+                      placeholder="e.g., Character Revelation"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleAddBeatSheetCard();
+                        if (e.key === 'Escape') setShowAddBeatModal(false);
+                      }}
+                    />
+                  </div>
+                  <div className="modal-field">
+                    <label>Act</label>
+                    <select value={newBeatAct} onChange={(e) => setNewBeatAct(e.target.value as 'act1' | 'act2a' | 'act2b' | 'act3')}>
+                      <option value="act1">Act 1</option>
+                      <option value="act2a">Act 2A</option>
+                      <option value="act2b">Act 2B</option>
+                      <option value="act3">Act 3</option>
+                    </select>
+                  </div>
+                  <div className="modal-actions">
+                    <button className="modal-btn cancel" onClick={() => setShowAddBeatModal(false)}>Cancel</button>
+                    <button className="modal-btn confirm" onClick={handleAddBeatSheetCard}>Add Beat</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Story Beat Cards */}
             {storyBeatCards.map((beat) => renderBeatCard(beat, true))}
 
             {storyBeatCards.length === 0 && (
               <div className="board-empty">
-                <p>No beats in your beat sheet yet.</p>
+                <p>No filled beats yet.</p>
                 <p className="hint">
-                  Go to <strong>Development → Beats</strong> to fill out your story structure.
-                  Cards will automatically appear here.
+                  Go to <strong>Blueprint → Beats</strong> to fill out your story structure,
+                  or click <strong>Add Card</strong> to create a custom beat.
                 </p>
               </div>
             )}

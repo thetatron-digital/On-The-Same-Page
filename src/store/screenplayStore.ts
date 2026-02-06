@@ -176,6 +176,7 @@ interface ScreenplayState {
   updateBeatContent: (beatId: string, description: string) => void;
   linkBeatToScene: (beatId: string, sceneId: string | undefined) => void;
   initializeBeats: () => void;
+  addStoryBeat: (beat: StoryBeat) => void;
 
   // Theme
   toggleDarkMode: () => void;
@@ -996,6 +997,15 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
         },
       };
     }),
+
+  addStoryBeat: (beat) =>
+    set((state) => ({
+      storyOutline: {
+        ...state.storyOutline,
+        beats: [...state.storyOutline.beats, beat],
+      },
+      isDirty: true,
+    })),
 
   toggleDarkMode: () => set((state) => ({ darkMode: !state.darkMode })),
 }));

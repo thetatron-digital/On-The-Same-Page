@@ -421,6 +421,7 @@ export const OPTIONS_DATA = {
 // Helper to get beat tooltip by beat name
 export const getBeatTooltip = (beatName: string): TooltipContent => {
   const beatNameMap: Record<string, keyof typeof TOOLTIP_DATA> = {
+    // Act 1
     'Prologue': 'prologue',
     'Protagonist Want': 'protagonistWant',
     'Protagonist Need': 'protagonistNeed',
@@ -431,15 +432,19 @@ export const getBeatTooltip = (beatName: string): TooltipContent => {
     'Prepare for Goal': 'prepareForGoal',
     'Attempt at Goal': 'attemptAtGoal',
     'Plot Point 1': 'plotPoint1',
+    // Act 2A
     'Cross to Unknown': 'crossToUnknown',
     'B-Story': 'bStoryBeat',
     'Trials of Initiation': 'trialsOfInitiation',
     'Gain Skills': 'gainSkills',
     'Pinch Point 1': 'pinchPoint1',
     'Trials': 'trials',
+    'Gain Skills (2)': 'gainSkills',
+    'Trials (2)': 'trials',
+    'Gain Skills (3)': 'gainSkills',
     'Reach Inner Sanctum': 'reachInnerSanctum',
     'Midpoint': 'midpoint',
-    'Pinch Point 2': 'pinchPoint2',
+    // Act 2B
     'Internal Tension': 'internalTension',
     'External Tension': 'externalTension',
     'Sacrifice Need for Want': 'sacrificeNeedForWant',
@@ -448,8 +453,8 @@ export const getBeatTooltip = (beatName: string): TooltipContent => {
     'Complete Failure': 'completeFailure',
     'Admit Defeat': 'admitDefeat',
     'Moment of Clarity': 'momentOfClarity',
-    'Plot Point 2': 'plotPoint2',
     'Plot Point 3': 'plotPoint3',
+    // Act 3
     'Make Amends': 'makeAmends',
     'Atone with Allies': 'atoneWithAllies',
     'Create Final Plan': 'createFinalPlan',

@@ -135,43 +135,53 @@ export interface StoryOutline {
 
 // Predefined beat template (for generating default beats)
 export const DEFAULT_BEAT_STRUCTURE: Array<{ name: string; act: 'act1' | 'act2a' | 'act2b' | 'act3'; hint: string }> = [
-  // Act 1 - Setup (0-25%)
-  { name: 'Prologue', act: 'act1', hint: 'Optional opening that sets mood or stakes' },
-  { name: 'Protagonist Introduction', act: 'act1', hint: 'Show protagonist in their ordinary world' },
-  { name: 'Want & Need Established', act: 'act1', hint: 'What protagonist wants vs what they truly need' },
-  { name: 'Inciting Incident', act: 'act1', hint: 'The event that disrupts the ordinary world' },
-  { name: 'Hesitation', act: 'act1', hint: 'Protagonist resists the call to adventure' },
-  { name: 'Preparation', act: 'act1', hint: 'Protagonist prepares to pursue the goal' },
-  { name: 'Plot Point 1', act: 'act1', hint: 'Protagonist commits to the journey (no turning back)' },
+  // Act 1 - Setup (0-25%) - 10 beats
+  { name: 'Prologue', act: 'act1', hint: 'A beat that sets up Tone, Setting, Scope; and contrasts the Epilogue to illustrate Protagonist growth.' },
+  { name: 'Protagonist Want', act: 'act1', hint: 'A beat that clearly defines a Goal the Protagonist wants to achieve during the story.' },
+  { name: 'Protagonist Need', act: 'act1', hint: 'A beat that defines a Moral Lesson essential to the Protagonist\'s growth, that also conflicts with their Goal.' },
+  { name: 'Protagonist Life', act: 'act1', hint: 'A beat illustrating the Protagonist\'s daily routines at Home, Work, and Play; and problems they create by violating the Moral Lesson.' },
+  { name: 'Protagonist Plight', act: 'act1', hint: 'A beat that describes how the Protagonist\'s Lie is holding them back from achieving their "Want."' },
+  { name: 'Inciting Incident', act: 'act1', hint: 'An unexpected event that upsets the Protagonist\'s Status Quo, and propels the story forward.' },
+  { name: 'Hesitation', act: 'act1', hint: 'A beat where the Protagonist reacts to the Inciting Incident, either positively or negatively.' },
+  { name: 'Prepare for Goal', act: 'act1', hint: 'A beat where the Protagonist plans to restore the Status Quo, in order to achieve their Goal.' },
+  { name: 'Attempt at Goal', act: 'act1', hint: 'A beat where the Protagonist attempts to restore the Status Quo, in order to achieve their Goal.' },
+  { name: 'Plot Point 1', act: 'act1', hint: 'A significant event that affects the Protagonist, either internally or externally, and forces them to make a decision.' },
 
-  // Act 2A - Rising Action (25-50%)
-  { name: 'Enter New World', act: 'act2a', hint: 'Protagonist enters unfamiliar territory' },
-  { name: 'B-Story Begins', act: 'act2a', hint: 'Subplot and/or love interest introduced' },
-  { name: 'Fun & Games', act: 'act2a', hint: 'The "promise of the premise" - genre-specific fun' },
-  { name: 'First Trials', act: 'act2a', hint: 'Early obstacles and small victories' },
-  { name: 'Gain Allies/Skills', act: 'act2a', hint: 'Protagonist builds support system' },
-  { name: 'Pinch Point 1', act: 'act2a', hint: 'Antagonist shows true power/threat' },
-  { name: 'Midpoint', act: 'act2a', hint: 'Major shift - false victory or false defeat' },
+  // Act 2A - Rising Action (25-50%) - 11 beats
+  { name: 'Cross to Unknown', act: 'act2a', hint: 'A beat that illustrates the Protagonist\'s decision to abandon their Status Quo, and embark on a journey to achieve their Goal.' },
+  { name: 'B-Story', act: 'act2a', hint: 'A beat that illustrates the Theme through the Protagonist\'s relationship with a Mentor or Love Interest.' },
+  { name: 'Trials of Initiation', act: 'act2a', hint: 'A beat where the Protagonist struggles to achieve their Goal, while meeting new Allies and Antagonists.' },
+  { name: 'Gain Skills', act: 'act2a', hint: 'A beat where the Protagonist learns skills and/or behaviors associated with the Moral Lesson, from various Allies and/or Antagonists.' },
+  { name: 'Pinch Point 1', act: 'act2a', hint: 'An event, less dramatic than a Plot Point, that psychologically affects the Protagonist.' },
+  { name: 'Trials', act: 'act2a', hint: 'A beat where the Protagonist struggles to achieve their Goal, while meeting new Allies and Antagonists.' },
+  { name: 'Gain Skills (2)', act: 'act2a', hint: 'A beat where the Protagonist learns skills and/or behaviors associated with the Moral Lesson, from various Allies and/or Antagonists.' },
+  { name: 'Trials (2)', act: 'act2a', hint: 'A beat where the Protagonist struggles to achieve their Goal, while meeting new Allies and Antagonists.' },
+  { name: 'Gain Skills (3)', act: 'act2a', hint: 'A beat where the Protagonist learns skills and/or behaviors associated with the Moral Lesson, from various Allies and/or Antagonists.' },
+  { name: 'Reach Inner Sanctum', act: 'act2a', hint: 'A beat that shows the Protagonist and Allies, now experienced and familiar with the Unknown, make new plans to achieve their Goal.' },
+  { name: 'Midpoint', act: 'act2a', hint: 'A dramatic Wish Fulfillment for the Protagonist, who has not yet learned the Moral Lesson. Stakes are raised, and a deadline for the Goal is introduced. NOTE: This beat can alternatively be a Comeuppance, but either situation should contrast the drama of Pinch Point 2.' },
 
-  // Act 2B - Complications (50-75%)
-  { name: 'Rising Stakes', act: 'act2b', hint: 'Tension increases, obstacles get harder' },
-  { name: 'Internal Conflict', act: 'act2b', hint: 'Protagonist battles inner demons' },
-  { name: 'Pinch Point 2', act: 'act2b', hint: 'Antagonist applies more pressure' },
-  { name: 'Major Setback', act: 'act2b', hint: 'Things fall apart for the protagonist' },
-  { name: 'All Is Lost', act: 'act2b', hint: 'The lowest point - seems impossible to win' },
-  { name: 'Dark Night of the Soul', act: 'act2b', hint: 'Protagonist confronts their deepest fears' },
-  { name: 'Moment of Clarity', act: 'act2b', hint: 'Protagonist realizes what they truly need' },
-  { name: 'Plot Point 2', act: 'act2b', hint: 'Protagonist finds new resolve' },
+  // Act 2B - Complications (50-75%) - 9 beats
+  { name: 'Internal Tension', act: 'act2b', hint: 'A beat illustrating how dissent, doubt, and jealousy create conflict between the Protagonist and their Allies.' },
+  { name: 'External Tension', act: 'act2b', hint: 'A beat where the Antagonist regroups, and doubles their effort to obstruct the Protagonist\'s Goal.' },
+  { name: 'Sacrifice Need for Want', act: 'act2b', hint: 'A beat illustrating the Protagonist\'s awareness of the Moral Lesson, but committing to their Goal in spite of it.' },
+  { name: 'Increasing Tension', act: 'act2b', hint: 'A beat where the Antagonist obstructs the Protagonist, and/or conflict rises between the Protagonist and their Allies.' },
+  { name: 'Twist', act: 'act2b', hint: 'An unexpected event that changes the perception of preceding events, or places the main conflict in a different context.' },
+  { name: 'Complete Failure', act: 'act2b', hint: 'A moment of absolute and seemingly permanent defeat for the Protagonist, in their pursuit of the Goal.' },
+  { name: 'Admit Defeat', act: 'act2b', hint: 'A beat where the Protagonist admits defeat and exhibits humility.' },
+  { name: 'Moment of Clarity', act: 'act2b', hint: 'A beat where the Protagonist realizes the importance of the Moral Lesson, and how it relates to their plight.' },
+  { name: 'Plot Point 3', act: 'act2b', hint: 'A beat where the Protagonist makes the decision to confront the Antagonist.' },
 
-  // Act 3 - Resolution (75-100%)
-  { name: 'Rally the Team', act: 'act3', hint: 'Protagonist gathers allies for final push' },
-  { name: 'Create the Plan', act: 'act3', hint: 'Strategy for the final confrontation' },
-  { name: 'Execute the Plan', act: 'act3', hint: 'Putting the plan into action' },
-  { name: 'Climax', act: 'act3', hint: 'The final battle - protagonist faces antagonist' },
-  { name: 'Proof of Growth', act: 'act3', hint: 'Protagonist demonstrates change' },
-  { name: 'Resolution', act: 'act3', hint: 'Conflict is resolved' },
-  { name: 'New Normal', act: 'act3', hint: 'Show the transformed world/protagonist' },
-  { name: 'Epilogue', act: 'act3', hint: 'Optional closing that ties up loose ends' },
+  // Act 3 - Resolution (75-100%) - 10 beats
+  { name: 'Make Amends', act: 'act3', hint: 'A beat where the Protagonist pays the price for their mistakes and/or achievements.' },
+  { name: 'Atone with Allies', act: 'act3', hint: 'A beat where the Protagonist makes amends with their Allies.' },
+  { name: 'Create Final Plan', act: 'act3', hint: 'A beat where the Protagonist and Allies make a Final Plan to achieve their Goal.' },
+  { name: 'Attempt Final Plan', act: 'act3', hint: 'A beat where the Protagonist and Allies attempt to execute their Final Plan.' },
+  { name: 'Proof of Growth', act: 'act3', hint: 'A beat illustrating how the Protagonist and Allies use the Moral Lesson to fix problems from the daily routines.' },
+  { name: 'Defeat Lieutenants', act: 'act3', hint: 'A beat illustrating growth for Allies, as they defeat the secondary Antagonists, or sacrifice themselves for the cause.' },
+  { name: 'Unexpected Turn', act: 'act3', hint: 'An unexpected beat in which the Protagonist is led into a trap by the main Antagonist, and forced into confrontation.' },
+  { name: 'Choose Need or Want', act: 'act3', hint: 'A beat where the Protagonist reacts to the Unexpected Turn, and must finally accept or refuse the Moral Lesson.' },
+  { name: 'Execute Final Plan', act: 'act3', hint: 'A beat illustrating the Protagonist using the Moral Lesson to defeat the Antagonist; OR, a beat illustrating the Protagonist refusing the Moral Lesson and being defeated by the Antagonist.' },
+  { name: 'Epilogue', act: 'act3', hint: 'A beat that contrasts the Prologue to illustrate the growth, or corruption/fall of the Protagonist.' },
 ];
 
 export interface Screenplay {
