@@ -20,7 +20,7 @@
   background: transparent;
 }
 
-/* Base input styles - Courier 12pt equivalent */
+/* Base input styles - Courier 12pt (16px at 96 DPI) */
 .element-input {
   display: block;
   width: 100%;
@@ -29,8 +29,8 @@
   background: transparent;
   color: var(--script-text);
   font-family: 'Courier New', 'Courier Prime', Courier, monospace;
-  font-size: 14px;
-  line-height: 1.35;
+  font-size: 16px; /* 12pt = 16px at 96 DPI */
+  line-height: 1.0; /* Single-spaced like standard screenplays */
   resize: none;
   overflow: hidden;
   box-sizing: border-box;
@@ -52,7 +52,7 @@
 
 /* Scene Heading - Bold, uppercase, at left margin */
 .element-line.scene-heading {
-  margin-top: 18px;
+  margin-top: 32px; /* 2 blank lines = 2 * 16px */
 }
 
 .element-line.scene-heading:first-child {
@@ -66,7 +66,7 @@
 
 /* Action - Normal weight, at left margin, full width */
 .element-line.action {
-  margin-top: 12px;
+  margin-top: 16px; /* 1 blank line */
 }
 
 .element-line.action .element-input {
@@ -75,7 +75,7 @@
 
 /* Character - Uppercase, indented */
 .element-line.character {
-  margin-top: 12px;
+  margin-top: 16px; /* 1 blank line */
 }
 
 .element-line.character .element-input {
@@ -108,7 +108,7 @@
 
 /* Transition - Right-aligned, uppercase */
 .element-line.transition {
-  margin-top: 12px;
+  margin-top: 16px; /* 1 blank line */
 }
 
 .element-line.transition .element-input {
@@ -118,7 +118,7 @@
 
 /* Shot - Like scene heading */
 .element-line.shot {
-  margin-top: 12px;
+  margin-top: 32px; /* 2 blank lines like scene heading */
 }
 
 .element-line.shot .element-input {
@@ -128,7 +128,7 @@
 
 /* General - Default styling */
 .element-line.general {
-  margin-top: 12px;
+  margin-top: 16px; /* 1 blank line */
 }
 
 /* ============================================

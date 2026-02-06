@@ -28,7 +28,10 @@
 .ruler-content {
   position: relative;
   height: 100%;
-  margin-left: 24px; /* Align with script content left margin */
+  /* Center ruler to match centered page */
+  max-width: 816px;
+  margin: 0 auto;
+  padding-left: 144px; /* Align with 1.5" left margin */
 }
 
 .ruler-mark {
@@ -49,18 +52,24 @@
 .script-area {
   flex: 1;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: auto;
   background: var(--script-bg);
   cursor: text;
+  display: flex;
+  justify-content: center;
 }
 
+/* Page container - simulates 8.5" x 11" page at 96 DPI */
 .script-content {
-  width: 100%;
-  max-width: 100%;
-  margin: 0;
-  padding: 24px 48px 24px 24px; /* Reduced left padding */
+  /* 8.5 inches = 816px at 96 DPI */
+  width: 816px;
+  min-width: 816px;
+  max-width: 816px;
+  /* Margins: 1.5" left (144px), 1" right (96px), 1" top/bottom (96px) */
+  padding: 96px 96px 96px 144px;
   min-height: 100%;
-  transform-origin: top left;
+  transform-origin: top center;
+  box-sizing: border-box;
 }
 
 .script-end-area {
@@ -192,24 +201,24 @@
   background: var(--scrollbar-thumb-hover);
 }
 
-/* Mobile responsiveness */
+/* Mobile responsiveness - scale down page for smaller screens */
 @media (max-width: 900px) {
+  .script-area {
+    justify-content: flex-start;
+  }
+
   .script-content {
-    padding: 16px 24px 16px 16px;
+    /* Keep aspect ratio but allow horizontal scroll */
   }
 
   .ruler-content {
-    margin-left: 16px;
+    margin-left: 144px;
   }
 }
 
 @media (max-width: 600px) {
   .editor-container {
     flex-direction: column;
-  }
-
-  .script-content {
-    padding: 12px 16px;
   }
 
   .ruler {

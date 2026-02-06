@@ -128,8 +128,7 @@ export const Editor = () => {
             ref={contentRef}
             style={{
               transform: `scale(${scale})`,
-              transformOrigin: 'top left',
-              width: `${100 / scale}%`,
+              transformOrigin: 'top center',
             }}
           >
             {screenplay.elements.map((element, index) => (
