@@ -45,6 +45,18 @@ export const Editor = () => {
   // Handle keyboard shortcuts at editor level
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl/Cmd + Z - Undo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        useScreenplayStore.getState().undo();
+      }
+
+      // Ctrl/Cmd + Shift + Z or Ctrl/Cmd + Y - Redo
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'z' && e.shiftKey || e.key === 'y')) {
+        e.preventDefault();
+        useScreenplayStore.getState().redo();
+      }
+
       // Ctrl/Cmd + N - New document
       if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
         e.preventDefault();
@@ -110,14 +122,18 @@ export const Editor = () => {
         {/* Title Page Editor Modal */}
         {panels.titlePage && <TitlePageEditor />}
 
-        {/* Ruler */}
+        {/* Ruler - shows 0 to 8.5 inches */}
         <div className="ruler">
           <div className="ruler-content" style={{ transform: `scaleX(${scale})`, transformOrigin: 'left' }}>
-            {[0, 1, 2, 3, 4, 5, 6, 7].map((inch) => (
+            {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((inch) => (
               <div key={inch} className="ruler-mark" style={{ left: `${inch * 96}px` }}>
                 <span className="ruler-number">{inch}</span>
               </div>
             ))}
+            {/* 8.5 inch mark at end of page */}
+            <div className="ruler-mark ruler-end" style={{ left: `${8.5 * 96}px` }}>
+              <span className="ruler-number">8.5"</span>
+            </div>
           </div>
         </div>
 

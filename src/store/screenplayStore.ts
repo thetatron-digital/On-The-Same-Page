@@ -24,6 +24,12 @@ interface WritingStats {
   estimatedRuntime: string; // e.g., "1h 32m"
 }
 
+// History entry for undo/redo
+interface HistoryEntry {
+  screenplay: Screenplay;
+  selectedElementId: string | null;
+}
+
 interface ScreenplayState {
   screenplay: Screenplay;
   selectedElementId: string | null;
@@ -31,6 +37,11 @@ interface ScreenplayState {
   isDirty: boolean;
   fileName: string;
   darkMode: boolean;
+
+  // Undo/Redo
+  history: HistoryEntry[];
+  future: HistoryEntry[];
+  historyIndex: number;
 
   // UI State
   zoom: number;
@@ -43,6 +54,13 @@ interface ScreenplayState {
   // Actions
   setScreenplay: (screenplay: Screenplay) => void;
   newScreenplay: () => void;
+
+  // Undo/Redo actions
+  undo: () => void;
+  redo: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
+  saveToHistory: () => void;
   setTitle: (title: string) => void;
   setAuthor: (author: string) => void;
   updateTitlePage: (titlePage: Partial<TitlePageInfo>) => void;
@@ -118,6 +136,9 @@ const calculateWritingStats = (screenplay: Screenplay): WritingStats => {
   };
 };
 
+// Max history entries to prevent memory issues
+const MAX_HISTORY = 100;
+
 export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
   screenplay: createNewScreenplay(),
   selectedElementId: null,
@@ -125,6 +146,11 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
   isDirty: false,
   fileName: 'Untitled.fdx',
   darkMode: true,
+
+  // Undo/Redo state
+  history: [],
+  future: [],
+  historyIndex: -1,
 
   // UI State defaults
   zoom: 100,
@@ -146,7 +172,82 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
   currentPage: 1,
   cursorLine: 1,
 
+  // Save current state to history (call before making changes)
+  saveToHistory: () => {
+    const state = get();
+    const entry: HistoryEntry = {
+      screenplay: JSON.parse(JSON.stringify(state.screenplay)),
+      selectedElementId: state.selectedElementId,
+    };
+
+    // Trim history if too long
+    let newHistory = [...state.history, entry];
+    if (newHistory.length > MAX_HISTORY) {
+      newHistory = newHistory.slice(-MAX_HISTORY);
+    }
+
+    set({
+      history: newHistory,
+      future: [], // Clear redo stack on new action
+    });
+  },
+
+  undo: () => {
+    const state = get();
+    if (state.history.length === 0) return;
+
+    // Save current state to future (for redo)
+    const currentEntry: HistoryEntry = {
+      screenplay: JSON.parse(JSON.stringify(state.screenplay)),
+      selectedElementId: state.selectedElementId,
+    };
+
+    // Pop last history entry
+    const newHistory = [...state.history];
+    const previousEntry = newHistory.pop();
+
+    if (previousEntry) {
+      const stats = calculateWritingStats(previousEntry.screenplay);
+      set({
+        screenplay: previousEntry.screenplay,
+        selectedElementId: previousEntry.selectedElementId,
+        history: newHistory,
+        future: [currentEntry, ...state.future],
+        stats,
+      });
+    }
+  },
+
+  redo: () => {
+    const state = get();
+    if (state.future.length === 0) return;
+
+    // Save current state to history
+    const currentEntry: HistoryEntry = {
+      screenplay: JSON.parse(JSON.stringify(state.screenplay)),
+      selectedElementId: state.selectedElementId,
+    };
+
+    // Pop first future entry
+    const [nextEntry, ...newFuture] = state.future;
+
+    if (nextEntry) {
+      const stats = calculateWritingStats(nextEntry.screenplay);
+      set({
+        screenplay: nextEntry.screenplay,
+        selectedElementId: nextEntry.selectedElementId,
+        history: [...state.history, currentEntry],
+        future: newFuture,
+        stats,
+      });
+    }
+  },
+
+  canUndo: () => get().history.length > 0,
+  canRedo: () => get().future.length > 0,
+
   setScreenplay: (screenplay) => {
+    get().saveToHistory();
     const stats = calculateWritingStats(screenplay);
     set({ screenplay, isDirty: true, stats });
   },
@@ -195,6 +296,8 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
 
   addElement: (afterId, type) => {
     const state = get();
+    state.saveToHistory(); // Save before change
+
     const elementType = type || state.currentElementType;
     const newElement: ScreenplayElement = {
       id: generateId(),
@@ -257,7 +360,8 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
       };
     }),
 
-  deleteElement: (id) =>
+  deleteElement: (id) => {
+    get().saveToHistory(); // Save before change
     set((state) => {
       const elements = state.screenplay.elements.filter((el) => el.id !== id);
 
@@ -288,7 +392,8 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
         isDirty: true,
         stats,
       };
-    }),
+    });
+  },
 
   selectElement: (id) => set({ selectedElementId: id }),
 
@@ -300,6 +405,8 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
     const index = elements.findIndex((el) => el.id === id);
 
     if (index <= 0) return null;
+
+    state.saveToHistory(); // Save before change
 
     const currentElement = elements[index];
     const previousElement = elements[index - 1];

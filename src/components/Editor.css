@@ -48,15 +48,26 @@
   color: var(--ruler-text);
 }
 
+/* End mark at 8.5 inches */
+.ruler-end {
+  border-left: 2px solid var(--accent-color, #4a9eff);
+}
+
+.ruler-end .ruler-number {
+  font-weight: 600;
+  color: var(--accent-color, #4a9eff);
+}
+
 /* Script content area - continuous scrolling */
 .script-area {
   flex: 1;
   overflow-y: auto;
   overflow-x: auto;
-  background: var(--script-bg);
+  background: var(--editor-bg, #1a1a1a); /* Darker background outside page */
   cursor: text;
   display: flex;
   justify-content: center;
+  padding: 20px;
 }
 
 /* Page container - simulates 8.5" x 11" page at 96 DPI */
@@ -67,9 +78,14 @@
   max-width: 816px;
   /* Margins: 1.5" left (144px), 1" right (96px), 1" top/bottom (96px) */
   padding: 96px 96px 96px 144px;
-  min-height: 100%;
+  min-height: 1056px; /* 11 inches at 96 DPI */
   transform-origin: top center;
   box-sizing: border-box;
+  /* Page appearance with visible borders */
+  background: var(--script-bg);
+  border-left: 1px solid var(--page-border, #444);
+  border-right: 1px solid var(--page-border, #444);
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
 }
 
 .script-end-area {

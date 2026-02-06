@@ -48,17 +48,21 @@
   --ruler-bg: #f0f0f0;
   --ruler-text: #666666;
   --ruler-marker: #333333;
+
+  /* Page border */
+  --page-border: #d0d0d0;
 }
 
 /* Dark theme - matches Final Draft dark mode */
 [data-theme="dark"] {
-  --app-bg: #1e1e1e;
+  --app-bg: #1a1a1a;
   --toolbar-bg: #2d2d2d;
   --toolbar-secondary-bg: #252525;
-  --editor-bg: #1e1e1e;
+  --editor-bg: #141414; /* Darker background outside page */
   --panel-bg: #252525;
-  --script-bg: #1e1e1e;
+  --script-bg: #1e1e1e; /* Page background */
   --script-text: #e0e0e0;
+  --page-border: #3a3a3a;
 
   --text-primary: #e0e0e0;
   --text-secondary: #a0a0a0;
