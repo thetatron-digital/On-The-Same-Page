@@ -9,20 +9,61 @@
 
 ---
 
-## Project Overview
+## Long-Term Vision
 
-**Goal:** Create a web-based screenwriting software that replicates the functionality and appearance of Final Draft.
+**Product Name:** Re-writer (may expand to a suite name later)
 
-### Core Features (Requested)
-- [x] Read and write .fdx files (Final Draft format)
-- [x] Dark mode support (affects entire document, not just UI)
-- [x] Export to PDF
-- [ ] Professional UI matching Final Draft's look and feel
+**Vision:** A complete film production ecosystem - one web application with multiple modules that work together. Built for scalability and commercial use.
 
-### Features Skipped (Per User Request)
-- Revision tracking
-- Beat board
-- Reports
+**Platform:** Web application (works on any device with a browser - MacOS, Windows, tablets, phones)
+
+---
+
+## Product Roadmap
+
+### Phase 1: Screenwriting (Current)
+- [x] Basic screenwriting editor
+- [ ] Match Final Draft UI/UX
+- [ ] Firebase integration (user accounts, cloud storage)
+- [ ] Real-time collaboration
+
+### Phase 2: Pre-Production Tools
+- [ ] Script Breakdown (tag cast, props, locations, etc.)
+- [ ] Shoot Scheduling
+- [ ] Budgeting
+
+### Phase 3: Production Tools
+- [ ] Call Sheets
+- [ ] Prop Shopping Tool (for production designers)
+
+### Future Consideration
+- Role-based dashboards (Writer, Director, Producer, AD, etc.)
+
+---
+
+## Technical Infrastructure
+
+**Data Storage:** Firebase (Google)
+- Google login for authentication
+- Cloud database for projects
+- Real-time collaboration support
+
+**Free Tier Limits:**
+- 1 GB storage
+- 50,000 reads/day
+- 20,000 writes/day
+- Unlimited users
+
+Source: https://firebase.google.com/pricing
+
+---
+
+## Competitors/Reference
+
+- StudioBinder
+- SetHero
+- Movie Magic Scheduling/Budgeting
+- Final Draft
 
 ---
 
@@ -45,7 +86,7 @@
 
 ### In Progress
 - Refining UI to more closely match Final Draft's appearance
-- Adjusting spacing and layout based on user feedback
+- Planning Firebase integration
 
 ### Known Issues
 - None currently documented
