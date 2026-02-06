@@ -113,15 +113,29 @@ Source: https://firebase.google.com/pricing
 
 ## Version History
 
+### v3.1 - February 6, 2026
+App naming standardization and planned feature additions:
+
+**App Naming (Case Sensitive)**
+- Renamed apps to proper case format: BluePrint, CorkBoard, ReWriter
+- Future apps planned: BreakDown (script breakdown), ViewFinder (director's tools)
+- Updated all display names in Toolbar.tsx and related files
+
+**Planned Features (Next Phases)**
+- Smart Type / Auto-Complete: Auto-suggest character names and locations as you type
+- BreakDown App: Industry-standard script breakdown with element tagging
+- ViewFinder App: Shot list, script lining, camera blocking tools
+
 ### v3.0 - February 6, 2026
 Major feature release with Story Development and enhanced workflow tools:
 
 **Production Flow (Toolbar Reorder)**
-- Buttons ordered: Development → Corkboard → Script (follows natural production path)
-- "Story" renamed to "Development" for clarity
-- "Cards" renamed to "Corkboard" for better description
+- Buttons ordered: BluePrint → CorkBoard → ReWriter (follows natural production path)
+- Story development app named "BluePrint"
+- Visual planning app named "CorkBoard"
+- Screenwriting app named "ReWriter"
 
-**Development (Outline Mode)**
+**BluePrint (Outline Mode)**
 - Plot Overview: Title, logline, themes, story types, genres, tone, audience, setting, B-story
 - Characters: Name, role, arc, archetypes, physical description, personality, want/need/lie/ghost
 - Acts Overview: ACT 1, ACT 2A, ACT 2B, ACT 3 with structured summaries
@@ -129,8 +143,8 @@ Major feature release with Story Development and enhanced workflow tools:
 - Tag selectors for multi-select fields (themes, genres, archetypes)
 - Generate buttons prepared for future AI integration (Coming Soon)
 
-**Corkboard Cards**
-- Beat Sheet tab auto-populates from Development → Beats
+**CorkBoard Cards**
+- Beat Sheet tab auto-populates from BluePrint → Beats
 - Cards arranged by act with color coding (Act 1 blue, 2A green, 2B yellow, 3 red)
 - Editable beat descriptions directly on cards
 - Create additional custom boards for alternate storylines, ideas, etc.

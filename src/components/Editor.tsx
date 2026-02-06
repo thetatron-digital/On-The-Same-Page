@@ -215,17 +215,17 @@ export const Editor = () => {
 
   // Render the appropriate view based on activeApp
   const renderMainContent = () => {
-    // Blueprint app - Story Development
+    // BluePrint app - Story Development
     if (activeApp === 'blueprint') {
       return <StoryMode />;
     }
 
-    // Corkboard app - Visual Planning
+    // CorkBoard app - Visual Planning
     if (activeApp === 'corkboard') {
       return <BeatBoard />;
     }
 
-    // Re-writer app - Screenwriting
+    // ReWriter app - Screenwriting
     if (viewMode === 'split') {
       return <SplitView />;
     }

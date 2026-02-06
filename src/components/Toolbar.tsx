@@ -16,7 +16,7 @@ const ELEMENT_TYPES: ElementType[] = [
 // App configuration
 const APPS = {
   blueprint: {
-    name: 'Blueprint',
+    name: 'BluePrint',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
@@ -26,7 +26,7 @@ const APPS = {
     description: 'Story Development',
   },
   corkboard: {
-    name: 'Corkboard',
+    name: 'CorkBoard',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <rect x="3" y="3" width="7" height="9" rx="1" />
@@ -38,7 +38,7 @@ const APPS = {
     description: 'Visual Planning',
   },
   rewriter: {
-    name: 'Re-writer',
+    name: 'ReWriter',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
