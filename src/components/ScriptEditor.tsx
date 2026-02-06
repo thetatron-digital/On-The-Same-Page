@@ -19,7 +19,7 @@ const ELEMENT_FORMAT: Record<ElementType, {
   'General': { allCaps: false, placeholder: '' },
 };
 
-// Determine next element type based on current type
+// Determine next element type based on current type (for Enter key)
 const getNextElementType = (currentType: ElementType): ElementType => {
   switch (currentType) {
     case 'Scene Heading':
@@ -52,19 +52,17 @@ const getPlainText = (content: { text: string }[]): string => {
 export const ScriptEditor = () => {
   const editorRef = useRef<HTMLDivElement>(null);
   const isUpdatingRef = useRef(false);
+  const lastElementsRef = useRef<string>('');
 
   const {
     screenplay,
-    selectedElementId,
     selectElement,
     setCurrentElementType,
   } = useScreenplayStore();
 
   // Get the text offset within an element from a node
   const getTextOffset = useCallback((container: HTMLElement, node: Node, offset: number): number => {
-    // If the node is the container itself
     if (node === container) {
-      // Offset is child index, calculate text position
       let textPos = 0;
       for (let i = 0; i < offset && i < container.childNodes.length; i++) {
         textPos += container.childNodes[i].textContent?.length || 0;
@@ -72,7 +70,6 @@ export const ScriptEditor = () => {
       return textPos;
     }
 
-    // If node is a text node directly in the container
     if (node.nodeType === Node.TEXT_NODE && node.parentNode === container) {
       let textPos = 0;
       for (const child of Array.from(container.childNodes)) {
@@ -84,64 +81,90 @@ export const ScriptEditor = () => {
       return offset;
     }
 
-    // Otherwise, it's the offset in the text node
     return offset;
   }, []);
 
-  // Render content into the contenteditable
+  // Render content into the contenteditable - only when elements actually change
   const renderContent = useCallback(() => {
     const editor = editorRef.current;
     if (!editor || isUpdatingRef.current) return;
+
+    // Check if elements actually changed (not just selection)
+    const elementsKey = screenplay.elements.map(e => `${e.id}:${e.type}:${getPlainText(e.content)}`).join('|');
+    if (elementsKey === lastElementsRef.current) {
+      return; // No actual content change, skip re-render to preserve selection
+    }
+    lastElementsRef.current = elementsKey;
 
     isUpdatingRef.current = true;
 
     // Save current selection
     const selection = window.getSelection();
-    let savedRange: { elementId: string; startOffset: number; endOffset: number } | null = null;
+    let savedSelection: { elementId: string; startOffset: number; endOffset: number; startElementId: string; endElementId: string } | null = null;
 
     if (selection && selection.rangeCount > 0 && editor.contains(selection.anchorNode)) {
       const range = selection.getRangeAt(0);
-      let startNode = range.startContainer;
 
-      // Find containing element for start
+      // Find start element
+      let startNode = range.startContainer;
+      let startElementId = '';
+      let startOffset = 0;
       while (startNode && startNode !== editor) {
         if (startNode.nodeType === Node.ELEMENT_NODE) {
           const el = startNode as HTMLElement;
           if (el.hasAttribute('data-element-id')) {
-            const startOffset = getTextOffset(el, range.startContainer, range.startOffset);
-            const endOffset = getTextOffset(el, range.endContainer, range.endOffset);
-            savedRange = {
-              elementId: el.getAttribute('data-element-id')!,
-              startOffset,
-              endOffset,
-            };
+            startElementId = el.getAttribute('data-element-id')!;
+            startOffset = getTextOffset(el, range.startContainer, range.startOffset);
             break;
           }
         }
         startNode = startNode.parentNode as Node;
+      }
+
+      // Find end element
+      let endNode = range.endContainer;
+      let endElementId = '';
+      let endOffset = 0;
+      while (endNode && endNode !== editor) {
+        if (endNode.nodeType === Node.ELEMENT_NODE) {
+          const el = endNode as HTMLElement;
+          if (el.hasAttribute('data-element-id')) {
+            endElementId = el.getAttribute('data-element-id')!;
+            endOffset = getTextOffset(el, range.endContainer, range.endOffset);
+            break;
+          }
+        }
+        endNode = endNode.parentNode as Node;
+      }
+
+      if (startElementId) {
+        savedSelection = {
+          elementId: startElementId,
+          startOffset,
+          endOffset,
+          startElementId,
+          endElementId: endElementId || startElementId,
+        };
       }
     }
 
     // Clear and rebuild content
     editor.innerHTML = '';
 
-    screenplay.elements.forEach((element, index) => {
+    screenplay.elements.forEach((element) => {
       const text = getPlainText(element.content);
       const format = ELEMENT_FORMAT[element.type];
-      const prevType = index > 0 ? screenplay.elements[index - 1].type : undefined;
-      const isContinuation = prevType === element.type;
-      const isSelected = selectedElementId === element.id && !isContinuation;
 
       const div = document.createElement('div');
       div.setAttribute('data-element-id', element.id);
       div.setAttribute('data-element-type', element.type);
-      div.className = `script-element ${getElementClass(element.type)} ${isSelected ? 'selected' : ''}`;
+      div.className = `script-element ${getElementClass(element.type)}`;
 
       if (!text && format.placeholder) {
         div.setAttribute('data-placeholder', format.placeholder);
       }
 
-      // Add text content - use <br> for empty instead of zero-width space for better selection
+      // Add text content - use <br> for empty
       if (text) {
         div.appendChild(document.createTextNode(text));
       } else {
@@ -152,39 +175,52 @@ export const ScriptEditor = () => {
     });
 
     // Restore selection
-    if (savedRange && selection) {
-      const targetDiv = editor.querySelector(`[data-element-id="${savedRange.elementId}"]`);
-      if (targetDiv) {
-        const textNode = targetDiv.firstChild;
-        if (textNode) {
-          try {
-            const range = document.createRange();
-            const isTextNode = textNode.nodeType === Node.TEXT_NODE;
-            const maxLen = isTextNode ? (textNode.textContent?.length || 0) : 0;
+    if (savedSelection && selection) {
+      const startDiv = editor.querySelector(`[data-element-id="${savedSelection.startElementId}"]`);
+      const endDiv = editor.querySelector(`[data-element-id="${savedSelection.endElementId}"]`);
 
-            if (isTextNode && maxLen > 0) {
-              range.setStart(textNode, Math.min(savedRange.startOffset, maxLen));
-              range.setEnd(textNode, Math.min(savedRange.endOffset, maxLen));
-            } else {
-              range.setStart(targetDiv, 0);
-              range.collapse(true);
-            }
-            selection.removeAllRanges();
-            selection.addRange(range);
-          } catch {
-            // Ignore selection errors
+      if (startDiv) {
+        try {
+          const range = document.createRange();
+
+          // Set start position
+          const startTextNode = startDiv.firstChild;
+          if (startTextNode && startTextNode.nodeType === Node.TEXT_NODE) {
+            const maxLen = startTextNode.textContent?.length || 0;
+            range.setStart(startTextNode, Math.min(savedSelection.startOffset, maxLen));
+          } else {
+            range.setStart(startDiv, 0);
           }
+
+          // Set end position
+          if (endDiv && endDiv !== startDiv) {
+            const endTextNode = endDiv.firstChild;
+            if (endTextNode && endTextNode.nodeType === Node.TEXT_NODE) {
+              const maxLen = endTextNode.textContent?.length || 0;
+              range.setEnd(endTextNode, Math.min(savedSelection.endOffset, maxLen));
+            } else {
+              range.setEnd(endDiv, 0);
+            }
+          } else if (startDiv.firstChild && startDiv.firstChild.nodeType === Node.TEXT_NODE) {
+            const maxLen = startDiv.firstChild.textContent?.length || 0;
+            range.setEnd(startDiv.firstChild, Math.min(savedSelection.endOffset, maxLen));
+          }
+
+          selection.removeAllRanges();
+          selection.addRange(range);
+        } catch {
+          // Ignore selection errors
         }
       }
     }
 
     isUpdatingRef.current = false;
-  }, [screenplay.elements, selectedElementId, getTextOffset]);
+  }, [screenplay.elements, getTextOffset]);
 
-  // Re-render when screenplay changes
+  // Re-render only when elements change (not selection)
   useEffect(() => {
     renderContent();
-  }, [screenplay.elements, selectedElementId, renderContent]);
+  }, [screenplay.elements, renderContent]);
 
   // Find element containing the cursor
   const getCurrentElement = useCallback((): { element: ScreenplayElement; div: HTMLElement; offset: number } | null => {
@@ -194,7 +230,6 @@ export const ScriptEditor = () => {
     const range = selection.getRangeAt(0);
     let node: Node | null = range.startContainer;
 
-    // If selection is at the editor level, find the child element
     if (node === editorRef.current) {
       const childIndex = Math.min(range.startOffset, editorRef.current.children.length - 1);
       if (childIndex >= 0) {
@@ -229,12 +264,11 @@ export const ScriptEditor = () => {
     const state = useScreenplayStore.getState();
     const newElements: ScreenplayElement[] = [];
 
-    // Parse all element divs
     const elementDivs = editor.querySelectorAll('[data-element-id]');
     elementDivs.forEach((div) => {
       const elementId = div.getAttribute('data-element-id');
       const elementType = div.getAttribute('data-element-type') as ElementType;
-      let text = div.textContent || '';
+      const text = div.textContent || '';
 
       if (elementId) {
         const format = ELEMENT_FORMAT[elementType];
@@ -279,7 +313,6 @@ export const ScriptEditor = () => {
             range.setStart(textNode, actualOffset);
             range.collapse(true);
           } else {
-            // Empty element or <br>
             range.setStart(targetDiv, 0);
             range.collapse(true);
           }
@@ -293,7 +326,7 @@ export const ScriptEditor = () => {
     }, 10);
   }, []);
 
-  // Handle paste to regenerate element IDs
+  // Handle paste
   const handlePaste = useCallback((e: React.ClipboardEvent<HTMLDivElement>) => {
     e.preventDefault();
 
@@ -305,22 +338,18 @@ export const ScriptEditor = () => {
 
     const range = selection.getRangeAt(0);
 
-    // Delete any selected content first
     if (!selection.isCollapsed) {
       range.deleteContents();
     }
 
-    // Insert text at cursor position
     const textNode = document.createTextNode(text);
     range.insertNode(textNode);
 
-    // Move cursor to end of inserted text
     range.setStartAfter(textNode);
     range.collapse(true);
     selection.removeAllRanges();
     selection.addRange(range);
 
-    // Trigger input handler to sync with store
     handleInput();
   }, [handleInput]);
 
@@ -329,12 +358,39 @@ export const ScriptEditor = () => {
     const state = useScreenplayStore.getState();
     const current = getCurrentElement();
 
+    // Shift+Enter - insert newline within same element
+    if (e.key === 'Enter' && e.shiftKey) {
+      e.preventDefault();
+
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) return;
+
+      const range = selection.getRangeAt(0);
+
+      // Delete any selected content
+      if (!selection.isCollapsed) {
+        range.deleteContents();
+      }
+
+      // Insert newline
+      const newlineNode = document.createTextNode('\n');
+      range.insertNode(newlineNode);
+
+      // Move cursor after newline
+      range.setStartAfter(newlineNode);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+
+      handleInput();
+      return;
+    }
+
     // Enter - create new element
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
 
       if (!current) {
-        // No current element, create first one
         const newId = generateId();
         state.saveToHistory();
         state.setScreenplay({
@@ -354,7 +410,6 @@ export const ScriptEditor = () => {
       const text = getPlainText(current.element.content);
       const cursorPos = current.offset;
 
-      // Determine next element type
       const nextType = getNextElementType(current.element.type);
       const newId = generateId();
 
@@ -364,7 +419,6 @@ export const ScriptEditor = () => {
       state.saveToHistory();
 
       if (cursorPos >= text.length) {
-        // At end of element - create new element with next type
         elements.splice(currentIndex + 1, 0, {
           id: newId,
           type: nextType,
@@ -376,17 +430,14 @@ export const ScriptEditor = () => {
         setCurrentElementType(nextType);
         setCursorPosition(newId, 0);
       } else {
-        // Split element at cursor
         const beforeCursor = text.slice(0, cursorPos);
         const afterCursor = text.slice(cursorPos);
 
-        // Update current element with text before cursor
         elements[currentIndex] = {
           ...current.element,
           content: createTextRuns(beforeCursor),
         };
 
-        // Insert new element with same type containing text after cursor
         elements.splice(currentIndex + 1, 0, {
           id: newId,
           type: current.element.type,
@@ -444,7 +495,6 @@ export const ScriptEditor = () => {
 
         state.saveToHistory();
 
-        // Merge with previous element
         elements[currentIndex - 1] = {
           ...previousElement,
           content: createTextRuns(previousText + text),
@@ -478,7 +528,6 @@ export const ScriptEditor = () => {
 
         state.saveToHistory();
 
-        // Merge with next element
         elements[currentIndex] = {
           ...current.element,
           content: createTextRuns(text + nextText),
@@ -490,9 +539,9 @@ export const ScriptEditor = () => {
         return;
       }
     }
-  }, [getCurrentElement, selectElement, setCurrentElementType, setCursorPosition]);
+  }, [getCurrentElement, selectElement, setCurrentElementType, setCursorPosition, handleInput]);
 
-  // Handle selection change to track current element
+  // Handle selection change to track current element (without re-render)
   const handleSelectionChange = useCallback(() => {
     if (isUpdatingRef.current) return;
 
@@ -502,7 +551,6 @@ export const ScriptEditor = () => {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
 
-    // Check if selection is within our editor
     if (!editor.contains(selection.anchorNode)) return;
 
     const current = getCurrentElement();
@@ -512,7 +560,6 @@ export const ScriptEditor = () => {
     }
   }, [getCurrentElement, selectElement, setCurrentElementType]);
 
-  // Listen for selection changes
   useEffect(() => {
     document.addEventListener('selectionchange', handleSelectionChange);
     return () => {
@@ -520,14 +567,13 @@ export const ScriptEditor = () => {
     };
   }, [handleSelectionChange]);
 
-  // Handle click - focus and position cursor
+  // Handle click
   const handleClick = useCallback((e: React.MouseEvent) => {
     const editor = editorRef.current;
     if (!editor) return;
 
     const target = e.target as HTMLElement;
 
-    // If clicked on the editor container itself (not an element)
     if (target === editor || !target.closest('[data-element-id]')) {
       const elements = screenplay.elements;
       if (elements.length > 0) {
@@ -539,7 +585,7 @@ export const ScriptEditor = () => {
     }
   }, [screenplay.elements, selectElement, setCursorPosition]);
 
-  // Focus editor when needed
+  // Focus editor
   const focusEditor = useCallback(() => {
     const editor = editorRef.current;
     if (editor && document.activeElement !== editor) {
@@ -547,9 +593,7 @@ export const ScriptEditor = () => {
     }
   }, []);
 
-  // Expose focus method
   useEffect(() => {
-    // Focus on mount if no content
     if (screenplay.elements.length === 0) {
       focusEditor();
     }

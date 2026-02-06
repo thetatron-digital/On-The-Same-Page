@@ -6,13 +6,14 @@ import { WritingStats } from './WritingStats';
 import { TitlePageEditor } from './TitlePageEditor';
 import './Editor.css';
 
-// Element type hints for the status bar
+// Element type hints for the status bar (Tab cycles through this order)
+// Tab order: Scene Heading → Action → Character → Dialogue → Parenthetical → Transition → Scene Heading
 const ELEMENT_HINTS: Record<string, { tab: string; enter: string }> = {
   'Scene Heading': { tab: 'Action', enter: 'Action' },
   'Action': { tab: 'Character', enter: 'Action' },
-  'Character': { tab: 'Parenthetical', enter: 'Dialogue' },
+  'Character': { tab: 'Dialogue', enter: 'Dialogue' },
   'Dialogue': { tab: 'Parenthetical', enter: 'Action' },
-  'Parenthetical': { tab: 'Dialogue', enter: 'Dialogue' },
+  'Parenthetical': { tab: 'Transition', enter: 'Dialogue' },
   'Transition': { tab: 'Scene Heading', enter: 'Scene Heading' },
   'Shot': { tab: 'Action', enter: 'Action' },
   'General': { tab: 'Action', enter: 'Action' },
@@ -204,7 +205,7 @@ export const Editor = () => {
           </div>
           <div className="status-center">
             <span className="status-element-hints">
-              [Tab] {hints.tab}, [Enter] {hints.enter}, [Cmd] hold for Elements
+              [Tab] {hints.tab}, [Enter] {hints.enter}
             </span>
           </div>
           <div className="status-right">

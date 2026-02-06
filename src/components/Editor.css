@@ -135,13 +135,14 @@
   border-bottom: 1px dashed var(--border-color);
 }
 
-/* Subsequent pages (not first page) */
+/* Subsequent pages (not first page) - full 11" height */
 .subsequent-page {
   margin-top: 0;
+  min-height: 1056px; /* Full 11" page at 96 DPI */
 }
 
 .subsequent-page .page-content.continuation {
-  min-height: 200px; /* Placeholder height for visual effect */
+  min-height: calc(1056px - 192px); /* Full height minus top/bottom padding */
   padding-top: 96px;
 }
 
