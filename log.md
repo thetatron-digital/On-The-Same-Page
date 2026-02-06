@@ -85,6 +85,9 @@ Source: https://firebase.google.com/pricing
 11. Selection highlighting fixed (no highlight for continued same-type elements)
 12. Toolbar buttons use vertical layout (icon above text) like Final Draft
 13. Panels dropdown menu with checkmark toggles
+14. Fixed page dimensions to match standard 8.5" x 11" screenplay format
+15. Courier 12pt font (16px at 96 DPI)
+16. Inch-based margins: 1.5" left, 1" right, 1" top/bottom
 
 ### In Progress
 - Planning Firebase integration
@@ -95,6 +98,13 @@ Source: https://firebase.google.com/pricing
 ---
 
 ## Version History
+
+### v2.5 - February 6, 2026
+- Fixed page dimensions to match standard 8.5" x 11" US Letter size
+- Page width: 816px at 96 DPI (100% zoom shows actual page size)
+- Font: Courier 12pt (16px)
+- Margins: 1.5" left, 1" right, 1" top/bottom
+- Proper element spacing for screenplay formatting
 
 ### v2.4 - February 6, 2026
 - Toolbar buttons now use vertical layout (icon above text) matching Final Draft
