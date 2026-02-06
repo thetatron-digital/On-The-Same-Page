@@ -376,3 +376,267 @@ export const ELEMENT_INFO: Record<ElementType, { name: string; shortcut: string;
   'Shot': { name: 'Shot', shortcut: '', description: 'Camera direction' },
   'General': { name: 'General', shortcut: '', description: 'General text' },
 };
+
+// ============================================
+// SMART TYPE / AUTO-COMPLETE TYPES
+// ============================================
+
+// Parsed scene heading components
+export interface ParsedSceneHeading {
+  intExt: 'INT' | 'EXT' | 'INT/EXT' | 'I/E' | '';
+  location: string;
+  timeOfDay: string;
+  fullText: string;
+}
+
+// Script location extracted from scene headings
+export interface ScriptLocation {
+  name: string;
+  intExt: 'INT' | 'EXT' | 'INT/EXT' | 'I/E' | 'BOTH';
+  occurrences: number;
+  sceneIds: string[];
+}
+
+// Script character extracted from Character elements
+export interface ScriptCharacter {
+  name: string;
+  occurrences: number;
+  dialogueCount: number;
+  firstAppearance: number; // element index
+  sceneIds: string[];
+  isFromBlueprint: boolean; // true if also in BluePrint characters
+}
+
+// Auto-complete suggestion
+export interface AutoCompleteSuggestion {
+  value: string;
+  type: 'character' | 'location' | 'extension';
+  source: 'blueprint' | 'script';
+  occurrences?: number;
+}
+
+// Auto-complete state
+export interface AutoCompleteState {
+  isOpen: boolean;
+  suggestions: AutoCompleteSuggestion[];
+  selectedIndex: number;
+  triggerType: 'character' | 'location' | null;
+  searchText: string;
+  position: { x: number; y: number };
+}
+
+// Common character name extensions (V.O., O.S., etc.)
+export const CHARACTER_EXTENSIONS = [
+  '(V.O.)',    // Voice Over
+  '(O.S.)',    // Off Screen
+  '(O.C.)',    // Off Camera
+  '(CONT\'D)', // Continued
+  '(PRE-LAP)', // Pre-lap (audio before cut)
+  '(FILTERED)', // Phone, radio, etc.
+];
+
+// Common time of day values for scene headings
+export const TIME_OF_DAY_OPTIONS = [
+  'DAY',
+  'NIGHT',
+  'MORNING',
+  'AFTERNOON',
+  'EVENING',
+  'DUSK',
+  'DAWN',
+  'LATER',
+  'CONTINUOUS',
+  'SAME',
+  'MOMENTS LATER',
+];
+
+// ============================================
+// BREAKDOWN APP TYPES
+// ============================================
+
+// Industry-standard breakdown categories (14 core)
+export type BreakdownCategory =
+  | 'Cast'
+  | 'Extras'
+  | 'Stunts'
+  | 'SFX'
+  | 'Props'
+  | 'Vehicles'
+  | 'Animals'
+  | 'Wardrobe'
+  | 'Makeup'
+  | 'Sound'
+  | 'Set Dressing'
+  | 'Greenery'
+  | 'Special Equipment'
+  | 'VFX';
+
+// Category metadata with colors (industry standard colors)
+export const BREAKDOWN_CATEGORY_INFO: Record<BreakdownCategory, { color: string; description: string }> = {
+  'Cast': { color: '#EF4444', description: 'Speaking roles / principal actors' },
+  'Extras': { color: '#22C55E', description: 'Background / atmosphere' },
+  'Stunts': { color: '#F97316', description: 'Stunt work and coordination' },
+  'SFX': { color: '#3B82F6', description: 'On-set special effects (practical)' },
+  'Props': { color: '#8B5CF6', description: 'Hand props for actors' },
+  'Vehicles': { color: '#EC4899', description: 'Picture vehicles' },
+  'Animals': { color: '#EAB308', description: 'Animals with handler' },
+  'Wardrobe': { color: '#92400E', description: 'Costume pieces' },
+  'Makeup': { color: '#D97706', description: 'Makeup, hair, prosthetics' },
+  'Sound': { color: '#78350F', description: 'Sound effects, playback music' },
+  'Set Dressing': { color: '#7C3AED', description: 'Set decoration' },
+  'Greenery': { color: '#15803D', description: 'Plants, landscaping' },
+  'Special Equipment': { color: '#64748B', description: 'Non-standard gear (cranes, etc.)' },
+  'VFX': { color: '#06B6D4', description: 'Post-production visual effects' },
+};
+
+// Custom category created by user
+export interface CustomCategory {
+  id: string;
+  name: string;
+  color: string;
+  description?: string;
+}
+
+// A tagged element in the breakdown
+export interface BreakdownElement {
+  id: string;
+  text: string;
+  category: BreakdownCategory | string; // string for custom categories
+  sceneId: string;
+  sourceElementId: string;
+  startOffset: number;
+  endOffset: number;
+  notes?: string;
+}
+
+// Scene breakdown with eighths calculation
+export interface BreakdownScene {
+  id: string;
+  sceneNumber: string;
+  intExt: 'INT' | 'EXT' | 'INT/EXT' | 'I/E';
+  location: string;
+  timeOfDay: string;
+  dayNight: 'Day' | 'Night';
+  eighths: number; // Page length in eighths (1-8)
+  pageStart: number;
+  pageEnd: number;
+  description: string;
+  elements: string[]; // Element IDs in this scene
+  castIds: string[]; // Cast member IDs in this scene
+  notes?: string;
+}
+
+// Cast member in breakdown
+export interface BreakdownCastMember {
+  id: string;
+  characterName: string;
+  actorName?: string;
+  role: 'Principal' | 'Supporting' | 'Day Player' | 'Stunt' | 'Voice';
+  sceneIds: string[];
+  workDays?: number; // Calculated from schedule
+}
+
+// Location in breakdown
+export interface BreakdownLocation {
+  id: string;
+  name: string;
+  address?: string;
+  intExt: 'INT' | 'EXT' | 'BOTH';
+  sceneIds: string[];
+  notes?: string;
+}
+
+// Version tracking for breakdown (key for script changes)
+export interface BreakdownVersionInfo {
+  scriptVersionId: string;
+  scriptVersionName: string;
+  createdAt: Date;
+  lastSyncedAt: Date;
+  missingElements: BreakdownElement[]; // Tags that no longer match script
+  newScenes: string[]; // Scene IDs not yet reviewed
+  syncStatus: 'current' | 'outdated' | 'needs-review';
+}
+
+// Full breakdown structure
+export interface Breakdown {
+  id: string;
+  name: string;
+  scriptVersionId: string;
+  versionInfo: BreakdownVersionInfo;
+  elements: BreakdownElement[];
+  scenes: BreakdownScene[];
+  customCategories: CustomCategory[];
+  castList: BreakdownCastMember[];
+  locationsList: BreakdownLocation[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ============================================
+// VIEWFINDER APP TYPES (Director's Tools)
+// ============================================
+
+// Shot size options (industry standard)
+export type ShotSize = 'ECU' | 'CU' | 'MCU' | 'MS' | 'MWS' | 'WS' | 'EWS' | 'Aerial';
+
+// Camera angle options
+export type CameraAngle = 'Eye Level' | 'Low' | 'High' | 'Dutch' | 'Birds Eye' | 'Worms Eye';
+
+// Camera movement options
+export type CameraMovement = 'Static' | 'Pan' | 'Tilt' | 'Dolly' | 'Tracking' | 'Crane' | 'Handheld' | 'Steadicam' | 'Zoom';
+
+// Shot in shot list
+export interface Shot {
+  id: string;
+  sceneId: string;
+  shotNumber: string; // "1A", "2", "3B"
+
+  // Shot attributes
+  size: ShotSize;
+  angle: CameraAngle;
+  movement: CameraMovement;
+  lens?: string; // "50mm", "24mm"
+
+  // Coverage
+  description: string;
+  subjectCharacters: string[];
+
+  // Script coverage (for lining)
+  coverageStart: number;
+  coverageEnd: number;
+  coverageType: 'on-screen' | 'off-screen' | 'partial';
+
+  // Production
+  estimatedDuration: number; // seconds
+  setupTime?: number; // minutes
+  equipment?: string[];
+  notes?: string;
+
+  // Storyboard
+  storyboardImage?: string;
+}
+
+// Script line for lined script
+export interface ScriptLine {
+  id: string;
+  shotId: string;
+  startElementId: string;
+  startOffset: number;
+  endElementId: string;
+  endOffset: number;
+  lineStyle: 'solid' | 'wavy' | 'dashed';
+  side: 'left' | 'right';
+}
+
+// Lined script state
+export interface LinedScript {
+  scriptVersionId: string;
+  lines: ScriptLine[];
+}
+
+// Shot list for a scene
+export interface SceneShotList {
+  sceneId: string;
+  shots: Shot[];
+  linedScript: LinedScript;
+}

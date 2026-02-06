@@ -2,10 +2,18 @@ import { create } from 'zustand';
 import type {
   Screenplay, ScreenplayElement, ElementType, TextRun, TitlePageInfo,
   Beat, BeatBoard, ScriptVersion, ScriptNote,
-  StoryOutline, PlotOverview, StoryCharacter, ActsOverview, StoryBeat
+  StoryOutline, PlotOverview, StoryCharacter, ActsOverview, StoryBeat,
+  AutoCompleteState, ScriptCharacter, ScriptLocation, AutoCompleteSuggestion
 } from '../types/screenplay';
 import { LINES_PER_PAGE, DEFAULT_BEAT_STRUCTURE } from '../types/screenplay';
 import { createNewScreenplay, generateId, parseFDX, generateFDX, getPlainText } from '../utils/fdx';
+import {
+  extractCharactersFromScript,
+  extractLocationsFromScript,
+  mergeCharacterSources,
+  getCharacterSuggestions,
+  getLocationSuggestions
+} from '../utils/scriptParser';
 
 // Panel visibility options
 interface PanelState {
@@ -98,6 +106,11 @@ interface ScreenplayState {
   // Story Outline
   storyOutline: StoryOutline;
 
+  // Auto-Complete / Smart Type
+  autoComplete: AutoCompleteState;
+  scriptCharacters: Map<string, ScriptCharacter>;
+  scriptLocations: ScriptLocation[];
+
   // Actions
   setScreenplay: (screenplay: Screenplay) => void;
   newScreenplay: () => void;
@@ -177,6 +190,15 @@ interface ScreenplayState {
   linkBeatToScene: (beatId: string, sceneId: string | undefined) => void;
   initializeBeats: () => void;
   addStoryBeat: (beat: StoryBeat) => void;
+
+  // Auto-Complete / Smart Type actions
+  refreshScriptData: () => void;
+  openAutoComplete: (triggerType: 'character' | 'location', searchText: string, position: { x: number; y: number }) => void;
+  closeAutoComplete: () => void;
+  updateAutoCompleteSearch: (searchText: string) => void;
+  selectAutoCompleteSuggestion: (index: number) => void;
+  moveAutoCompleteSelection: (direction: 'up' | 'down') => void;
+  getAutoCompleteSuggestions: () => AutoCompleteSuggestion[];
 
   // Theme
   toggleDarkMode: () => void;
@@ -311,6 +333,18 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
     },
     beats: [],
   },
+
+  // Auto-Complete / Smart Type state
+  autoComplete: {
+    isOpen: false,
+    suggestions: [],
+    selectedIndex: 0,
+    triggerType: null,
+    searchText: '',
+    position: { x: 0, y: 0 },
+  },
+  scriptCharacters: new Map(),
+  scriptLocations: [],
 
   // Save current state to history (call before making changes)
   saveToHistory: () => {
@@ -1006,6 +1040,111 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
       },
       isDirty: true,
     })),
+
+  // Auto-Complete / Smart Type actions
+  refreshScriptData: () => {
+    const state = get();
+    // Extract characters and locations from script
+    const scriptChars = extractCharactersFromScript(state.screenplay.elements);
+    // Merge with BluePrint characters
+    const mergedChars = mergeCharacterSources(scriptChars, state.storyOutline.characters);
+    const locations = extractLocationsFromScript(state.screenplay.elements);
+
+    set({
+      scriptCharacters: mergedChars,
+      scriptLocations: locations,
+    });
+  },
+
+  openAutoComplete: (triggerType, searchText, position) => {
+    const state = get();
+    // Generate suggestions based on trigger type
+    let suggestions: AutoCompleteSuggestion[] = [];
+
+    if (triggerType === 'character') {
+      suggestions = getCharacterSuggestions(state.scriptCharacters, searchText);
+    } else if (triggerType === 'location') {
+      suggestions = getLocationSuggestions(state.scriptLocations, searchText);
+    }
+
+    set({
+      autoComplete: {
+        isOpen: suggestions.length > 0,
+        suggestions,
+        selectedIndex: 0,
+        triggerType,
+        searchText,
+        position,
+      },
+    });
+  },
+
+  closeAutoComplete: () =>
+    set({
+      autoComplete: {
+        isOpen: false,
+        suggestions: [],
+        selectedIndex: 0,
+        triggerType: null,
+        searchText: '',
+        position: { x: 0, y: 0 },
+      },
+    }),
+
+  updateAutoCompleteSearch: (searchText) => {
+    const state = get();
+    const { triggerType } = state.autoComplete;
+
+    if (!triggerType) return;
+
+    let suggestions: AutoCompleteSuggestion[] = [];
+
+    if (triggerType === 'character') {
+      suggestions = getCharacterSuggestions(state.scriptCharacters, searchText);
+    } else if (triggerType === 'location') {
+      suggestions = getLocationSuggestions(state.scriptLocations, searchText);
+    }
+
+    set({
+      autoComplete: {
+        ...state.autoComplete,
+        suggestions,
+        selectedIndex: 0,
+        searchText,
+        isOpen: suggestions.length > 0,
+      },
+    });
+  },
+
+  selectAutoCompleteSuggestion: (index) =>
+    set((state) => ({
+      autoComplete: {
+        ...state.autoComplete,
+        selectedIndex: Math.max(0, Math.min(index, state.autoComplete.suggestions.length - 1)),
+      },
+    })),
+
+  moveAutoCompleteSelection: (direction) =>
+    set((state) => {
+      const { suggestions, selectedIndex } = state.autoComplete;
+      if (suggestions.length === 0) return state;
+
+      let newIndex = selectedIndex;
+      if (direction === 'up') {
+        newIndex = selectedIndex > 0 ? selectedIndex - 1 : suggestions.length - 1;
+      } else {
+        newIndex = selectedIndex < suggestions.length - 1 ? selectedIndex + 1 : 0;
+      }
+
+      return {
+        autoComplete: {
+          ...state.autoComplete,
+          selectedIndex: newIndex,
+        },
+      };
+    }),
+
+  getAutoCompleteSuggestions: () => get().autoComplete.suggestions,
 
   toggleDarkMode: () => set((state) => ({ darkMode: !state.darkMode })),
 }));
