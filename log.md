@@ -127,10 +127,17 @@ App naming standardization and planned feature additions:
 - Added auto-complete state to store with suggestion management
 - Types ready for: BreakdownCategory (14 industry-standard), Shot, ScriptLine
 
-**Next: Phase 2 - Smart Type UI**
-- Create AutoComplete.tsx component (portal-based dropdown)
-- Integrate with ScriptEditor.tsx (keyboard navigation)
-- Test with BluePrint characters
+**Smart Type UI (Phase 2 Complete)**
+- Created AutoComplete.tsx component (portal-based dropdown)
+- Integrated with ScriptEditor.tsx for Character and Scene Heading elements
+- Keyboard navigation: Arrow keys, Enter to select, Escape to close
+- Shows occurrence counts and source icons (BluePrint vs Script)
+- Auto-triggers when typing in Character or Scene Heading elements
+
+**Next: Phase 3 - Testing & Refinement**
+- Test with BluePrint characters syncing to auto-complete
+- Add support for character extensions (V.O., O.S., CONT'D)
+- Add time of day suggestions for Scene Headings
 
 **Future Phases**
 - BreakDown App: Industry-standard script breakdown with element tagging
