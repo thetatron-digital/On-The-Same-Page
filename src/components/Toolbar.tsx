@@ -178,8 +178,8 @@ export const Toolbar = () => {
           </button>
         </div>
 
-        {/* Center Section - Main Tools */}
-        <div className="menu-section menu-center">
+        {/* Center-Left Section - View Tools */}
+        <div className="menu-section menu-center-left">
           {/* Collaboration (placeholder) */}
           <button className="menu-btn" title="Collaboration (Coming Soon)" disabled>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -190,8 +190,6 @@ export const Toolbar = () => {
             </svg>
             <span>Collab</span>
           </button>
-
-          <div className="menu-divider" />
 
           {/* Split View */}
           <button
@@ -221,8 +219,6 @@ export const Toolbar = () => {
             <span>Beat Board</span>
           </button>
 
-          <div className="menu-divider" />
-
           {/* Title Page */}
           <button
             className={`menu-btn ${panels.titlePage ? 'active' : ''}`}
@@ -237,17 +233,17 @@ export const Toolbar = () => {
             </svg>
             <span>Title Page</span>
           </button>
+        </div>
 
-          <div className="menu-divider" />
-
-          {/* Elements Dropdown */}
-          <div className="dropdown-container">
+        {/* Center Section - Element Type Dropdown (Prominent) */}
+        <div className="menu-section menu-center">
+          <div className="dropdown-container element-dropdown-container">
             <button
-              className={`menu-btn dropdown-trigger element-btn ${openDropdown === 'elements' ? 'active' : ''}`}
+              className={`element-type-btn ${openDropdown === 'elements' ? 'active' : ''}`}
               onClick={() => toggleDropdown('elements')}
               title="Element Type"
             >
-              <span className="element-label">{currentElementType}</span>
+              <span className="element-type-label">{currentElementType.toUpperCase()}</span>
               <svg className="dropdown-arrow" viewBox="0 0 12 12" fill="currentColor">
                 <path d="M2 4l4 4 4-4" />
               </svg>
@@ -267,9 +263,10 @@ export const Toolbar = () => {
               </div>
             )}
           </div>
+        </div>
 
-          <div className="menu-divider" />
-
+        {/* Center-Right Section - Utility Tools */}
+        <div className="menu-section menu-center-right">
           {/* Writing Stats */}
           <button
             className={`menu-btn ${panels.writingStats ? 'active' : ''}`}
@@ -326,8 +323,6 @@ export const Toolbar = () => {
               </div>
             )}
           </div>
-
-          <div className="menu-divider" />
 
           {/* Version Management Dropdown */}
           <div className="dropdown-container">

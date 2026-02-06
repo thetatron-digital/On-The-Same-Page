@@ -26,7 +26,18 @@ export const SceneNavigator = () => {
 
     screenplay.elements.forEach((element, index) => {
       const text = getPlainText(element.content);
-      const lineCount = Math.max(1, Math.ceil(text.length / 60));
+      // More accurate line count: consider element type spacing and line wrapping
+      const charsPerLine = element.type === 'Dialogue' ? 35 : 60;
+      const baseLines = Math.max(1, Math.ceil(text.length / charsPerLine));
+      // Add spacing for element types (scene headings have more space above/below)
+      const spacing = element.type === 'Scene Heading' ? 2 : 1;
+      const lineCount = baseLines + spacing;
+
+      // Check if adding this element would exceed the page BEFORE processing
+      if (linesOnCurrentPage + lineCount > LINES_PER_PAGE && linesOnCurrentPage > 0) {
+        currentPage++;
+        linesOnCurrentPage = 0;
+      }
 
       if (element.type === 'Scene Heading') {
         // Find the next action element for the first action line
@@ -54,10 +65,6 @@ export const SceneNavigator = () => {
       }
 
       linesOnCurrentPage += lineCount;
-      if (linesOnCurrentPage >= LINES_PER_PAGE) {
-        currentPage++;
-        linesOnCurrentPage = lineCount;
-      }
     });
 
     return sceneList;

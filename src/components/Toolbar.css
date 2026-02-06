@@ -28,9 +28,17 @@
   gap: 4px;
 }
 
+.menu-center-left {
+  gap: 2px;
+}
+
 .menu-center {
   flex: 1;
   justify-content: center;
+}
+
+.menu-center-right {
+  gap: 2px;
 }
 
 .menu-right {
@@ -181,23 +189,46 @@
   margin: 4px 8px;
 }
 
-/* Element Button - styled like Final Draft's element dropdown */
-.element-btn {
-  flex-direction: row;
-  gap: 6px;
-  padding: 6px 12px;
-  min-width: 120px;
+/* Centered Element Type Button - Prominent like Final Draft */
+.element-dropdown-container {
+  margin: 0 16px;
+}
+
+.element-type-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  min-width: 160px;
+  background: var(--panel-bg, var(--toolbar-bg));
   border: 1px solid var(--border-color);
   border-radius: 4px;
-}
-
-.element-btn:hover {
-  border-color: var(--accent-color);
-}
-
-.element-label {
+  color: var(--text-primary);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.element-type-btn:hover {
+  border-color: var(--accent-color);
+  background: var(--hover-bg);
+}
+
+.element-type-btn.active {
+  border-color: var(--accent-color);
+  background: var(--accent-color-alpha);
+}
+
+.element-type-btn .dropdown-arrow {
+  width: 10px;
+  height: 10px;
+  margin-left: auto;
+}
+
+.element-type-label {
+  font-family: 'Courier New', Courier, monospace;
+  letter-spacing: 0.5px;
 }
 
 .element-menu {

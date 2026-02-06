@@ -7,6 +7,71 @@
   overflow: hidden;
 }
 
+/* Controls Bar */
+.split-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: var(--panel-bg, var(--toolbar-bg));
+  border-bottom: 1px solid var(--border-color);
+}
+
+.split-mode-toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.toggle-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent-color);
+  cursor: pointer;
+}
+
+.toggle-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.mode-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: 24px;
+}
+
+.swap-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--button-bg, #333);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.swap-btn:hover {
+  background: var(--button-hover-bg, #444);
+}
+
+.swap-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
 /* Header */
 .split-header {
   display: flex;
@@ -61,10 +126,24 @@
   min-height: 60px;
 }
 
+.split-row.independent-mode {
+  flex: 1;
+  border: none;
+  background: transparent;
+  margin-bottom: 0;
+}
+
 /* Split Columns */
 .split-column {
   flex: 1;
   padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.independent-mode .split-column {
+  padding: 0 10px;
+  gap: 10px;
 }
 
 .audio-column {
@@ -143,6 +222,50 @@
   color: var(--text-secondary);
   text-transform: uppercase;
   font-style: italic;
+}
+
+/* Independent Mode - Textarea */
+.split-textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 12px;
+  background: var(--panel-bg, var(--toolbar-bg));
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.split-textarea:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+.split-textarea::placeholder {
+  color: var(--text-muted);
+}
+
+/* Add Entry Button */
+.add-entry-btn {
+  align-self: flex-start;
+  padding: 8px 14px;
+  background: transparent;
+  border: 1px dashed var(--border-color);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: auto;
+}
+
+.add-entry-btn:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+  background: rgba(74, 158, 255, 0.05);
 }
 
 /* Empty State */

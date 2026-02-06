@@ -22,6 +22,19 @@ interface VisibilityState {
 // View modes
 type ViewMode = 'script' | 'split' | 'beatBoard';
 
+// Split View content (independent from main script)
+interface SplitEntry {
+  id: string;
+  text: string;
+}
+
+interface SplitContent {
+  audio: SplitEntry[];
+  video: SplitEntry[];
+  isIndependent: boolean; // true = edit independently, false = sync from main script
+  swapped: boolean; // true = video on left, audio on right
+}
+
 // Writing statistics
 interface WritingStats {
   pageCount: number;
@@ -70,6 +83,9 @@ interface ScreenplayState {
 
   // Script Notes
   scriptNotes: ScriptNote[];
+
+  // Split View
+  splitContent: SplitContent;
 
   // Actions
   setScreenplay: (screenplay: Screenplay) => void;
@@ -129,6 +145,15 @@ interface ScreenplayState {
   updateNote: (noteId: string, content: string) => void;
   deleteNote: (noteId: string) => void;
   resolveNote: (noteId: string) => void;
+
+  // Split View actions
+  toggleSplitIndependent: () => void;
+  toggleSplitSwapped: () => void;
+  updateSplitAudio: (entries: SplitEntry[]) => void;
+  updateSplitVideo: (entries: SplitEntry[]) => void;
+  addSplitEntry: (column: 'audio' | 'video', text?: string) => string;
+  updateSplitEntry: (column: 'audio' | 'video', id: string, text: string) => void;
+  deleteSplitEntry: (column: 'audio' | 'video', id: string) => void;
 
   // Theme
   toggleDarkMode: () => void;
@@ -230,6 +255,14 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
 
   // Script Notes state
   scriptNotes: [],
+
+  // Split View state
+  splitContent: {
+    audio: [{ id: generateId(), text: '' }],
+    video: [{ id: generateId(), text: '' }],
+    isIndependent: false,
+    swapped: false,
+  },
 
   // Save current state to history (call before making changes)
   saveToHistory: () => {
@@ -716,6 +749,67 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
         n.id === noteId ? { ...n, resolved: true } : n
       ),
     })),
+
+  // Split View actions
+  toggleSplitIndependent: () =>
+    set((state) => ({
+      splitContent: {
+        ...state.splitContent,
+        isIndependent: !state.splitContent.isIndependent,
+      },
+    })),
+
+  toggleSplitSwapped: () =>
+    set((state) => ({
+      splitContent: {
+        ...state.splitContent,
+        swapped: !state.splitContent.swapped,
+      },
+    })),
+
+  updateSplitAudio: (entries) =>
+    set((state) => ({
+      splitContent: { ...state.splitContent, audio: entries },
+    })),
+
+  updateSplitVideo: (entries) =>
+    set((state) => ({
+      splitContent: { ...state.splitContent, video: entries },
+    })),
+
+  addSplitEntry: (column, text = '') => {
+    const id = generateId();
+    set((state) => ({
+      splitContent: {
+        ...state.splitContent,
+        [column]: [...state.splitContent[column], { id, text }],
+      },
+    }));
+    return id;
+  },
+
+  updateSplitEntry: (column, id, text) =>
+    set((state) => ({
+      splitContent: {
+        ...state.splitContent,
+        [column]: state.splitContent[column].map((entry) =>
+          entry.id === id ? { ...entry, text } : entry
+        ),
+      },
+    })),
+
+  deleteSplitEntry: (column, id) =>
+    set((state) => {
+      const filtered = state.splitContent[column].filter((e) => e.id !== id);
+      // Keep at least one empty entry
+      const entries = filtered.length > 0 ? filtered : [{ id: generateId(), text: '' }];
+      return {
+        splitContent: {
+          ...state.splitContent,
+          [column]: entries,
+        },
+      };
+    }),
 
   toggleDarkMode: () => set((state) => ({ darkMode: !state.darkMode })),
 }));
