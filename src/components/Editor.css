@@ -95,6 +95,14 @@
 .page.page-background {
   position: absolute;
   left: 0;
+  pointer-events: none; /* Don't block clicks on content */
+}
+
+/* Content layer - flows continuously, no border or visual styling */
+.content-layer {
+  position: relative;
+  z-index: 2;
+  /* No border, no background - content flows over page backgrounds */
 }
 
 /* Page number in top right (for pages after first) */
@@ -115,7 +123,6 @@
   min-height: calc(1056px - 192px); /* Minimum for first page */
   box-sizing: border-box;
   position: relative;
-  z-index: 2; /* Content above page backgrounds */
 }
 
 /* First page has no page number */
@@ -134,11 +141,12 @@
   position: absolute;
   left: 0;
   width: 816px;
-  height: 40px;
+  height: 48px;
   background: var(--editor-bg, #141414);
-  border-top: 1px dashed var(--border-color);
-  border-bottom: 1px dashed var(--border-color);
-  z-index: 5;
+  border-top: 2px solid var(--border-color);
+  border-bottom: 2px solid var(--border-color);
+  z-index: 10; /* Above content to create visual page separation */
+  pointer-events: none;
 }
 
 /* Status bar at bottom */

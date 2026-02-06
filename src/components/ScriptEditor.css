@@ -11,6 +11,14 @@
   -ms-user-select: text;
 }
 
+/* Page break spacer - invisible space to align content with page backgrounds */
+.page-break-spacer {
+  display: block;
+  width: 100%;
+  pointer-events: none;
+  user-select: none;
+}
+
 /* Ensure the editor can receive focus */
 .script-editor-content:focus {
   outline: none;

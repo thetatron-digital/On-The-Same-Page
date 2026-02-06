@@ -4,6 +4,13 @@ import { useScreenplayStore } from '../store/screenplayStore';
 import { generateId, createTextRuns } from '../utils/fdx';
 import './ScriptEditor.css';
 
+// Page layout constants (must match Editor.tsx)
+const PAGE_HEIGHT = 1056;    // 11 inches at 96 DPI
+const PAGE_GAP = 48;         // Gap between pages
+const TOP_MARGIN = 96;       // 1 inch top margin
+const BOTTOM_MARGIN = 96;    // 1 inch bottom margin
+const CONTENT_HEIGHT = PAGE_HEIGHT - TOP_MARGIN - BOTTOM_MARGIN; // 864px usable per page
+
 // Element type formatting info
 const ELEMENT_FORMAT: Record<ElementType, {
   allCaps: boolean;
@@ -151,6 +158,10 @@ export const ScriptEditor = () => {
     // Clear and rebuild content
     editor.innerHTML = '';
 
+    // Track content used on current page for page break calculation
+    let currentPageContentUsed = 0;
+    const PAGE_BREAK_SPACER_HEIGHT = BOTTOM_MARGIN + PAGE_GAP + TOP_MARGIN; // 240px
+
     screenplay.elements.forEach((element) => {
       const text = getPlainText(element.content);
       const format = ELEMENT_FORMAT[element.type];
@@ -172,6 +183,26 @@ export const ScriptEditor = () => {
       }
 
       editor.appendChild(div);
+
+      // Measure element height after adding to DOM
+      const elementHeight = div.offsetHeight;
+      const marginTop = parseFloat(getComputedStyle(div).marginTop) || 0;
+      const totalElementHeight = elementHeight + marginTop;
+
+      // Check if this element would cross a page boundary
+      if (currentPageContentUsed + totalElementHeight > CONTENT_HEIGHT && currentPageContentUsed > 0) {
+        // Insert page break spacer before this element
+        const spacer = document.createElement('div');
+        spacer.className = 'page-break-spacer';
+        spacer.style.height = `${PAGE_BREAK_SPACER_HEIGHT}px`;
+        spacer.setAttribute('contenteditable', 'false'); // Prevent editing
+        editor.insertBefore(spacer, div);
+
+        // Reset page content tracking for new page
+        currentPageContentUsed = totalElementHeight;
+      } else {
+        currentPageContentUsed += totalElementHeight;
+      }
     });
 
     // Restore selection
@@ -264,8 +295,12 @@ export const ScriptEditor = () => {
     const state = useScreenplayStore.getState();
     const newElements: ScreenplayElement[] = [];
 
+    // Only get actual element divs, not page break spacers
     const elementDivs = editor.querySelectorAll('[data-element-id]');
     elementDivs.forEach((div) => {
+      // Skip page break spacers
+      if (div.classList.contains('page-break-spacer')) return;
+
       const elementId = div.getAttribute('data-element-id');
       const elementType = div.getAttribute('data-element-type') as ElementType;
       const text = div.textContent || '';

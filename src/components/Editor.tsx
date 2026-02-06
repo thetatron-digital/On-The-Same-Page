@@ -7,8 +7,12 @@ import { TitlePageEditor } from './TitlePageEditor';
 import './Editor.css';
 
 // Page dimensions at 96 DPI
-const PAGE_HEIGHT = 1056; // 11 inches
-const PAGE_GAP = 40; // Gap between pages for page break visual
+const PAGE_HEIGHT = 1056; // 11 inches at 96 DPI
+const PAGE_GAP = 48; // Gap between pages for page break visual
+
+// Content margins per Final Draft standard (in pixels at 96 DPI)
+const TOP_MARGIN = 96;     // 1 inch top margin
+const BOTTOM_MARGIN = 96;  // 1 inch bottom margin
 
 // Element type hints for the status bar (Tab cycles through this order)
 const ELEMENT_HINTS: Record<string, { tab: string; enter: string }> = {
@@ -43,8 +47,9 @@ export const Editor = () => {
     const checkContentHeight = () => {
       const scriptContent = scriptEditorRef.current?.querySelector('.script-editor-content');
       if (scriptContent) {
-        const height = scriptContent.scrollHeight + 192; // Add padding
-        setContentHeight(Math.max(PAGE_HEIGHT, height));
+        // Get actual content height
+        const height = scriptContent.scrollHeight;
+        setContentHeight(height);
       }
     };
 
@@ -61,7 +66,9 @@ export const Editor = () => {
   }, [screenplay.elements]);
 
   // Calculate page count from content height
-  const pageCount = Math.max(1, Math.ceil(contentHeight / PAGE_HEIGHT));
+  // Content height includes page break spacers, so divide by PAGE_HEIGHT
+  const totalContentWithPadding = contentHeight + TOP_MARGIN + BOTTOM_MARGIN;
+  const pageCount = Math.max(1, Math.ceil(totalContentWithPadding / PAGE_HEIGHT));
 
   // Calculate total container height including gaps
   const totalHeight = pageCount * PAGE_HEIGHT + (pageCount - 1) * PAGE_GAP;
@@ -236,7 +243,7 @@ export const Editor = () => {
               ref={contentRef}
               style={{ height: `${totalHeight}px` }}
             >
-              {/* Page backgrounds - positioned absolutely */}
+              {/* Page backgrounds - positioned absolutely at fixed intervals */}
               {Array.from({ length: pageCount }, (_, i) => (
                 <div
                   key={`page-bg-${i}`}
@@ -260,8 +267,8 @@ export const Editor = () => {
                 />
               ))}
 
-              {/* Content layer - flows continuously */}
-              <div className="page first-page" style={{ height: 'auto', minHeight: `${PAGE_HEIGHT}px` }}>
+              {/* Content layer - flows continuously, no border */}
+              <div className="content-layer" style={{ minHeight: `${PAGE_HEIGHT}px` }}>
                 <div className="page-content" ref={scriptEditorRef}>
                   <ScriptEditor />
                   <div className="script-end-area" />
