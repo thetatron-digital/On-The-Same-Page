@@ -43,6 +43,7 @@ export const Editor = () => {
     addElement,
     panels,
     visibility,
+    activeApp,
     viewMode,
     stats,
     zoom,
@@ -212,16 +213,19 @@ export const Editor = () => {
   // Get element hints for status bar
   const hints = ELEMENT_HINTS[currentElementType] || ELEMENT_HINTS['Action'];
 
-  // Render the appropriate view based on viewMode
+  // Render the appropriate view based on activeApp
   const renderMainContent = () => {
-    if (viewMode === 'story') {
+    // Blueprint app - Story Development
+    if (activeApp === 'blueprint') {
       return <StoryMode />;
     }
 
-    if (viewMode === 'beatBoard') {
+    // Corkboard app - Visual Planning
+    if (activeApp === 'corkboard') {
       return <BeatBoard />;
     }
 
+    // Re-writer app - Screenwriting
     if (viewMode === 'split') {
       return <SplitView />;
     }

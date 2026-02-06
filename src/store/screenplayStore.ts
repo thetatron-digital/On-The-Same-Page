@@ -23,8 +23,11 @@ interface VisibilityState {
   scriptNotes: boolean;
 }
 
-// View modes
-type ViewMode = 'script' | 'split' | 'beatBoard' | 'story';
+// View modes (within Re-writer app)
+type ViewMode = 'script' | 'split';
+
+// App modes (top-level application switching)
+type AppMode = 'blueprint' | 'corkboard' | 'rewriter';
 
 // Split View content (independent from main script)
 interface SplitEntry {
@@ -70,6 +73,7 @@ interface ScreenplayState {
 
   // UI State
   zoom: number;
+  activeApp: AppMode;
   viewMode: ViewMode;
   panels: PanelState;
   visibility: VisibilityState;
@@ -125,6 +129,7 @@ interface ScreenplayState {
 
   // UI actions
   setZoom: (zoom: number) => void;
+  setActiveApp: (app: AppMode) => void;
   setViewMode: (mode: ViewMode) => void;
   togglePanel: (panel: keyof PanelState) => void;
   toggleVisibility: (item: keyof VisibilityState) => void;
@@ -238,6 +243,7 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
 
   // UI State defaults
   zoom: 100,
+  activeApp: 'rewriter',
   viewMode: 'script',
   panels: {
     navigator: false,
@@ -419,13 +425,27 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
     })),
 
   updateTitlePage: (titlePageUpdate) =>
-    set((state) => ({
-      screenplay: {
-        ...state.screenplay,
-        titlePage: { ...state.screenplay.titlePage, ...titlePageUpdate },
-      },
-      isDirty: true,
-    })),
+    set((state) => {
+      const newTitlePage = { ...state.screenplay.titlePage, ...titlePageUpdate };
+
+      // If title is updated, sync to Blueprint plot title
+      const outlineUpdates: Partial<{ storyOutline: typeof state.storyOutline }> = {};
+      if (titlePageUpdate.title !== undefined) {
+        outlineUpdates.storyOutline = {
+          ...state.storyOutline,
+          plot: { ...state.storyOutline.plot, title: titlePageUpdate.title },
+        };
+      }
+
+      return {
+        screenplay: {
+          ...state.screenplay,
+          titlePage: newTitlePage,
+        },
+        ...outlineUpdates,
+        isDirty: true,
+      };
+    }),
 
   addElement: (afterId, type) => {
     const state = get();
@@ -597,6 +617,8 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
 
   // UI actions
   setZoom: (zoom) => set({ zoom: Math.max(50, Math.min(200, zoom)) }),
+
+  setActiveApp: (app) => set({ activeApp: app }),
 
   setViewMode: (mode) => set({ viewMode: mode }),
 
@@ -856,13 +878,28 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
 
   // Story Outline actions
   updatePlotOverview: (updates) =>
-    set((state) => ({
-      storyOutline: {
-        ...state.storyOutline,
-        plot: { ...state.storyOutline.plot, ...updates },
-      },
-      isDirty: true,
-    })),
+    set((state) => {
+      const newPlot = { ...state.storyOutline.plot, ...updates };
+
+      // If title is updated, sync to screenplay title page
+      const screenplayUpdates: Partial<{ screenplay: typeof state.screenplay }> = {};
+      if (updates.title !== undefined) {
+        screenplayUpdates.screenplay = {
+          ...state.screenplay,
+          title: updates.title,
+          titlePage: { ...state.screenplay.titlePage, title: updates.title },
+        };
+      }
+
+      return {
+        storyOutline: {
+          ...state.storyOutline,
+          plot: newPlot,
+        },
+        ...screenplayUpdates,
+        isDirty: true,
+      };
+    }),
 
   addCharacter: () => {
     const id = generateId();
