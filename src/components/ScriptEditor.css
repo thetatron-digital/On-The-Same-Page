@@ -4,6 +4,11 @@
   outline: none;
   cursor: text;
   caret-color: var(--script-text);
+  /* Enable full text selection in all directions */
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
 }
 
 /* Ensure the editor can receive focus */
@@ -23,15 +28,20 @@
   outline: none;
   white-space: pre-wrap;
   word-wrap: break-word;
-  min-height: 1.35em;
+  min-height: 1em;
+  /* Enable selection within elements */
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 /* Placeholder for empty elements */
-.script-element:empty::before {
+.script-element:empty::before,
+.script-element:has(br:only-child)::before {
   content: attr(data-placeholder);
   color: var(--text-muted);
   opacity: 0.3;
   pointer-events: none;
+  position: absolute;
 }
 
 /* Hover highlight */
@@ -112,13 +122,14 @@
    ============================================ */
 
 /* Ensure selection color is visible */
-.script-element::selection {
-  background: var(--accent-color);
+.script-element::selection,
+.script-editor-content::selection {
+  background: var(--accent-color, #4a90d9);
   color: white;
 }
 
 .script-element *::selection {
-  background: var(--accent-color);
+  background: var(--accent-color, #4a90d9);
   color: white;
 }
 

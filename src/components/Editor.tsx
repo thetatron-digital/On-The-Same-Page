@@ -6,12 +6,26 @@ import { WritingStats } from './WritingStats';
 import { TitlePageEditor } from './TitlePageEditor';
 import './Editor.css';
 
+// Element type hints for the status bar
+const ELEMENT_HINTS: Record<string, { tab: string; enter: string }> = {
+  'Scene Heading': { tab: 'Action', enter: 'Action' },
+  'Action': { tab: 'Character', enter: 'Action' },
+  'Character': { tab: 'Parenthetical', enter: 'Dialogue' },
+  'Dialogue': { tab: 'Parenthetical', enter: 'Action' },
+  'Parenthetical': { tab: 'Dialogue', enter: 'Dialogue' },
+  'Transition': { tab: 'Scene Heading', enter: 'Scene Heading' },
+  'Shot': { tab: 'Action', enter: 'Action' },
+  'General': { tab: 'Action', enter: 'Action' },
+};
+
 export const Editor = () => {
   const editorRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const scriptEditorRef = useRef<HTMLDivElement>(null);
 
   const {
     screenplay,
+    currentElementType,
     selectElement,
     addElement,
     panels,
@@ -19,15 +33,34 @@ export const Editor = () => {
     zoom,
   } = useScreenplayStore();
 
-  // Handle click on empty area - create new element or focus last
-  const handleEditorClick = (e: React.MouseEvent) => {
-    if (e.target === contentRef.current || (e.target as HTMLElement).classList.contains('script-content') || (e.target as HTMLElement).classList.contains('page')) {
-      const lastElement = screenplay.elements[screenplay.elements.length - 1];
-      if (lastElement) {
-        selectElement(lastElement.id);
-      } else {
-        // Create first element if empty
-        addElement(undefined, 'Scene Heading');
+  // Handle click on page area to focus editor
+  const handlePageClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+
+    // Check if click is on page area (not on script content)
+    if (
+      target.classList.contains('page') ||
+      target.classList.contains('page-content') ||
+      target.classList.contains('pages-container') ||
+      target.classList.contains('script-area') ||
+      target.classList.contains('script-wrapper') ||
+      target.classList.contains('page-break') ||
+      target.classList.contains('script-end-area')
+    ) {
+      // Focus the script editor
+      const scriptEditor = scriptEditorRef.current?.querySelector('.script-editor-content') as HTMLElement;
+      if (scriptEditor) {
+        scriptEditor.focus();
+
+        // Position cursor at end of last element
+        const elements = screenplay.elements;
+        if (elements.length > 0) {
+          const lastElement = elements[elements.length - 1];
+          selectElement(lastElement.id);
+        } else {
+          // Create first element if empty
+          addElement(undefined, 'Scene Heading');
+        }
       }
     }
   };
@@ -102,6 +135,12 @@ export const Editor = () => {
   // Find current scene heading for status bar
   const currentSceneHeading = screenplay.elements.find(el => el.type === 'Scene Heading')?.content[0]?.text || 'No Scene';
 
+  // Get element hints for status bar
+  const hints = ELEMENT_HINTS[currentElementType] || ELEMENT_HINTS['Action'];
+
+  // Calculate number of pages based on content
+  const pageCount = Math.max(1, stats.pageCount);
+
   return (
     <div className="editor-container">
       {/* Left Panel - Navigator */}
@@ -113,7 +152,7 @@ export const Editor = () => {
         {panels.titlePage && <TitlePageEditor />}
 
         {/* Script content area with ruler */}
-        <div className="script-area" onClick={handleEditorClick}>
+        <div className="script-area" onClick={handlePageClick}>
           <div
             className="script-wrapper"
             style={{
@@ -135,12 +174,24 @@ export const Editor = () => {
 
             {/* Pages */}
             <div className="pages-container" ref={contentRef}>
+              {/* First page */}
               <div className="page first-page">
-                <div className="page-content">
+                <div className="page-content" ref={scriptEditorRef}>
                   <ScriptEditor />
                   <div className="script-end-area" />
                 </div>
               </div>
+
+              {/* Additional pages rendered as visual breaks */}
+              {pageCount > 1 && Array.from({ length: pageCount - 1 }, (_, i) => (
+                <div key={i + 2} className="page-break">
+                  <div className="page-break-line" />
+                  <div className="page subsequent-page">
+                    <div className="page-number">{i + 2}.</div>
+                    <div className="page-content continuation" />
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -152,7 +203,9 @@ export const Editor = () => {
             <span className="status-scene">{currentSceneHeading.substring(0, 40)}</span>
           </div>
           <div className="status-center">
-            <span className="status-ready">Ready</span>
+            <span className="status-element-hints">
+              [Tab] {hints.tab}, [Enter] {hints.enter}, [Cmd] hold for Elements
+            </span>
           </div>
           <div className="status-right">
             <span className="status-runtime">{stats.estimatedRuntime}</span>

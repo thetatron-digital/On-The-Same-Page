@@ -92,6 +92,10 @@ Source: https://firebase.google.com/pricing
 18. Ruler shows full 8.5" width with highlighted end mark
 19. Undo (Cmd+Z) and Redo (Cmd+Shift+Z) functionality
 20. Cross-element text selection (can select text across multiple elements like Word/Google Docs)
+21. Smart element type progression (Scene Heading → Action, Character → Dialogue on Enter)
+22. Element indicator in status bar with [Tab] and [Enter] hints
+23. Click anywhere on page to focus editor and start typing
+24. Visual page breaks with page numbers (starting from page 2)
 
 ### In Progress
 - Planning Firebase integration
@@ -102,6 +106,14 @@ Source: https://firebase.google.com/pricing
 ---
 
 ## Version History
+
+### v2.8 - February 6, 2026
+- Fixed smart element type progression (Scene Heading → Action, Character → Dialogue, etc.)
+- Added element indicator in status bar showing [Tab] and [Enter] hints
+- Improved click handling - click anywhere on page to focus and start typing
+- Fixed copy/paste to insert plain text without ID conflicts
+- Added visual page breaks between pages with page numbers (starting page 2)
+- Fixed text selection to work in all directions (up/left/right/down)
 
 ### v2.7 - February 6, 2026
 - Cross-element text selection enabled (major architecture change)

@@ -119,6 +119,32 @@
   cursor: text;
 }
 
+/* Page break between pages */
+.page-break {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 816px;
+}
+
+.page-break-line {
+  width: 100%;
+  height: 40px;
+  background: var(--editor-bg, #141414);
+  border-top: 1px dashed var(--border-color);
+  border-bottom: 1px dashed var(--border-color);
+}
+
+/* Subsequent pages (not first page) */
+.subsequent-page {
+  margin-top: 0;
+}
+
+.subsequent-page .page-content.continuation {
+  min-height: 200px; /* Placeholder height for visual effect */
+  padding-top: 96px;
+}
+
 /* Status bar at bottom */
 .status-bar {
   height: 28px;
@@ -168,6 +194,12 @@
 
 .status-ready {
   color: var(--text-muted);
+}
+
+.status-element-hints {
+  color: var(--text-muted);
+  white-space: nowrap;
+  font-size: 11px;
 }
 
 .status-runtime {

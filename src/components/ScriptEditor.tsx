@@ -29,7 +29,7 @@ const getNextElementType = (currentType: ElementType): ElementType => {
     case 'Character':
       return 'Dialogue';
     case 'Dialogue':
-      return 'Dialogue';
+      return 'Action';
     case 'Parenthetical':
       return 'Dialogue';
     case 'Transition':
@@ -60,6 +60,34 @@ export const ScriptEditor = () => {
     setCurrentElementType,
   } = useScreenplayStore();
 
+  // Get the text offset within an element from a node
+  const getTextOffset = useCallback((container: HTMLElement, node: Node, offset: number): number => {
+    // If the node is the container itself
+    if (node === container) {
+      // Offset is child index, calculate text position
+      let textPos = 0;
+      for (let i = 0; i < offset && i < container.childNodes.length; i++) {
+        textPos += container.childNodes[i].textContent?.length || 0;
+      }
+      return textPos;
+    }
+
+    // If node is a text node directly in the container
+    if (node.nodeType === Node.TEXT_NODE && node.parentNode === container) {
+      let textPos = 0;
+      for (const child of Array.from(container.childNodes)) {
+        if (child === node) {
+          return textPos + offset;
+        }
+        textPos += child.textContent?.length || 0;
+      }
+      return offset;
+    }
+
+    // Otherwise, it's the offset in the text node
+    return offset;
+  }, []);
+
   // Render content into the contenteditable
   const renderContent = useCallback(() => {
     const editor = editorRef.current;
@@ -71,7 +99,7 @@ export const ScriptEditor = () => {
     const selection = window.getSelection();
     let savedRange: { elementId: string; startOffset: number; endOffset: number } | null = null;
 
-    if (selection && selection.rangeCount > 0) {
+    if (selection && selection.rangeCount > 0 && editor.contains(selection.anchorNode)) {
       const range = selection.getRangeAt(0);
       let startNode = range.startContainer;
 
@@ -80,10 +108,12 @@ export const ScriptEditor = () => {
         if (startNode.nodeType === Node.ELEMENT_NODE) {
           const el = startNode as HTMLElement;
           if (el.hasAttribute('data-element-id')) {
+            const startOffset = getTextOffset(el, range.startContainer, range.startOffset);
+            const endOffset = getTextOffset(el, range.endContainer, range.endOffset);
             savedRange = {
               elementId: el.getAttribute('data-element-id')!,
-              startOffset: range.startOffset,
-              endOffset: range.endOffset,
+              startOffset,
+              endOffset,
             };
             break;
           }
@@ -111,8 +141,12 @@ export const ScriptEditor = () => {
         div.setAttribute('data-placeholder', format.placeholder);
       }
 
-      // Add text content
-      div.textContent = text || '\u200B'; // Zero-width space for empty elements
+      // Add text content - use <br> for empty instead of zero-width space for better selection
+      if (text) {
+        div.appendChild(document.createTextNode(text));
+      } else {
+        div.appendChild(document.createElement('br'));
+      }
 
       editor.appendChild(div);
     });
@@ -120,22 +154,32 @@ export const ScriptEditor = () => {
     // Restore selection
     if (savedRange && selection) {
       const targetDiv = editor.querySelector(`[data-element-id="${savedRange.elementId}"]`);
-      if (targetDiv && targetDiv.firstChild) {
-        try {
-          const range = document.createRange();
-          const maxLen = targetDiv.textContent?.length || 0;
-          range.setStart(targetDiv.firstChild, Math.min(savedRange.startOffset, maxLen));
-          range.setEnd(targetDiv.firstChild, Math.min(savedRange.endOffset, maxLen));
-          selection.removeAllRanges();
-          selection.addRange(range);
-        } catch (e) {
-          // Ignore selection errors
+      if (targetDiv) {
+        const textNode = targetDiv.firstChild;
+        if (textNode) {
+          try {
+            const range = document.createRange();
+            const isTextNode = textNode.nodeType === Node.TEXT_NODE;
+            const maxLen = isTextNode ? (textNode.textContent?.length || 0) : 0;
+
+            if (isTextNode && maxLen > 0) {
+              range.setStart(textNode, Math.min(savedRange.startOffset, maxLen));
+              range.setEnd(textNode, Math.min(savedRange.endOffset, maxLen));
+            } else {
+              range.setStart(targetDiv, 0);
+              range.collapse(true);
+            }
+            selection.removeAllRanges();
+            selection.addRange(range);
+          } catch {
+            // Ignore selection errors
+          }
         }
       }
     }
 
     isUpdatingRef.current = false;
-  }, [screenplay.elements, selectedElementId]);
+  }, [screenplay.elements, selectedElementId, getTextOffset]);
 
   // Re-render when screenplay changes
   useEffect(() => {
@@ -148,7 +192,15 @@ export const ScriptEditor = () => {
     if (!selection || selection.rangeCount === 0) return null;
 
     const range = selection.getRangeAt(0);
-    let node = range.startContainer;
+    let node: Node | null = range.startContainer;
+
+    // If selection is at the editor level, find the child element
+    if (node === editorRef.current) {
+      const childIndex = Math.min(range.startOffset, editorRef.current.children.length - 1);
+      if (childIndex >= 0) {
+        node = editorRef.current.children[childIndex];
+      }
+    }
 
     while (node && node !== editorRef.current) {
       if (node.nodeType === Node.ELEMENT_NODE) {
@@ -157,14 +209,15 @@ export const ScriptEditor = () => {
           const elementId = el.getAttribute('data-element-id');
           const element = screenplay.elements.find(e => e.id === elementId);
           if (element) {
-            return { element, div: el, offset: range.startOffset };
+            const offset = getTextOffset(el, range.startContainer, range.startOffset);
+            return { element, div: el, offset };
           }
         }
       }
-      node = node.parentNode as Node;
+      node = node.parentNode;
     }
     return null;
-  }, [screenplay.elements]);
+  }, [screenplay.elements, getTextOffset]);
 
   // Handle input changes - parse DOM back to data
   const handleInput = useCallback(() => {
@@ -182,9 +235,6 @@ export const ScriptEditor = () => {
       const elementId = div.getAttribute('data-element-id');
       const elementType = div.getAttribute('data-element-type') as ElementType;
       let text = div.textContent || '';
-
-      // Remove zero-width space placeholder
-      if (text === '\u200B') text = '';
 
       if (elementId) {
         const format = ELEMENT_FORMAT[elementType];
@@ -204,7 +254,6 @@ export const ScriptEditor = () => {
         ...state.screenplay,
         elements: newElements,
       });
-      // Don't re-render immediately, let the next effect cycle handle it
       setTimeout(() => {
         isUpdatingRef.current = false;
       }, 0);
@@ -218,22 +267,62 @@ export const ScriptEditor = () => {
 
     setTimeout(() => {
       const targetDiv = editor.querySelector(`[data-element-id="${elementId}"]`);
-      if (targetDiv && targetDiv.firstChild) {
+      if (targetDiv) {
+        const textNode = targetDiv.firstChild;
         const selection = window.getSelection();
         const range = document.createRange();
+
         try {
-          const maxLen = targetDiv.textContent?.length || 0;
-          const actualOffset = Math.min(offset, maxLen);
-          range.setStart(targetDiv.firstChild, actualOffset);
-          range.collapse(true);
+          if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+            const maxLen = textNode.textContent?.length || 0;
+            const actualOffset = Math.min(offset, maxLen);
+            range.setStart(textNode, actualOffset);
+            range.collapse(true);
+          } else {
+            // Empty element or <br>
+            range.setStart(targetDiv, 0);
+            range.collapse(true);
+          }
           selection?.removeAllRanges();
           selection?.addRange(range);
-        } catch (e) {
-          // Ignore
+          targetDiv.scrollIntoView({ block: 'nearest' });
+        } catch {
+          // Ignore errors
         }
       }
-    }, 0);
+    }, 10);
   }, []);
+
+  // Handle paste to regenerate element IDs
+  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLDivElement>) => {
+    e.preventDefault();
+
+    const text = e.clipboardData.getData('text/plain');
+    if (!text) return;
+
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    const range = selection.getRangeAt(0);
+
+    // Delete any selected content first
+    if (!selection.isCollapsed) {
+      range.deleteContents();
+    }
+
+    // Insert text at cursor position
+    const textNode = document.createTextNode(text);
+    range.insertNode(textNode);
+
+    // Move cursor to end of inserted text
+    range.setStartAfter(textNode);
+    range.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    // Trigger input handler to sync with store
+    handleInput();
+  }, [handleInput]);
 
   // Handle keyboard events
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -244,27 +333,38 @@ export const ScriptEditor = () => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
 
-      if (!current) return;
-
-      const selection = window.getSelection();
-      if (!selection) return;
-
-      const range = selection.getRangeAt(0);
-      let text = current.div.textContent || '';
-      if (text === '\u200B') text = '';
-
-      const cursorPos = range.startOffset;
-      const actualPos = text === '' ? 0 : cursorPos;
-
-      // If at end of element, create new element after
-      if (actualPos >= text.length) {
-        const nextType = getNextElementType(current.element.type);
+      if (!current) {
+        // No current element, create first one
         const newId = generateId();
-
-        const elements = [...state.screenplay.elements];
-        const currentIndex = elements.findIndex(el => el.id === current.element.id);
-
         state.saveToHistory();
+        state.setScreenplay({
+          ...state.screenplay,
+          elements: [{
+            id: newId,
+            type: 'Scene Heading',
+            content: [{ text: '' }],
+          }],
+        });
+        selectElement(newId);
+        setCurrentElementType('Scene Heading');
+        setCursorPosition(newId, 0);
+        return;
+      }
+
+      const text = getPlainText(current.element.content);
+      const cursorPos = current.offset;
+
+      // Determine next element type
+      const nextType = getNextElementType(current.element.type);
+      const newId = generateId();
+
+      const elements = [...state.screenplay.elements];
+      const currentIndex = elements.findIndex(el => el.id === current.element.id);
+
+      state.saveToHistory();
+
+      if (cursorPos >= text.length) {
+        // At end of element - create new element with next type
         elements.splice(currentIndex + 1, 0, {
           id: newId,
           type: nextType,
@@ -277,22 +377,16 @@ export const ScriptEditor = () => {
         setCursorPosition(newId, 0);
       } else {
         // Split element at cursor
-        const beforeCursor = text.slice(0, actualPos);
-        const afterCursor = text.slice(actualPos);
+        const beforeCursor = text.slice(0, cursorPos);
+        const afterCursor = text.slice(cursorPos);
 
-        const newId = generateId();
-        const elements = [...state.screenplay.elements];
-        const currentIndex = elements.findIndex(el => el.id === current.element.id);
-
-        state.saveToHistory();
-
-        // Update current element
+        // Update current element with text before cursor
         elements[currentIndex] = {
           ...current.element,
           content: createTextRuns(beforeCursor),
         };
 
-        // Insert new element with text after cursor
+        // Insert new element with same type containing text after cursor
         elements.splice(currentIndex + 1, 0, {
           id: newId,
           type: current.element.type,
@@ -336,21 +430,15 @@ export const ScriptEditor = () => {
       const selection = window.getSelection();
       if (!selection || !current) return;
 
-      const range = selection.getRangeAt(0);
-      let text = current.div.textContent || '';
-      if (text === '\u200B') text = '';
-
-      // Check if at start of element with no selection and cursor at position 0 (or 1 for zero-width space)
-      const atStart = range.startOffset === 0 || (range.startOffset === 1 && current.div.textContent === '\u200B');
-
-      if (atStart && selection.isCollapsed) {
+      if (current.offset === 0 && selection.isCollapsed) {
         const elements = [...state.screenplay.elements];
         const currentIndex = elements.findIndex(el => el.id === current.element.id);
 
-        if (currentIndex === 0) return; // Can't merge first element
+        if (currentIndex === 0) return;
 
         e.preventDefault();
 
+        const text = getPlainText(current.element.content);
         const previousElement = elements[currentIndex - 1];
         const previousText = getPlainText(previousElement.content);
 
@@ -375,17 +463,13 @@ export const ScriptEditor = () => {
       const selection = window.getSelection();
       if (!selection || !current) return;
 
-      const range = selection.getRangeAt(0);
-      let text = current.div.textContent || '';
-      if (text === '\u200B') text = '';
+      const text = getPlainText(current.element.content);
 
-      const atEnd = range.endOffset >= text.length || text === '';
-
-      if (atEnd && selection.isCollapsed) {
+      if (current.offset >= text.length && selection.isCollapsed) {
         const elements = [...state.screenplay.elements];
         const currentIndex = elements.findIndex(el => el.id === current.element.id);
 
-        if (currentIndex >= elements.length - 1) return; // Can't merge last element
+        if (currentIndex >= elements.length - 1) return;
 
         e.preventDefault();
 
@@ -410,6 +494,17 @@ export const ScriptEditor = () => {
 
   // Handle selection change to track current element
   const handleSelectionChange = useCallback(() => {
+    if (isUpdatingRef.current) return;
+
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    // Check if selection is within our editor
+    if (!editor.contains(selection.anchorNode)) return;
+
     const current = getCurrentElement();
     if (current) {
       selectElement(current.element.id);
@@ -425,15 +520,15 @@ export const ScriptEditor = () => {
     };
   }, [handleSelectionChange]);
 
-  // Handle click on empty area
+  // Handle click - focus and position cursor
   const handleClick = useCallback((e: React.MouseEvent) => {
-    const target = e.target as HTMLElement;
     const editor = editorRef.current;
-
     if (!editor) return;
 
+    const target = e.target as HTMLElement;
+
     // If clicked on the editor container itself (not an element)
-    if (target === editor) {
+    if (target === editor || !target.closest('[data-element-id]')) {
       const elements = screenplay.elements;
       if (elements.length > 0) {
         const lastElement = elements[elements.length - 1];
@@ -444,6 +539,22 @@ export const ScriptEditor = () => {
     }
   }, [screenplay.elements, selectElement, setCursorPosition]);
 
+  // Focus editor when needed
+  const focusEditor = useCallback(() => {
+    const editor = editorRef.current;
+    if (editor && document.activeElement !== editor) {
+      editor.focus();
+    }
+  }, []);
+
+  // Expose focus method
+  useEffect(() => {
+    // Focus on mount if no content
+    if (screenplay.elements.length === 0) {
+      focusEditor();
+    }
+  }, []);
+
   return (
     <div
       ref={editorRef}
@@ -453,6 +564,7 @@ export const ScriptEditor = () => {
       onInput={handleInput}
       onKeyDown={handleKeyDown}
       onClick={handleClick}
+      onPaste={handlePaste}
       spellCheck
     />
   );
