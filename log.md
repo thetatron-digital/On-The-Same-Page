@@ -27,7 +27,7 @@ The ecosystem follows the natural film production workflow:
 WritersRoom ──► BreakDown ──► ViewFinder ──► BaseCamp
                    │
                    ▼
-              [Art App]
+               ArtCart
               (Separate)
 ```
 
@@ -42,7 +42,7 @@ Script breakdown with 14 industry-standard categories. Standalone app.
 - Tags cast, props, wardrobe, vehicles, SFX, etc.
 - Feeds data to other apps
 
-### [Art App] (Pre-Production) - Name TBD
+### ArtCart (Pre-Production)
 Art department shopping and sourcing tool. Separate from BreakDown.
 - Organize art elements from breakdown
 - Compare options and pricing for props, wardrobe, set dressing
