@@ -713,20 +713,39 @@ export const ScriptEditor = () => {
 
     const state = useScreenplayStore.getState();
     const text = getPlainText(current.element.content);
+    const { triggerType } = state.autoComplete;
 
-    // For Character elements, replace entire content with selection
-    // For Scene Heading, replace the location portion
     let newText = value;
 
-    if (current.element.type === 'Scene Heading') {
-      // Parse existing scene heading and replace location
-      const match = text.match(/^(INT\.?|EXT\.?|INT\/EXT\.?|I\/E\.?)\s*/i);
-      if (match) {
-        newText = match[0] + value;
-        // Check if there was a time of day after " - "
-        const timeMatch = text.match(/\s+-\s+(.+)$/);
-        if (timeMatch) {
-          newText += ' - ' + timeMatch[1];
+    if (current.element.type === 'Character') {
+      if (triggerType === 'extension') {
+        // Append extension to existing character name
+        // Remove any partial extension being typed
+        const cleanName = text.replace(/\s*\([^)]*$/, '').trim();
+        newText = cleanName + ' ' + value;
+      } else {
+        // Replace with selected character name
+        newText = value;
+      }
+    } else if (current.element.type === 'Scene Heading') {
+      if (triggerType === 'timeofday') {
+        // Replace time of day portion after " - "
+        const parts = text.split(' - ');
+        if (parts.length >= 1) {
+          newText = parts[0] + ' - ' + value;
+        } else {
+          newText = text + ' - ' + value;
+        }
+      } else if (triggerType === 'location') {
+        // Parse existing scene heading and replace location
+        const match = text.match(/^(INT\.?|EXT\.?|INT\/EXT\.?|I\/E\.?)\s*/i);
+        if (match) {
+          newText = match[0] + value;
+          // Check if there was a time of day after " - "
+          const timeMatch = text.match(/\s+-\s+(.+)$/);
+          if (timeMatch) {
+            newText += ' - ' + timeMatch[1];
+          }
         }
       }
     }

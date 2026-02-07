@@ -69,7 +69,7 @@ Source: https://firebase.google.com/pricing
 
 ## Current Status
 
-**Date:** February 6, 2026
+**Date:** February 7, 2026
 
 ### Completed
 1. Basic FDX file parsing and writing
@@ -113,6 +113,29 @@ Source: https://firebase.google.com/pricing
 
 ## Version History
 
+### v3.2 - February 7, 2026
+Smart Type Phase 3 - Extensions & Time of Day:
+
+**Character Extensions**
+- Type "(" after a character name to trigger extension suggestions
+- Supports V.O., O.S., O.C., CONT'D, PRE-LAP, FILTERED
+- Extensions are appended to existing character name
+
+**Time of Day Suggestions**
+- Type " - " after a location in Scene Heading to trigger time suggestions
+- Supports DAY, NIGHT, MORNING, AFTERNOON, EVENING, DUSK, DAWN
+- Also: LATER, CONTINUOUS, SAME, MOMENTS LATER
+
+**BluePrint Integration**
+- Characters from BluePrint now sync to auto-complete suggestions
+- Blueprint characters shown with purple book icon
+- Script characters shown with blue document icon
+
+**UI Improvements**
+- New icons for extension (speech bubble - amber) and time of day (sun - cyan)
+- Dynamic header text based on suggestion type
+- Improved selection handling for different trigger contexts
+
 ### v3.1 - February 6, 2026
 App naming standardization and planned feature additions:
 
@@ -134,10 +157,20 @@ App naming standardization and planned feature additions:
 - Shows occurrence counts and source icons (BluePrint vs Script)
 - Auto-triggers when typing in Character or Scene Heading elements
 
-**Next: Phase 3 - Testing & Refinement**
-- Test with BluePrint characters syncing to auto-complete
-- Add support for character extensions (V.O., O.S., CONT'D)
-- Add time of day suggestions for Scene Headings
+**Smart Type Extensions (Phase 3 Complete)**
+- BluePrint characters now sync to auto-complete via mergeCharacterSources()
+- Character extensions: Type "(" after a character name to get suggestions
+  - (V.O.) - Voice Over
+  - (O.S.) - Off Screen
+  - (O.C.) - Off Camera
+  - (CONT'D) - Continued
+  - (PRE-LAP) - Pre-lap audio
+  - (FILTERED) - Phone, radio, etc.
+- Time of day suggestions: Type " - " after a location in Scene Heading
+  - DAY, NIGHT, MORNING, AFTERNOON, EVENING
+  - DUSK, DAWN, LATER, CONTINUOUS, SAME, MOMENTS LATER
+- New trigger types in auto-complete: 'extension' and 'timeofday'
+- Color-coded icons: Extension (amber), Time of Day (cyan)
 
 **Future Phases**
 - BreakDown App: Industry-standard script breakdown with element tagging

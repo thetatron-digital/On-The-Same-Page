@@ -78,6 +78,14 @@
   stroke: #22c55e;
 }
 
+.suggestion-type.extension svg {
+  stroke: #f59e0b;
+}
+
+.suggestion-type.timeofday svg {
+  stroke: #06b6d4;
+}
+
 .suggestion-value {
   flex: 1;
   font-weight: 500;

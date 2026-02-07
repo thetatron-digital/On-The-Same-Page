@@ -289,34 +289,131 @@ export function detectAutoCompleteTrigger(
   currentElement: ScreenplayElement | null,
   cursorPosition: number,
   text: string
-): { triggerType: 'character' | 'location' | null; searchText: string } {
+): { triggerType: 'character' | 'location' | 'extension' | 'timeofday' | null; searchText: string } {
   if (!currentElement) {
     return { triggerType: null, searchText: '' };
   }
 
   const elementText = text.substring(0, cursorPosition).toUpperCase();
 
-  // Character element - trigger for any typing
+  // Character element
   if (currentElement.type === 'Character') {
-    // Remove any extension already typed
+    // Check if user is typing an extension (opened parenthesis)
+    const extensionMatch = elementText.match(/^([A-Z\s]+)\s*\(([A-Z.']*)$/);
+    if (extensionMatch) {
+      // User has opened parenthesis - show extension suggestions
+      return { triggerType: 'extension', searchText: extensionMatch[2] || '' };
+    }
+
+    // Check if there's already a complete extension - don't trigger
+    if (/\([^)]+\)\s*$/.test(elementText)) {
+      return { triggerType: null, searchText: '' };
+    }
+
+    // Remove any partial extension for character name search
     const nameOnly = elementText.replace(/\s*\([^)]*\)?\s*$/, '').trim();
     return { triggerType: 'character', searchText: nameOnly };
   }
 
-  // Scene Heading element - trigger for location after INT./EXT.
+  // Scene Heading element
   if (currentElement.type === 'Scene Heading') {
     const parsed = parseSceneHeading(elementText);
 
-    // Only trigger if we have INT/EXT and are typing the location
+    // Only trigger if we have INT/EXT
     if (parsed.intExt) {
-      // Check if we're still in the location part (before the time dash)
-      if (!elementText.includes(' - ') || elementText.endsWith(' - ')) {
-        return { triggerType: 'location', searchText: parsed.location };
+      // Check if user has typed " - " and is now typing time of day
+      if (elementText.includes(' - ')) {
+        // Extract what's after the dash
+        const afterDash = elementText.split(' - ').slice(1).join(' - ').trim();
+        return { triggerType: 'timeofday', searchText: afterDash };
       }
+
+      // Otherwise suggest locations
+      return { triggerType: 'location', searchText: parsed.location };
     }
   }
 
   return { triggerType: null, searchText: '' };
+}
+
+/**
+ * Generate auto-complete suggestions for character extensions
+ * (V.O.), (O.S.), (CONT'D), etc.
+ */
+export function getExtensionSuggestions(
+  searchText: string,
+  maxResults: number = 10
+): AutoCompleteSuggestion[] {
+  const extensions = [
+    '(V.O.)',      // Voice Over
+    '(O.S.)',      // Off Screen
+    '(O.C.)',      // Off Camera
+    "(CONT'D)",    // Continued
+    '(PRE-LAP)',   // Pre-lap
+    '(FILTERED)', // Phone, radio
+  ];
+
+  const search = searchText.trim().toUpperCase();
+
+  // Filter extensions that match the search
+  const matches = extensions
+    .filter(ext => {
+      // Match against inner content (without parens)
+      const inner = ext.replace(/[()]/g, '');
+      return inner.startsWith(search) || ext.includes(search);
+    })
+    .slice(0, maxResults);
+
+  return matches.map(ext => ({
+    value: ext,
+    type: 'extension' as const,
+    source: 'script' as const,
+  }));
+}
+
+/**
+ * Generate auto-complete suggestions for time of day
+ * DAY, NIGHT, MORNING, etc.
+ */
+export function getTimeOfDaySuggestions(
+  searchText: string,
+  maxResults: number = 10
+): AutoCompleteSuggestion[] {
+  const timeOptions = [
+    'DAY',
+    'NIGHT',
+    'MORNING',
+    'AFTERNOON',
+    'EVENING',
+    'DUSK',
+    'DAWN',
+    'LATER',
+    'CONTINUOUS',
+    'SAME',
+    'MOMENTS LATER',
+  ];
+
+  const search = searchText.trim().toUpperCase();
+
+  if (!search) {
+    // Return all options when nothing typed
+    return timeOptions.slice(0, maxResults).map(time => ({
+      value: time,
+      type: 'extension' as const, // reuse extension type for display
+      source: 'script' as const,
+    }));
+  }
+
+  // Filter time options that start with search text
+  const matches = timeOptions
+    .filter(time => time.startsWith(search))
+    .slice(0, maxResults);
+
+  return matches.map(time => ({
+    value: time,
+    type: 'extension' as const,
+    source: 'script' as const,
+  }));
 }
 
 /**

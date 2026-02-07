@@ -12,7 +12,9 @@ import {
   extractLocationsFromScript,
   mergeCharacterSources,
   getCharacterSuggestions,
-  getLocationSuggestions
+  getLocationSuggestions,
+  getExtensionSuggestions,
+  getTimeOfDaySuggestions
 } from '../utils/scriptParser';
 
 // Panel visibility options
@@ -193,7 +195,7 @@ interface ScreenplayState {
 
   // Auto-Complete / Smart Type actions
   refreshScriptData: () => void;
-  openAutoComplete: (triggerType: 'character' | 'location', searchText: string, position: { x: number; y: number }) => void;
+  openAutoComplete: (triggerType: 'character' | 'location' | 'extension' | 'timeofday', searchText: string, position: { x: number; y: number }) => void;
   closeAutoComplete: () => void;
   updateAutoCompleteSearch: (searchText: string) => void;
   selectAutoCompleteSuggestion: (index: number) => void;
@@ -1065,6 +1067,10 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
       suggestions = getCharacterSuggestions(state.scriptCharacters, searchText);
     } else if (triggerType === 'location') {
       suggestions = getLocationSuggestions(state.scriptLocations, searchText);
+    } else if (triggerType === 'extension') {
+      suggestions = getExtensionSuggestions(searchText);
+    } else if (triggerType === 'timeofday') {
+      suggestions = getTimeOfDaySuggestions(searchText);
     }
 
     set({
@@ -1103,6 +1109,10 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
       suggestions = getCharacterSuggestions(state.scriptCharacters, searchText);
     } else if (triggerType === 'location') {
       suggestions = getLocationSuggestions(state.scriptLocations, searchText);
+    } else if (triggerType === 'extension') {
+      suggestions = getExtensionSuggestions(searchText);
+    } else if (triggerType === 'timeofday') {
+      suggestions = getTimeOfDaySuggestions(searchText);
     }
 
     set({

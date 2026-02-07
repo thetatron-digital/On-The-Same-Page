@@ -410,7 +410,7 @@ export interface ScriptCharacter {
 // Auto-complete suggestion
 export interface AutoCompleteSuggestion {
   value: string;
-  type: 'character' | 'location' | 'extension';
+  type: 'character' | 'location' | 'extension' | 'timeofday';
   source: 'blueprint' | 'script';
   occurrences?: number;
 }
@@ -420,7 +420,7 @@ export interface AutoCompleteState {
   isOpen: boolean;
   suggestions: AutoCompleteSuggestion[];
   selectedIndex: number;
-  triggerType: 'character' | 'location' | null;
+  triggerType: 'character' | 'location' | 'extension' | 'timeofday' | null;
   searchText: string;
   position: { x: number; y: number };
 }
