@@ -19,22 +19,50 @@
 
 ---
 
-## Product Roadmap
+## App Structure
 
-### Phase 1: Screenwriting (Current)
-- [x] Basic screenwriting editor
-- [ ] Match Final Draft UI/UX
-- [ ] Firebase integration (user accounts, cloud storage)
-- [ ] Real-time collaboration
+The ecosystem follows the natural film production workflow:
 
-### Phase 2: Pre-Production Tools
-- [ ] Script Breakdown (tag cast, props, locations, etc.)
-- [ ] Shoot Scheduling
-- [ ] Budgeting
+```
+WritersRoom ──► BreakDown ──► ViewFinder ──► BaseCamp
+                   │
+                   ▼
+              [Art App]
+              (Separate)
+```
 
-### Phase 3: Production Tools
-- [ ] Call Sheets
-- [ ] Prop Shopping Tool (for production designers)
+### WritersRoom (Development Phase)
+The writing and story development hub. Contains:
+- **BluePrint** - Story development (plot, characters, acts, beats)
+- **CorkBoard** - Visual planning (beat cards, boards)
+- **ReWriter** - Screenwriting (script editing, FDX/PDF export)
+
+### BreakDown (Pre-Production)
+Script breakdown with 14 industry-standard categories. Standalone app.
+- Tags cast, props, wardrobe, vehicles, SFX, etc.
+- Feeds data to other apps
+
+### [Art App] (Pre-Production) - Name TBD
+Art department shopping and sourcing tool. Separate from BreakDown.
+- Organize art elements from breakdown
+- Compare options and pricing for props, wardrobe, set dressing
+- Track vendors and purchases
+
+### ViewFinder (Director's Tools)
+Director-focused production planning. Contains:
+- Script lining
+- Storyboard generation
+- Blocking
+- Lighting planning
+- Shot lists
+
+### BaseCamp (Production Management)
+Production office and logistics hub. Contains:
+- **RollCall** - Crew/cast management
+- **Budgeting** - Production budget tracking
+- **Contacts** - Vendor and crew contacts
+- **Schedule** - Shoot scheduling
+- **CallSheets** - Daily call sheet generation
 
 ### Future Consideration
 - Role-based dashboards (Writer, Director, Producer, AD, etc.)
