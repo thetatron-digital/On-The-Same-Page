@@ -24,12 +24,26 @@
 The ecosystem follows the natural film production workflow:
 
 ```
-WritersRoom ──► BreakDown ──► ViewFinder ──► BaseCamp
-                   │
-                   ▼
-               ArtCart
-              (Separate)
+                         WritersRoom
+                              │
+                              ▼
+                          BreakDown
+                         ╱    │    ╲
+                        ╱     │     ╲
+                       ▼      │      ▼
+                  ArtCart     │    ViewFinder
+                       ╲      │      ╱
+                        ╲     │     ╱
+                         ╲    ▼    ╱
+                          BaseCamp
 ```
+
+**Data Flow:**
+- BreakDown feeds → ArtCart (elements to source)
+- BreakDown feeds → ViewFinder (scenes/elements for director)
+- BreakDown feeds → BaseCamp (cast, locations for scheduling)
+- ArtCart feeds → BaseCamp (costs for budgeting)
+- ViewFinder feeds → BaseCamp (shots for scheduling)
 
 ### WritersRoom (Development Phase)
 The writing and story development hub. Contains:
@@ -40,16 +54,16 @@ The writing and story development hub. Contains:
 ### BreakDown (Pre-Production)
 Script breakdown with 14 industry-standard categories. Standalone app.
 - Tags cast, props, wardrobe, vehicles, SFX, etc.
-- Feeds data to other apps
+- Feeds data to ArtCart, ViewFinder, and BaseCamp
 
 ### ArtCart (Pre-Production)
-Art department shopping and sourcing tool. Separate from BreakDown.
-- Organize art elements from breakdown
+Art department shopping and sourcing tool. Standalone app.
+- Auto-populates from BreakDown (user can add more)
 - Compare options and pricing for props, wardrobe, set dressing
 - Track vendors and purchases
 
 ### ViewFinder (Director's Tools)
-Director-focused production planning. Contains:
+Director-focused production planning. Contains sub-modules for:
 - Script lining
 - Storyboard generation
 - Blocking
@@ -58,11 +72,9 @@ Director-focused production planning. Contains:
 
 ### BaseCamp (Production Management)
 Production office and logistics hub. Contains:
-- **RollCall** - Crew/cast management
-- **Budgeting** - Production budget tracking
-- **Contacts** - Vendor and crew contacts
-- **Schedule** - Shoot scheduling
-- **CallSheets** - Daily call sheet generation
+- **RollCall** - Crew/cast management, contacts, call sheets
+- **LineItem** - Budget tracking
+- **GamePlan** - Shoot scheduling (strip boards, day out of days, actor availability)
 
 ### Future Consideration
 - Role-based dashboards (Writer, Director, Producer, AD, etc.)
@@ -72,6 +84,79 @@ Production office and logistics hub. Contains:
 ## UI Navigation Design
 
 **Approach:** Single-page app with tabbed hubs. Switching apps doesn't reload - all work stays in one session, one save file.
+
+### Home Page
+
+Sign-in and visual roadmap of all apps. Users can jump to any point in the pipeline.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              RE-WRITER                                      │
+│                    [Sign in with Google]  [Continue as Guest]               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  WRITERSROOM                                                        │   │
+│  │  Story development and screenwriting                                │   │
+│  │   ┌───────────┐   ┌───────────┐   ┌───────────┐                    │   │
+│  │   │ BluePrint │ → │ CorkBoard │ → │ ReWriter  │                    │   │
+│  │   │ Plot,     │   │ Visual    │   │ Write     │                    │   │
+│  │   │ characters│   │ beat      │   │ your      │                    │   │
+│  │   │ acts      │   │ planning  │   │ script    │                    │   │
+│  │   └───────────┘   └───────────┘   └───────────┘                    │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                      │                                      │
+│                                      ▼                                      │
+│                      ┌───────────────────────────────┐                      │
+│                      │  BREAKDOWN                    │                      │
+│                      │  Tag every element in your    │                      │
+│                      │  script: cast, props,         │                      │
+│                      │  wardrobe, vehicles, SFX      │                      │
+│                      └───────────────────────────────┘                      │
+│                         ╱           │           ╲                           │
+│                        ╱            │            ╲                          │
+│                       ▼             │             ▼                         │
+│       ┌─────────────────┐           │           ┌─────────────────┐        │
+│       │  ARTCART        │           │           │  VIEWFINDER     │        │
+│       │─────────────────│           │           │─────────────────│        │
+│       │  Shop for props,│           │           │  Director tools │        │
+│       │  wardrobe, set  │           │           │                 │        │
+│       │  dressing.      │           │           │  • Script lining│        │
+│       │  Compare prices │           │           │  • Storyboards  │        │
+│       │  and options    │           │           │  • Blocking     │        │
+│       │                 │           │           │  • Lighting     │        │
+│       │                 │           │           │  • Shot lists   │        │
+│       └────────┬────────┘           │           └────────┬────────┘        │
+│                 ╲                   │                   ╱                   │
+│                  ╲                  │                  ╱                    │
+│                   ╲                 ▼                 ╱                     │
+│                    ╲   ┌─────────────────┐          ╱                      │
+│                     ╲  │  BASECAMP       │         ╱                       │
+│                      ╲ │─────────────────│        ╱                        │
+│                       ►│  Production HQ  │◄──────╱                         │
+│                        │                 │                                  │
+│                        │  • RollCall     │                                  │
+│                        │  • LineItem     │                                  │
+│                        │  • GamePlan     │                                  │
+│                        └─────────────────┘                                  │
+│                                                                             │
+│  ─────────────────────────────────────────────────────────────────────────  │
+│  [Recent Projects]                                                          │
+│    My Feature Film v2    Last edited: Feb 7, 2026                          │
+│    Commercial Script     Last edited: Feb 5, 2026                          │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Home Page Features:**
+- Sign in with Google or continue as guest
+- Visual diamond layout shows app relationships
+- Each app shows blurb explaining what it does
+- Click any app to jump in at that point
+- Recent projects list for quick access
+- Users can follow the pipeline or skip to what they need
+- Export available at any stage
+
+### In-App Navigation
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -99,6 +184,7 @@ Production office and logistics hub. Contains:
 - Save is global = saves everything across all apps
 - Instant switching = no reload, no data loss
 - Standalone apps (BreakDown, ArtCart) show no sub-app row
+- No keyboard shortcuts for app switching (mouse/tap only)
 
 ---
 
