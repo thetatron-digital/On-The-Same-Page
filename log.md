@@ -69,6 +69,39 @@ Production office and logistics hub. Contains:
 
 ---
 
+## UI Navigation Design
+
+**Approach:** Single-page app with tabbed hubs. Switching apps doesn't reload - all work stays in one session, one save file.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  [Save]  [Open]  [Export]                          [Project: Untitled]      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  WritersRoom    BreakDown    ArtCart    ViewFinder    BaseCamp              │
+│  ━━━━━━━━━━━                                                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  [BluePrint]    [CorkBoard]    [ReWriter]              ← sub-app tabs       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│                         [App Content Area]                                  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Layout:**
+- **Row 1:** File operations + project name (always visible)
+- **Row 2:** Main app tabs (underline shows active hub)
+- **Row 3:** Sub-app tabs (only appears for hubs: WritersRoom, ViewFinder, BaseCamp)
+- **Row 4:** Content area
+
+**Key UX Principles:**
+- Project name always visible = reminds user it's one workspace
+- Save is global = saves everything across all apps
+- Instant switching = no reload, no data loss
+- Standalone apps (BreakDown, ArtCart) show no sub-app row
+
+---
+
 ## Technical Infrastructure
 
 **Data Storage:** Firebase (Google)
