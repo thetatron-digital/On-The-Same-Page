@@ -6,6 +6,7 @@ import { ArtCart } from './components/ArtCart';
 import ViewFinder from './components/ViewFinder';
 import BaseCamp from './components/BaseCamp';
 import OnSet from './components/OnSet';
+import SuperVisor from './components/SuperVisor';
 import { useScreenplayStore } from './store/screenplayStore';
 import './App.css';
 
@@ -49,6 +50,8 @@ function App() {
         return <BaseCamp />;
       case 'onset':
         return <OnSet />;
+      case 'supervisor':
+        return <SuperVisor />;
       default:
         return <Editor />;
     }

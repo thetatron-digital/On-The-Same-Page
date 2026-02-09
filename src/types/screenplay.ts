@@ -1395,3 +1395,90 @@ export interface SupervisorSession {
   createdAt: Date;
   updatedAt: Date;
 }
+
+// Camera slate information
+export interface SlateInfo {
+  scene: string;
+  shot: string;
+  take: number;
+  camera: string;
+  roll: string;              // Camera roll / card number
+  soundRoll?: string;        // Sound roll
+  date: Date;
+}
+
+// Continuity log for a scene
+export interface ContinuityLog {
+  id: string;
+  sceneId: string;
+  sceneNumber: string;
+
+  // Wardrobe
+  wardrobeNotes: string;
+
+  // Props
+  propsNotes: string;
+
+  // Hair/Makeup
+  hairMakeupNotes: string;
+
+  // Action/Blocking
+  actionNotes: string;
+
+  // Reference photos
+  photos: string[];          // Base64 or URLs
+
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Script supervisor report (daily)
+export interface DailyReport {
+  id: string;
+  shootDayId: string;
+  date: Date;
+
+  // Summary
+  scenesCompleted: string[];
+  scenesPartial: string[];
+  pagesShot: number;
+  minutesShot: number;       // Screen time shot
+
+  // Inventory
+  setupsTotal: number;
+  takesTotal: number;
+  printsTotal: number;
+  ngTotal: number;
+
+  // By camera
+  cameraInventory: {
+    camera: string;
+    takes: number;
+    prints: number;
+  }[];
+
+  // Notes
+  productionNotes: string;
+  editorNotes: string;
+
+  // Approval
+  approved: boolean;
+  approvedBy?: string;
+  approvedAt?: Date;
+}
+
+// Full SuperVisor state
+export interface SuperVisor {
+  currentSession: SupervisorSession | null;
+  sessions: SupervisorSession[];
+  continuityLogs: ContinuityLog[];
+  dailyReports: DailyReport[];
+
+  // Current take entry (being created)
+  currentSlate: SlateInfo | null;
+
+  // View state
+  selectedSceneId: string | null;
+  selectedShotId: string | null;
+  filterCamera: string | 'All';
+}
