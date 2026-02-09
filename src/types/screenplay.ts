@@ -592,74 +592,6 @@ export interface Breakdown {
   updatedAt: Date;
 }
 
-// ============================================
-// VIEWFINDER APP TYPES (Director's Tools)
-// ============================================
-
-// Shot size options (industry standard)
-export type ShotSize = 'ECU' | 'CU' | 'MCU' | 'MS' | 'MWS' | 'WS' | 'EWS' | 'Aerial';
-
-// Camera angle options
-export type CameraAngle = 'Eye Level' | 'Low' | 'High' | 'Dutch' | 'Birds Eye' | 'Worms Eye';
-
-// Camera movement options
-export type CameraMovement = 'Static' | 'Pan' | 'Tilt' | 'Dolly' | 'Tracking' | 'Crane' | 'Handheld' | 'Steadicam' | 'Zoom';
-
-// Shot in shot list
-export interface Shot {
-  id: string;
-  sceneId: string;
-  shotNumber: string; // "1A", "2", "3B"
-
-  // Shot attributes
-  size: ShotSize;
-  angle: CameraAngle;
-  movement: CameraMovement;
-  lens?: string; // "50mm", "24mm"
-
-  // Coverage
-  description: string;
-  subjectCharacters: string[];
-
-  // Script coverage (for lining)
-  coverageStart: number;
-  coverageEnd: number;
-  coverageType: 'on-screen' | 'off-screen' | 'partial';
-
-  // Production
-  estimatedDuration: number; // seconds
-  setupTime?: number; // minutes
-  equipment?: string[];
-  notes?: string;
-
-  // Storyboard
-  storyboardImage?: string;
-}
-
-// Script line for lined script
-export interface ScriptLine {
-  id: string;
-  shotId: string;
-  startElementId: string;
-  startOffset: number;
-  endElementId: string;
-  endOffset: number;
-  lineStyle: 'solid' | 'wavy' | 'dashed';
-  side: 'left' | 'right';
-}
-
-// Lined script state
-export interface LinedScript {
-  scriptVersionId: string;
-  lines: ScriptLine[];
-}
-
-// Shot list for a scene
-export interface SceneShotList {
-  sceneId: string;
-  shots: Shot[];
-  linedScript: LinedScript;
-}
 
 // ============================================
 // ARTCART APP TYPES (Art Department Sourcing)
@@ -842,6 +774,245 @@ export interface ArtCart {
   // Total budget (from BaseCamp/LineItem)
   totalBudgetAllocated?: number;
   totalBudgetStatus: BudgetStatus;
+
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ============================================
+// VIEWFINDER APP TYPES (Cinematography)
+// ============================================
+
+// Standard shot sizes
+export type ShotSize =
+  | 'EWS'   // Extreme Wide Shot
+  | 'WS'    // Wide Shot
+  | 'FS'    // Full Shot
+  | 'MWS'   // Medium Wide Shot
+  | 'MS'    // Medium Shot
+  | 'MCU'   // Medium Close-Up
+  | 'CU'    // Close-Up
+  | 'BCU'   // Big Close-Up
+  | 'ECU'   // Extreme Close-Up
+  | 'Insert'
+  | 'Cutaway'
+  | 'POV'   // Point of View
+  | 'OTS'   // Over the Shoulder
+  | '2-Shot'
+  | 'Group';
+
+export const SHOT_SIZE_INFO: Record<ShotSize, { name: string; description: string }> = {
+  'EWS': { name: 'Extreme Wide Shot', description: 'Establishes massive environment, subject very small' },
+  'WS': { name: 'Wide Shot', description: 'Subject visible head to toe with environment' },
+  'FS': { name: 'Full Shot', description: 'Subject fills frame head to toe' },
+  'MWS': { name: 'Medium Wide Shot', description: 'Subject from knees up (Cowboy Shot)' },
+  'MS': { name: 'Medium Shot', description: 'Subject from waist up' },
+  'MCU': { name: 'Medium Close-Up', description: 'Subject from chest up' },
+  'CU': { name: 'Close-Up', description: 'Subject\'s face or key detail' },
+  'BCU': { name: 'Big Close-Up', description: 'Portion of face or tight detail' },
+  'ECU': { name: 'Extreme Close-Up', description: 'Very tight on specific detail (eyes, hands)' },
+  'Insert': { name: 'Insert Shot', description: 'Close shot of object or detail' },
+  'Cutaway': { name: 'Cutaway', description: 'Shot away from main action' },
+  'POV': { name: 'Point of View', description: 'From character\'s perspective' },
+  'OTS': { name: 'Over the Shoulder', description: 'Looking over subject\'s shoulder at another' },
+  '2-Shot': { name: 'Two Shot', description: 'Two subjects in frame' },
+  'Group': { name: 'Group Shot', description: 'Multiple subjects in frame' },
+};
+
+// Camera angles
+export type CameraAngle =
+  | 'Eye Level'
+  | 'Low Angle'
+  | 'High Angle'
+  | 'Bird\'s Eye'
+  | 'Worm\'s Eye'
+  | 'Dutch Angle'
+  | 'Overhead';
+
+// Camera movements
+export type CameraMovement =
+  | 'Static'
+  | 'Pan'
+  | 'Tilt'
+  | 'Dolly In'
+  | 'Dolly Out'
+  | 'Dolly'
+  | 'Truck'
+  | 'Crane Up'
+  | 'Crane Down'
+  | 'Handheld'
+  | 'Steadicam'
+  | 'Gimbal'
+  | 'Zoom In'
+  | 'Zoom Out'
+  | 'Push In'
+  | 'Pull Out'
+  | 'Arc'
+  | 'Tracking'
+  | 'Whip Pan'
+  | 'Roll'
+  | 'Vertigo';
+
+// Lens/focal length info
+export interface LensInfo {
+  focalLength: string;   // e.g., "50mm", "24-70mm"
+  aperture?: string;     // e.g., "f/1.4", "f/2.8"
+  notes?: string;        // Special lens notes (anamorphic, vintage, etc.)
+}
+
+// Equipment needed for shot
+export interface ShotEquipment {
+  camera?: string;       // Camera body
+  lens?: LensInfo;
+  support?: string;      // Tripod, dolly, crane, etc.
+  grip?: string[];       // Flags, nets, diffusion, etc.
+  lighting?: string[];   // Light notes
+  special?: string[];    // Special equipment (drone, underwater, etc.)
+}
+
+// Shot status
+export type ShotStatus =
+  | 'Planned'
+  | 'Storyboarded'
+  | 'Approved'
+  | 'Setup'
+  | 'Filming'
+  | 'Completed'
+  | 'Cut';
+
+// Individual shot entry
+export interface Shot {
+  id: string;
+  sceneId: string;           // Links to breakdown scene
+  sceneNumber: string;       // Scene number for display
+  shotNumber: string;        // e.g., "1A", "2", "3B"
+
+  // Shot composition
+  size: ShotSize;
+  angle: CameraAngle;
+  movement: CameraMovement;
+  subject: string;           // What/who is being shot
+  description: string;       // Shot description
+
+  // Technical details
+  equipment: ShotEquipment;
+  duration?: number;         // Estimated duration in seconds
+
+  // Coverage and action
+  actionDescription?: string; // What happens in this shot
+  dialogueReference?: string; // Which dialogue lines covered
+  coverage?: string[];        // Which characters/action this covers
+
+  // Storyboard
+  storyboardFrame?: string;  // Base64 encoded image or URL
+  storyboardNotes?: string;
+
+  // Reference
+  referenceImages?: string[]; // Inspiration/reference images
+  referenceNotes?: string;
+
+  // Status and workflow
+  status: ShotStatus;
+  priority: number;          // Shooting order within scene
+  takes?: number;            // Number of takes (during production)
+  selectedTake?: string;     // Selected take reference
+
+  // Notes
+  directorNotes?: string;
+  dpNotes?: string;
+
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Scene coverage summary
+export interface SceneCoverage {
+  sceneId: string;
+  sceneNumber: string;
+  shotCount: number;
+  completedShots: number;
+  estimatedDuration: number;   // Total estimated duration
+  coverageComplete: boolean;   // Director marked as covered
+  notes?: string;
+}
+
+// Storyboard for a scene
+export interface Storyboard {
+  id: string;
+  sceneId: string;
+  sceneNumber: string;
+  frames: StoryboardFrame[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface StoryboardFrame {
+  id: string;
+  shotId?: string;           // Link to shot if applicable
+  order: number;             // Frame sequence
+  image?: string;            // Base64 or URL
+  description: string;
+  actionNotes?: string;
+  audioNotes?: string;       // Dialogue, sound effects, music
+  duration?: number;         // Estimated seconds
+}
+
+// Shot list for a scene (printable format)
+export interface ShotList {
+  id: string;
+  sceneId: string;
+  sceneNumber: string;
+  sceneName: string;
+  shots: Shot[];
+  totalDuration: number;
+  notes?: string;
+  createdAt: Date;
+}
+
+// Camera/lens package (what's available for production)
+export interface CameraPackage {
+  id: string;
+  name: string;
+  cameras: string[];
+  lenses: string[];
+  support: string[];
+  notes?: string;
+}
+
+// ViewFinder script sync (similar to ArtCart)
+export interface ViewFinderScriptSync {
+  scriptVersionId: string;
+  scriptVersionName: string;
+  syncedAt: Date;
+  isOutdated: boolean;
+  latestVersionId?: string;
+  latestVersionName?: string;
+}
+
+// Full ViewFinder state
+export interface ViewFinder {
+  id: string;
+  projectName: string;
+
+  // All shots organized by scene
+  shots: Shot[];
+
+  // Storyboards
+  storyboards: Storyboard[];
+
+  // Camera packages available
+  cameraPackages: CameraPackage[];
+
+  // Scene coverage tracking
+  sceneCoverage: SceneCoverage[];
+
+  // Script sync
+  scriptSync: ViewFinderScriptSync;
+  importedFromBreakdownId?: string;
+
+  // Settings
+  defaultCamera?: string;
+  defaultLens?: string;
 
   createdAt: Date;
   updatedAt: Date;

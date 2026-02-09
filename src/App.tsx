@@ -3,6 +3,7 @@ import { Toolbar } from './components/Toolbar';
 import { Editor } from './components/Editor';
 import { Breakdown } from './components/Breakdown';
 import { ArtCart } from './components/ArtCart';
+import ViewFinder from './components/ViewFinder';
 import { useScreenplayStore } from './store/screenplayStore';
 import './App.css';
 
@@ -40,6 +41,8 @@ function App() {
         return <Breakdown />;
       case 'artcart':
         return <ArtCart />;
+      case 'viewfinder':
+        return <ViewFinder />;
       default:
         return <Editor />;
     }
