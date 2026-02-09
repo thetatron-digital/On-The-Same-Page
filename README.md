@@ -1,4 +1,4 @@
-# OTSP - One True Screenwriting Platform
+# OTSP - On The Same Page
 
 A complete film production ecosystem from development to wrap. Write, break down, schedule, and manage your production all in one place.
 
