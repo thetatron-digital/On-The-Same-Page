@@ -250,8 +250,25 @@ Source: https://firebase.google.com/pricing
 29. Version Management for script snapshots
 30. Truly centered element dropdown in toolbar
 
+### Planned (ReWriter)
+- **Dual Dialogue** - Side-by-side simultaneous character speech
+- **Scene Numbers** - Auto-numbered scenes for production
+- **More/Continued** - Auto "(MORE)" and "(CONT'D)" at page breaks
+- **Watermarking** - Security watermarks on PDF exports
+- **Page Locking** - Lock pages to signal readiness for next pipeline stage
+
 ### In Progress
 - Planning Firebase integration
+- Planning BreakDown app
+
+### Future: System-Wide Templates
+Templates will be a global system (not just ReWriter) to support different formats:
+- Feature films (current default)
+- TV shows (different act structures, episode formats)
+- Short films
+- YouTube videos / web content
+
+This affects BluePrint beat sheets, CorkBoard layouts, and other pipeline tools.
 
 ### Known Issues
 - None currently documented
