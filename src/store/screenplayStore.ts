@@ -4,7 +4,9 @@ import type {
   Beat, BeatBoard, ScriptVersion, ScriptNote,
   StoryOutline, PlotOverview, StoryCharacter, ActsOverview, StoryBeat,
   AutoCompleteState, ScriptCharacter, ScriptLocation, AutoCompleteSuggestion,
-  PageLock, WatermarkSettings
+  PageLock, WatermarkSettings,
+  Breakdown, BreakdownElement, BreakdownScene, BreakdownCategory,
+  CustomCategory
 } from '../types/screenplay';
 import { LINES_PER_PAGE, DEFAULT_BEAT_STRUCTURE } from '../types/screenplay';
 import { createNewScreenplay, generateId, parseFDX, generateFDX, getPlainText } from '../utils/fdx';
@@ -17,6 +19,10 @@ import {
   getExtensionSuggestions,
   getTimeOfDaySuggestions
 } from '../utils/scriptParser';
+import {
+  generateBreakdownScenes,
+  getElementsForScene,
+} from '../utils/breakdown';
 
 // Panel visibility options
 interface PanelState {
@@ -38,7 +44,7 @@ interface VisibilityState {
 type ViewMode = 'script' | 'split';
 
 // App modes (top-level application switching)
-type AppMode = 'blueprint' | 'corkboard' | 'rewriter';
+type AppMode = 'blueprint' | 'corkboard' | 'rewriter' | 'breakdown';
 
 // Split View content (independent from main script)
 interface SplitEntry {
@@ -123,6 +129,12 @@ interface ScreenplayState {
 
   // Watermark Settings
   watermarkSettings: WatermarkSettings;
+
+  // Breakdown State
+  breakdown: Breakdown | null;
+  breakdownScenes: BreakdownScene[];
+  selectedBreakdownCategory: BreakdownCategory | null;
+  selectedBreakdownSceneId: string | null;
 
   // Actions
   setScreenplay: (screenplay: Screenplay) => void;
@@ -231,6 +243,17 @@ interface ScreenplayState {
 
   // Dual Dialogue actions
   toggleDualDialogue: (characterElementId: string) => void;
+
+  // Breakdown actions
+  initializeBreakdown: () => void;
+  refreshBreakdownScenes: () => void;
+  selectBreakdownCategory: (category: BreakdownCategory | null) => void;
+  selectBreakdownScene: (sceneId: string | null) => void;
+  addBreakdownElement: (element: BreakdownElement) => void;
+  updateBreakdownElement: (elementId: string, updates: Partial<BreakdownElement>) => void;
+  deleteBreakdownElement: (elementId: string) => void;
+  addCustomCategory: (category: CustomCategory) => void;
+  getBreakdownElementsForScene: (sceneId: string) => BreakdownElement[];
 
   // Theme
   toggleDarkMode: () => void;
@@ -394,6 +417,12 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
     angle: -45,
     position: 'diagonal',
   },
+
+  // Breakdown state
+  breakdown: null,
+  breakdownScenes: [],
+  selectedBreakdownCategory: null,
+  selectedBreakdownSceneId: null,
 
   // Save current state to history (call before making changes)
   saveToHistory: () => {
@@ -1357,6 +1386,161 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
       screenplay: { ...state.screenplay, elements },
       isDirty: true,
     });
+  },
+
+  // Breakdown actions
+  initializeBreakdown: () => {
+    const state = get();
+    const scenes = generateBreakdownScenes(state.screenplay.elements);
+
+    const breakdown: Breakdown = {
+      id: generateId(),
+      name: `Breakdown - ${state.screenplay.title || 'Untitled'}`,
+      scriptVersionId: state.activeVersionId || 'main',
+      versionInfo: {
+        scriptVersionId: state.activeVersionId || 'main',
+        scriptVersionName: 'Current',
+        createdAt: new Date(),
+        lastSyncedAt: new Date(),
+        missingElements: [],
+        newScenes: [],
+        syncStatus: 'current',
+      },
+      elements: [],
+      scenes,
+      customCategories: [],
+      castList: [],
+      locationsList: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    set({
+      breakdown,
+      breakdownScenes: scenes,
+      selectedBreakdownSceneId: scenes[0]?.id || null,
+    });
+  },
+
+  refreshBreakdownScenes: () => {
+    const state = get();
+    const scenes = generateBreakdownScenes(state.screenplay.elements);
+
+    // Preserve existing element assignments
+    const existingElements = state.breakdown?.elements || [];
+    const updatedScenes = scenes.map(scene => ({
+      ...scene,
+      elements: existingElements
+        .filter(el => el.sceneId === scene.id)
+        .map(el => el.id),
+    }));
+
+    set({
+      breakdownScenes: updatedScenes,
+      breakdown: state.breakdown ? {
+        ...state.breakdown,
+        scenes: updatedScenes,
+        versionInfo: {
+          ...state.breakdown.versionInfo,
+          lastSyncedAt: new Date(),
+          syncStatus: 'current',
+        },
+        updatedAt: new Date(),
+      } : null,
+    });
+  },
+
+  selectBreakdownCategory: (category) => set({ selectedBreakdownCategory: category }),
+
+  selectBreakdownScene: (sceneId) => set({ selectedBreakdownSceneId: sceneId }),
+
+  addBreakdownElement: (element) => {
+    const state = get();
+    if (!state.breakdown) return;
+
+    const newElements = [...state.breakdown.elements, element];
+
+    // Update scene's element list
+    const updatedScenes = state.breakdown.scenes.map(scene =>
+      scene.id === element.sceneId
+        ? { ...scene, elements: [...scene.elements, element.id] }
+        : scene
+    );
+
+    set({
+      breakdown: {
+        ...state.breakdown,
+        elements: newElements,
+        scenes: updatedScenes,
+        updatedAt: new Date(),
+      },
+      breakdownScenes: updatedScenes,
+      isDirty: true,
+    });
+  },
+
+  updateBreakdownElement: (elementId, updates) => {
+    const state = get();
+    if (!state.breakdown) return;
+
+    const newElements = state.breakdown.elements.map(el =>
+      el.id === elementId ? { ...el, ...updates } : el
+    );
+
+    set({
+      breakdown: {
+        ...state.breakdown,
+        elements: newElements,
+        updatedAt: new Date(),
+      },
+      isDirty: true,
+    });
+  },
+
+  deleteBreakdownElement: (elementId) => {
+    const state = get();
+    if (!state.breakdown) return;
+
+    const elementToDelete = state.breakdown.elements.find(el => el.id === elementId);
+    const newElements = state.breakdown.elements.filter(el => el.id !== elementId);
+
+    // Update scene's element list
+    const updatedScenes = state.breakdown.scenes.map(scene =>
+      scene.id === elementToDelete?.sceneId
+        ? { ...scene, elements: scene.elements.filter(id => id !== elementId) }
+        : scene
+    );
+
+    set({
+      breakdown: {
+        ...state.breakdown,
+        elements: newElements,
+        scenes: updatedScenes,
+        updatedAt: new Date(),
+      },
+      breakdownScenes: updatedScenes,
+      isDirty: true,
+    });
+  },
+
+  addCustomCategory: (category) => {
+    const state = get();
+    if (!state.breakdown) return;
+
+    set({
+      breakdown: {
+        ...state.breakdown,
+        customCategories: [...state.breakdown.customCategories, category],
+        updatedAt: new Date(),
+      },
+      isDirty: true,
+    });
+  },
+
+  getBreakdownElementsForScene: (sceneId) => {
+    const state = get();
+    if (!state.breakdown) return [];
+    return getElementsForScene(state.breakdown.elements, sceneId);
   },
 
   toggleDarkMode: () => set((state) => ({ darkMode: !state.darkMode })),

@@ -1,11 +1,12 @@
 import { useEffect } from 'react';
 import { Toolbar } from './components/Toolbar';
 import { Editor } from './components/Editor';
+import { Breakdown } from './components/Breakdown';
 import { useScreenplayStore } from './store/screenplayStore';
 import './App.css';
 
 function App() {
-  const { darkMode, isDirty, fileName } = useScreenplayStore();
+  const { darkMode, isDirty, fileName, activeApp } = useScreenplayStore();
 
   // Apply dark mode class to document
   useEffect(() => {
@@ -34,7 +35,7 @@ function App() {
   return (
     <div className="app">
       <Toolbar />
-      <Editor />
+      {activeApp === 'breakdown' ? <Breakdown /> : <Editor />}
     </div>
   );
 }
