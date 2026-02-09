@@ -1,0 +1,652 @@
+/* BaseCamp App Styles */
+
+.basecamp-container {
+  display: flex;
+  height: 100%;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Sidebar */
+.basecamp-sidebar {
+  width: 280px;
+  background: var(--bg-primary);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.sidebar-section {
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sidebar-section h3 {
+  margin: 0 0 12px 0;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.sidebar-section.stats {
+  background: var(--bg-secondary);
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.stat-value {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.stat-value.warning {
+  color: #F59E0B;
+}
+
+/* Unscheduled section */
+.sidebar-section.unscheduled {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.unscheduled-area {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 100px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.empty-text {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 20px 10px;
+}
+
+.strip-list.vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Sidebar actions */
+.sidebar-actions {
+  padding: 16px;
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.import-btn,
+.add-day-btn,
+.settings-btn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.import-btn {
+  background: var(--accent-color);
+  color: white;
+}
+
+.import-btn:hover {
+  opacity: 0.9;
+}
+
+.add-day-btn {
+  background: #22C55E;
+  color: white;
+}
+
+.add-day-btn:hover {
+  background: #16A34A;
+}
+
+.add-day-btn.large {
+  padding: 14px 24px;
+  font-size: 14px;
+}
+
+.settings-btn {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.settings-btn:hover {
+  background: var(--bg-hover);
+}
+
+/* Main content */
+.basecamp-main {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-primary);
+}
+
+.main-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.strip-legend {
+  display: flex;
+  gap: 8px;
+}
+
+.legend-item {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  border: 1px solid var(--border-color);
+}
+
+/* Empty state */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  color: var(--text-muted);
+  padding: 40px;
+}
+
+.empty-state p {
+  margin-bottom: 16px;
+}
+
+/* Days board */
+.days-board {
+  flex: 1;
+  display: flex;
+  gap: 16px;
+  padding: 20px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* Day column */
+.day-column {
+  flex: 0 0 240px;
+  background: var(--bg-primary);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 2px solid transparent;
+  transition: border-color 0.15s ease;
+}
+
+.day-column.selected {
+  border-color: var(--accent-color);
+}
+
+.day-header {
+  padding: 12px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.day-number {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.day-date {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.day-info {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.day-times {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.day-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.day-actions .edit-btn,
+.day-actions .delete-btn {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.day-actions .edit-btn {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.day-actions .delete-btn {
+  background: transparent;
+  color: #EF4444;
+  font-size: 16px;
+  padding: 4px 8px;
+}
+
+.day-actions .delete-btn:hover {
+  background: #FEE2E2;
+}
+
+.basecamp-container.dark .day-actions .delete-btn:hover {
+  background: #450A0A;
+}
+
+/* Day strips area */
+.day-strips {
+  flex: 1;
+  padding: 8px;
+  overflow-y: auto;
+  min-height: 200px;
+}
+
+.drop-zone {
+  height: 100%;
+  min-height: 150px;
+  border: 2px dashed var(--border-color);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.strip-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Strip */
+.strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: grab;
+  transition: all 0.15s ease;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.strip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.strip.selected {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 1px;
+}
+
+.strip.locked {
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.strip:active {
+  cursor: grabbing;
+}
+
+.strip-scene {
+  font-weight: 700;
+  min-width: 28px;
+}
+
+.strip-int-ext {
+  font-weight: 500;
+  min-width: 32px;
+}
+
+.strip-location {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.strip-time {
+  font-size: 10px;
+  opacity: 0.8;
+}
+
+.strip-pages {
+  font-size: 10px;
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.strip-lock,
+.strip-flag {
+  font-size: 10px;
+}
+
+/* Right panel */
+.basecamp-panel {
+  width: 280px;
+  background: var(--bg-primary);
+  border-left: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.panel-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.close-btn {
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 20px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.close-btn:hover {
+  background: var(--bg-hover);
+}
+
+.panel-content {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.info-group {
+  margin-bottom: 16px;
+}
+
+.info-group label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.info-group p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.panel-flags {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.panel-flags label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.panel-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.lock-btn,
+.unassign-btn {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.lock-btn {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.lock-btn.locked {
+  background: #FEF3C7;
+  color: #B45309;
+}
+
+.basecamp-container.dark .lock-btn.locked {
+  background: #422006;
+  color: #FBBF24;
+}
+
+.unassign-btn {
+  background: transparent;
+  color: #EF4444;
+  border: 1px solid #EF4444;
+}
+
+.unassign-btn:hover {
+  background: #EF4444;
+  color: white;
+}
+
+.unassign-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Modal styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: var(--bg-primary);
+  border-radius: 12px;
+  padding: 24px;
+  width: 400px;
+  max-width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-content h3 {
+  margin: 0 0 20px 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: var(--text-muted);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.form-group input[type="checkbox"] {
+  width: auto;
+  margin-right: 8px;
+}
+
+.form-hint {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  font-style: italic;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.modal-actions button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.modal-actions button:first-child {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.modal-actions button.primary {
+  background: var(--accent-color);
+  color: white;
+}
+
+/* Dark mode */
+.basecamp-container.dark {
+  --bg-primary: #1a1a2e;
+  --bg-secondary: #16162a;
+  --bg-hover: #252540;
+  --border-color: #2d2d4a;
+  --text-primary: #e0e0e0;
+  --text-muted: #888;
+  --accent-color: #4a90d9;
+}
+
+.basecamp-container.light {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f7;
+  --bg-hover: #e8e8ec;
+  --border-color: #ddd;
+  --text-primary: #1a1a1a;
+  --text-muted: #666;
+  --accent-color: #007AFF;
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+  .basecamp-panel {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .basecamp-sidebar {
+    width: 240px;
+  }
+
+  .day-column {
+    flex: 0 0 200px;
+  }
+}

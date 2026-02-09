@@ -4,6 +4,7 @@ import { Editor } from './components/Editor';
 import { Breakdown } from './components/Breakdown';
 import { ArtCart } from './components/ArtCart';
 import ViewFinder from './components/ViewFinder';
+import BaseCamp from './components/BaseCamp';
 import { useScreenplayStore } from './store/screenplayStore';
 import './App.css';
 
@@ -43,6 +44,8 @@ function App() {
         return <ArtCart />;
       case 'viewfinder':
         return <ViewFinder />;
+      case 'basecamp':
+        return <BaseCamp />;
       default:
         return <Editor />;
     }

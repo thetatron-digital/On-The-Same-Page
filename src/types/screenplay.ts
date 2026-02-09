@@ -1017,3 +1017,335 @@ export interface ViewFinder {
   createdAt: Date;
   updatedAt: Date;
 }
+
+// ============================================
+// BASECAMP APP TYPES (Scheduling & Production)
+// ============================================
+
+// Strip colors (industry standard)
+export type StripColor =
+  | 'White'      // Day exterior
+  | 'Yellow'     // Day interior
+  | 'Green'      // Day ext/int
+  | 'Blue'       // Night exterior
+  | 'Black'      // Night interior (often shown as dark blue)
+  | 'Purple'     // Night ext/int
+  | 'Orange'     // Dawn/Dusk
+  | 'Pink';      // Special (VFX, stunts, etc.)
+
+export const STRIP_COLOR_MAP: Record<string, StripColor> = {
+  'EXT-DAY': 'White',
+  'INT-DAY': 'Yellow',
+  'INT/EXT-DAY': 'Green',
+  'EXT-NIGHT': 'Blue',
+  'INT-NIGHT': 'Black',
+  'INT/EXT-NIGHT': 'Purple',
+  'EXT-DAWN': 'Orange',
+  'EXT-DUSK': 'Orange',
+  'INT-DAWN': 'Orange',
+  'INT-DUSK': 'Orange',
+};
+
+export const STRIP_COLOR_HEX: Record<StripColor, string> = {
+  'White': '#FFFFFF',
+  'Yellow': '#FEF08A',
+  'Green': '#86EFAC',
+  'Blue': '#93C5FD',
+  'Black': '#1E3A5F',
+  'Purple': '#C4B5FD',
+  'Orange': '#FED7AA',
+  'Pink': '#FBCFE8',
+};
+
+// Scene strip for strip board
+export interface SceneStrip {
+  id: string;
+  sceneId: string;           // Links to BreakdownScene
+  sceneNumber: string;
+  intExt: string;
+  location: string;
+  timeOfDay: string;
+  description: string;       // Brief description
+  pageCount: number;         // In eighths (e.g., 2.5 = 2 4/8)
+  color: StripColor;
+
+  // Cast requirements
+  castIds: string[];         // From breakdown
+  castNumbers: number[];     // Day player numbers
+
+  // Scheduling
+  scheduledDayId?: string;   // Which shoot day
+  orderInDay?: number;       // Position in day
+
+  // Flags
+  isLocked: boolean;         // Can't be moved
+  hasStunts: boolean;
+  hasVFX: boolean;
+  hasSpecialEquipment: boolean;
+
+  notes?: string;
+}
+
+// Shot package - groups shots for scheduling
+export interface ShotPackage {
+  id: string;
+  name: string;              // e.g., "Scene 12 - Wide Coverage"
+  sceneId: string;
+  sceneNumber: string;
+  shotIds: string[];         // From ViewFinder
+  estimatedDuration: number; // In minutes
+
+  // Requirements (pulled from shots)
+  equipment: string[];
+  castIds: string[];
+
+  // Scheduling
+  scheduledDayId?: string;
+  orderInDay?: number;
+  splitFromPackageId?: string;  // If this was split from another package
+
+  notes?: string;
+}
+
+// Shoot day
+export interface ShootDay {
+  id: string;
+  dayNumber: number;         // Shoot day 1, 2, 3...
+  date?: Date;               // Actual date if scheduled
+
+  // Scheduling
+  strips: string[];          // SceneStrip IDs in order
+  shotPackages: string[];    // ShotPackage IDs in order
+
+  // Times
+  callTime: string;          // e.g., "6:00 AM"
+  estimatedWrap: string;     // e.g., "7:00 PM"
+  lunchTime?: string;        // e.g., "12:30 PM"
+  lunchDuration?: number;    // Minutes (typically 30 or 60)
+
+  // Location
+  location?: string;         // Main location for the day
+  locationAddress?: string;
+
+  // Weather/conditions
+  weatherBackup?: string;    // Cover set if weather fails
+
+  // Flags
+  isLocked: boolean;
+  hasNightWork: boolean;
+
+  notes?: string;
+}
+
+// Day break marker (for strip board)
+export interface DayBreak {
+  id: string;
+  afterStripId: string;      // Goes after this strip
+  dayId: string;             // Links to ShootDay
+  label: string;             // "END OF DAY 1"
+}
+
+// Company move marker
+export interface CompanyMove {
+  id: string;
+  afterStripId: string;
+  fromLocation: string;
+  toLocation: string;
+  estimatedTime: number;     // Minutes
+}
+
+// Cast member for DOOD (Day Out of Days)
+export interface DOODEntry {
+  castId: string;
+  castName: string;
+  characterName: string;
+  dayStatuses: DOODDayStatus[];  // One per shoot day
+}
+
+export type DOODStatus =
+  | 'W'    // Work
+  | 'SW'   // Start/Work
+  | 'WF'   // Work/Finish
+  | 'SWF'  // Start/Work/Finish (one day player)
+  | 'H'    // Hold (on call but not working)
+  | 'T'    // Travel
+  | 'R'    // Rehearsal
+  | 'F'    // Fitting
+  | ''     // Off/Not scheduled
+  ;
+
+export interface DOODDayStatus {
+  dayId: string;
+  dayNumber: number;
+  status: DOODStatus;
+}
+
+// Schedule overview
+export interface Schedule {
+  id: string;
+  projectName: string;
+
+  // All strips
+  strips: SceneStrip[];
+  unscheduledStrips: string[];  // Strip IDs not assigned to a day
+
+  // All shot packages
+  shotPackages: ShotPackage[];
+  unscheduledPackages: string[];
+
+  // Shoot days
+  shootDays: ShootDay[];
+
+  // Markers
+  dayBreaks: DayBreak[];
+  companyMoves: CompanyMove[];
+
+  // DOOD
+  dood: DOODEntry[];
+
+  // Production info
+  startDate?: Date;
+  estimatedEndDate?: Date;
+  totalShootDays: number;
+
+  // Settings
+  defaultCallTime: string;
+  defaultLunchDuration: number;
+  showLunchOnBoard: boolean;     // Toggle for OnSet display
+
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ============================================
+// ONSET APP TYPES (Live Production Board)
+// ============================================
+
+// Current production status
+export interface ProductionStatus {
+  currentDayId: string;
+  currentStripIndex: number;
+  currentShotPackageIndex: number;
+
+  // Timing
+  dayStartedAt?: Date;
+  currentSetupStartedAt?: Date;
+
+  // Progress
+  completedStrips: string[];
+  completedPackages: string[];
+
+  // Actual times log
+  actualTimes: ActualTimeEntry[];
+
+  // Status
+  aheadBehind: number;          // Minutes (+ahead, -behind)
+  lastUpdated: Date;
+}
+
+export interface ActualTimeEntry {
+  id: string;
+  type: 'strip' | 'package' | 'break' | 'delay';
+  referenceId: string;          // Strip or package ID
+  startedAt: Date;
+  completedAt?: Date;
+  estimatedMinutes: number;
+  actualMinutes?: number;
+  delayReason?: string;
+}
+
+// Display settings for OnSet
+export interface OnSetDisplaySettings {
+  showLunchCountdown: boolean;
+  showProgressBar: boolean;
+  showNextShot: boolean;
+  showStoryboard: boolean;
+  autoAdvance: boolean;          // Auto-move to next when marked complete
+  fontSize: 'normal' | 'large' | 'xlarge';
+}
+
+// ============================================
+// SUPERVISOR APP TYPES (Script Supervisor)
+// ============================================
+
+// Take log entry
+export interface TakeEntry {
+  id: string;
+
+  // What was shot
+  sceneNumber: string;
+  shotId: string;               // From ViewFinder
+  shotNumber: string;
+
+  // Take info
+  takeNumber: number;
+  camera: string;               // 'A', 'B', 'C', etc.
+
+  // Timecode
+  timecodeIn?: string;
+  timecodeOut?: string;
+  duration?: number;            // Seconds
+
+  // Rating
+  circled: boolean;             // "Print this"
+  rating: 'Print' | 'Hold' | 'NG' | '';
+
+  // Notes for editor
+  directorNotes?: string;       // "Use first half"
+  editorNotes?: string;         // "Best performance"
+  technicalNotes?: string;      // "Boom in shot at 0:23"
+
+  // Continuity
+  continuityNotes?: string;
+  screenDirection?: 'L-R' | 'R-L';
+
+  // Reference
+  frameGrab?: string;           // Screenshot/photo
+
+  createdAt: Date;
+}
+
+// Lined script coverage
+export interface ScriptCoverage {
+  id: string;
+  shotId: string;
+  shotNumber: string;
+  color: string;                // Line color
+
+  // Script range covered
+  startElementId: string;
+  startOffset: number;
+  endElementId: string;
+  endOffset: number;
+
+  // Coverage type
+  coverageType: 'on-screen' | 'off-screen' | 'partial';
+  lineStyle: 'solid' | 'wavy' | 'dashed';
+  side: 'left' | 'right';       // Which margin
+}
+
+// Full supervisor session
+export interface SupervisorSession {
+  id: string;
+  shootDayId: string;
+  date: Date;
+
+  // Take logs
+  takes: TakeEntry[];
+
+  // Lined script
+  coverage: ScriptCoverage[];
+
+  // Daily totals
+  totalSetups: number;
+  totalTakes: number;
+  totalPrints: number;          // Circled takes
+
+  // Export tracking
+  exportedToEditor: boolean;
+  exportedAt?: Date;
+
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
