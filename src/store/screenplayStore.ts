@@ -14,7 +14,8 @@ import type {
   Schedule, SceneStrip, ShotPackage, ShootDay, StripColor,
   DOODEntry, DOODStatus,
   OnSet, OnSetViewMode, OnSetDisplaySettings, ProductionStatus, LunchStatus, DelayEntry,
-  SuperVisor, SupervisorSession, TakeEntry, ContinuityLog, DailyReport, SlateInfo
+  SuperVisor, SupervisorSession, TakeEntry, ContinuityLog, DailyReport, SlateInfo,
+  ThemeId
 } from '../types/screenplay';
 import { STRIP_COLOR_MAP } from '../types/screenplay';
 import { LINES_PER_PAGE, DEFAULT_BEAT_STRUCTURE } from '../types/screenplay';
@@ -91,6 +92,7 @@ interface ScreenplayState {
   isDirty: boolean;
   fileName: string;
   darkMode: boolean;
+  activeTheme: ThemeId;
 
   // Undo/Redo
   history: HistoryEntry[];
@@ -451,6 +453,7 @@ interface ScreenplayState {
 
   // Theme
   toggleDarkMode: () => void;
+  setTheme: (themeId: ThemeId) => void;
 }
 
 // Calculate writing statistics from screenplay
@@ -507,6 +510,7 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
   isDirty: false,
   fileName: 'Untitled.fdx',
   darkMode: true,
+  activeTheme: 'default',
 
   // Undo/Redo state
   history: [],
@@ -4320,4 +4324,6 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
   },
 
   toggleDarkMode: () => set((state) => ({ darkMode: !state.darkMode })),
+
+  setTheme: (themeId: ThemeId) => set(() => ({ activeTheme: themeId })),
 }));

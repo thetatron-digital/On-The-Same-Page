@@ -1,6 +1,9 @@
-/* CSS Variables for theming */
+/* Import theme definitions */
+@import './themes.css';
+
+/* CSS Variables for theming - these are defaults that get overridden by themes */
 :root {
-  /* Light theme */
+  /* Light theme - default */
   --app-bg: #f5f5f5;
   --toolbar-bg: #ffffff;
   --toolbar-secondary-bg: #fafafa;
@@ -51,16 +54,23 @@
 
   /* Page border */
   --page-border: #d0d0d0;
+
+  /* Theme system variables */
+  --theme-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  --theme-border-radius: 4px;
+  --theme-button-style: normal;
+  --theme-box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --theme-gradient: none;
 }
 
-/* Dark theme - matches Final Draft dark mode */
+/* Legacy dark theme support - maps to default-dark */
 [data-theme="dark"] {
   --app-bg: #1a1a1a;
   --toolbar-bg: #2d2d2d;
   --toolbar-secondary-bg: #252525;
-  --editor-bg: #141414; /* Darker background outside page */
+  --editor-bg: #141414;
   --panel-bg: #252525;
-  --script-bg: #1e1e1e; /* Page background */
+  --script-bg: #1e1e1e;
   --script-text: #e0e0e0;
   --page-border: #3a3a3a;
 
@@ -85,7 +95,6 @@
   --scrollbar-thumb-hover: #5a5a5a;
   --scrollbar-track: rgba(255, 255, 255, 0.02);
 
-  /* Ruler */
   --ruler-bg: #2a2a2a;
   --ruler-text: #888888;
   --ruler-marker: #e0e0e0;

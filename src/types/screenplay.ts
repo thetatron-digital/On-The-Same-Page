@@ -1482,3 +1482,75 @@ export interface SuperVisor {
   selectedShotId: string | null;
   filterCamera: string | 'All';
 }
+
+// ============================================
+// THEME/SKIN TYPES
+// ============================================
+
+// Available themes
+export type ThemeId =
+  | 'default'           // Current default theme
+  | 'ridley-scott'      // Bold, dramatic arrows and industrial
+  | 'y2k-chrome'        // Glossy chrome, gradients, early 2000s aesthetic
+  | 'macos-minimal'     // Clean, minimalist Apple-inspired
+  | 'retro-xp'          // Windows XP/Vista nostalgic look
+  | 'midnight-writer';  // Deep dark mode for late night writing
+
+// Theme configuration
+export interface Theme {
+  id: ThemeId;
+  name: string;
+  description: string;
+  isDark: boolean; // Whether this is a dark theme variant
+  preview: {
+    primary: string;    // Main accent color for preview
+    secondary: string;  // Secondary color for preview
+    background: string; // Background color for preview
+  };
+}
+
+// Theme registry with all available themes
+export const THEMES: Theme[] = [
+  {
+    id: 'default',
+    name: 'Default',
+    description: 'Clean professional look',
+    isDark: false,
+    preview: { primary: '#2563eb', secondary: '#f5f5f5', background: '#ffffff' }
+  },
+  {
+    id: 'ridley-scott',
+    name: 'Ridley Scott',
+    description: 'Bold industrial cinematic style',
+    isDark: true,
+    preview: { primary: '#ff4444', secondary: '#1a1a1a', background: '#0d0d0d' }
+  },
+  {
+    id: 'y2k-chrome',
+    name: 'Y2K Chrome',
+    description: 'Glossy metallic millennium aesthetic',
+    isDark: false,
+    preview: { primary: '#00d4ff', secondary: '#c0c0c0', background: '#e8e8e8' }
+  },
+  {
+    id: 'macos-minimal',
+    name: 'macOS Minimal',
+    description: 'Clean Apple-inspired minimalism',
+    isDark: false,
+    preview: { primary: '#007aff', secondary: '#f5f5f7', background: '#ffffff' }
+  },
+  {
+    id: 'retro-xp',
+    name: 'Retro XP',
+    description: 'Classic Windows XP nostalgia',
+    isDark: false,
+    preview: { primary: '#0078d4', secondary: '#ece9d8', background: '#0a246a' }
+  },
+  {
+    id: 'midnight-writer',
+    name: 'Midnight Writer',
+    description: 'Deep dark mode for focus',
+    isDark: true,
+    preview: { primary: '#a855f7', secondary: '#1e1e2e', background: '#11111b' }
+  }
+];
