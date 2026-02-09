@@ -249,13 +249,12 @@ Source: https://firebase.google.com/pricing
 28. Scene Navigator with real-time scene updates
 29. Version Management for script snapshots
 30. Truly centered element dropdown in toolbar
-
-### Planned (ReWriter)
-- **Dual Dialogue** - Side-by-side simultaneous character speech
-- **Scene Numbers** - Auto-numbered scenes for production
-- **More/Continued** - Auto "(MORE)" and "(CONT'D)" at page breaks
-- **Watermarking** - Security watermarks on PDF exports
-- **Page Locking** - Lock pages to signal readiness for next pipeline stage
+31. Scene Numbers with auto-generation and display
+32. More/Continued auto-insertion at page breaks
+33. Dual Dialogue side-by-side rendering
+34. Watermarking on PDF exports
+35. Page Locking for production readiness
+36. Production dropdown in toolbar
 
 ### In Progress
 - Planning Firebase integration
@@ -276,6 +275,38 @@ This affects BluePrint beat sheets, CorkBoard layouts, and other pipeline tools.
 ---
 
 ## Version History
+
+### v3.3 - February 9, 2026
+Production Features for ReWriter:
+
+**Scene Numbers**
+- Auto-generate scene numbers for Scene Heading elements
+- Display on both sides of scene heading (industry standard)
+- Toggle visibility and clear/regenerate from Production dropdown
+
+**More/Continued**
+- Auto "(MORE)" at bottom of page when dialogue breaks
+- Auto "CHARACTER (CONT'D)" at top of next page
+- Seamless handling during PDF export
+
+**Dual Dialogue**
+- Side-by-side character dialogue support
+- Toggle dual dialogue mode for character blocks
+- PDF renders in two-column layout
+
+**Watermarking**
+- Configurable watermark text on PDF exports
+- Position options: diagonal, center, header, footer
+- Adjustable opacity and font size
+
+**Page Locking**
+- Lock pages to signal production readiness
+- Tracks lock date and optional revision color
+- Supports industry color revision system
+
+**UI**
+- New "Production" dropdown in ReWriter toolbar
+- Quick access to scene numbers and watermark settings
 
 ### v3.2 - February 7, 2026
 Smart Type Phase 3 - Extensions & Time of Day:
