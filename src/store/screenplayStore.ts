@@ -7,7 +7,8 @@ import type {
   PageLock, WatermarkSettings,
   Breakdown, BreakdownElement, BreakdownScene, BreakdownCategory,
   CustomCategory,
-  ArtCart, ArtCartItem, Vendor, ShoppingList, SourcingStatus, ItemPriority
+  ArtCart, ArtCartItem, Vendor, ShoppingList, SourcingStatus, ItemPriority,
+  ItemOption, ApprovalStatus, ArtCartBudget, BudgetStatus
 } from '../types/screenplay';
 import { LINES_PER_PAGE, DEFAULT_BEAT_STRUCTURE } from '../types/screenplay';
 import { createNewScreenplay, generateId, parseFDX, generateFDX, getPlainText } from '../utils/fdx';
@@ -265,17 +266,38 @@ interface ScreenplayState {
   // ArtCart actions
   initializeArtCart: () => void;
   importFromBreakdown: () => void;
-  addArtCartItem: (item: Omit<ArtCartItem, 'id' | 'createdAt' | 'updatedAt'>) => string;
+  checkScriptVersionSync: () => void;
+  addArtCartItem: (item: Omit<ArtCartItem, 'id' | 'createdAt' | 'updatedAt' | 'options'>) => string;
   updateArtCartItem: (itemId: string, updates: Partial<ArtCartItem>) => void;
   deleteArtCartItem: (itemId: string) => void;
   setArtCartItemStatus: (itemId: string, status: SourcingStatus) => void;
   setArtCartItemPriority: (itemId: string, priority: ItemPriority) => void;
+
+  // Item Options actions
+  addItemOption: (itemId: string, option: Omit<ItemOption, 'id' | 'createdAt' | 'approvalStatus'>) => string;
+  updateItemOption: (itemId: string, optionId: string, updates: Partial<ItemOption>) => void;
+  deleteItemOption: (itemId: string, optionId: string) => void;
+  approveItemOption: (itemId: string, optionId: string, approvedBy: string, status: ApprovalStatus, notes?: string) => void;
+  selectItemOption: (itemId: string, optionId: string) => void;
+  setRecommendedOption: (itemId: string, optionId: string) => void;
+
+  // Vendor actions
   addVendor: (vendor: Omit<Vendor, 'id'>) => string;
   updateVendor: (vendorId: string, updates: Partial<Vendor>) => void;
   deleteVendor: (vendorId: string) => void;
+
+  // Shopping list actions
   createShoppingList: (name: string, itemIds: string[]) => string;
   updateShoppingList: (listId: string, updates: Partial<ShoppingList>) => void;
   deleteShoppingList: (listId: string) => void;
+
+  // Budget actions
+  setCategoryBudget: (category: string, allocated: number, status: BudgetStatus) => void;
+  updateBudgetSpent: (category: string, spent: number) => void;
+  setTotalBudget: (amount: number, status: BudgetStatus) => void;
+  calculateBudgetTotals: () => void;
+
+  // Filter actions
   selectArtCartCategory: (category: string | null) => void;
   selectArtCartItem: (itemId: string | null) => void;
   setArtCartFilterStatus: (status: SourcingStatus | 'All') => void;
@@ -1586,7 +1608,14 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
       vendors: [],
       shoppingLists: [],
       budgets: [],
+      scriptSync: {
+        scriptVersionId: state.activeVersionId || 'main',
+        scriptVersionName: 'Current',
+        syncedAt: new Date(),
+        isOutdated: false,
+      },
       importedFromBreakdownId: state.breakdown?.id,
+      totalBudgetStatus: 'Pending',
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -1613,6 +1642,8 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
       status: 'To Find' as SourcingStatus,
       priority: 'Medium' as ItemPriority,
       quantity: 1,
+      options: [],
+      needsApproval: false,
       sceneIds: [el.sceneId],
       breakdownElementId: el.id,
       createdAt: new Date(),
@@ -1628,6 +1659,11 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
     const updatedArtCart: ArtCart = state.artCart ? {
       ...state.artCart,
       items: [...state.artCart.items, ...uniqueNewItems],
+      scriptSync: {
+        ...state.artCart.scriptSync,
+        syncedAt: new Date(),
+        isOutdated: false,
+      },
       importedFromBreakdownId: state.breakdown.id,
       updatedAt: new Date(),
     } : {
@@ -1637,12 +1673,43 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
       vendors: [],
       shoppingLists: [],
       budgets: [],
+      scriptSync: {
+        scriptVersionId: state.activeVersionId || 'main',
+        scriptVersionName: 'Current',
+        syncedAt: new Date(),
+        isOutdated: false,
+      },
       importedFromBreakdownId: state.breakdown.id,
+      totalBudgetStatus: 'Pending',
       createdAt: new Date(),
       updatedAt: new Date(),
     };
 
     set({ artCart: updatedArtCart, isDirty: true });
+  },
+
+  checkScriptVersionSync: () => {
+    const state = get();
+    if (!state.artCart) return;
+
+    // Check if script has changed since last sync
+    const currentVersionId = state.activeVersionId || 'main';
+    const isOutdated = state.artCart.scriptSync.scriptVersionId !== currentVersionId;
+
+    if (isOutdated) {
+      set({
+        artCart: {
+          ...state.artCart,
+          scriptSync: {
+            ...state.artCart.scriptSync,
+            isOutdated: true,
+            latestVersionId: currentVersionId,
+            latestVersionName: state.versions.find(v => v.id === currentVersionId)?.name || 'Current',
+          },
+          updatedAt: new Date(),
+        },
+      });
+    }
   },
 
   addArtCartItem: (itemData) => {
@@ -1651,6 +1718,8 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
     const newItem: ArtCartItem = {
       ...itemData,
       id,
+      options: [],
+      needsApproval: itemData.needsApproval ?? false,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -1666,6 +1735,13 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
       vendors: [],
       shoppingLists: [],
       budgets: [],
+      scriptSync: {
+        scriptVersionId: state.activeVersionId || 'main',
+        scriptVersionName: 'Current',
+        syncedAt: new Date(),
+        isOutdated: false,
+      },
+      totalBudgetStatus: 'Pending' as BudgetStatus,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -1758,6 +1834,13 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
       vendors: [newVendor],
       shoppingLists: [],
       budgets: [],
+      scriptSync: {
+        scriptVersionId: state.activeVersionId || 'main',
+        scriptVersionName: 'Current',
+        syncedAt: new Date(),
+        isOutdated: false,
+      },
+      totalBudgetStatus: 'Pending' as BudgetStatus,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -1820,6 +1903,13 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
       vendors: [],
       shoppingLists: [newList],
       budgets: [],
+      scriptSync: {
+        scriptVersionId: state.activeVersionId || 'main',
+        scriptVersionName: 'Current',
+        syncedAt: new Date(),
+        isOutdated: false,
+      },
+      totalBudgetStatus: 'Pending' as BudgetStatus,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -1876,6 +1966,300 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
     const state = get();
     if (!state.artCart) return [];
     return state.artCart.items.filter(item => item.status === status);
+  },
+
+  // Item Options actions
+  addItemOption: (itemId, optionData) => {
+    const state = get();
+    if (!state.artCart) return '';
+
+    const optionId = generateId();
+    const newOption: ItemOption = {
+      ...optionData,
+      id: optionId,
+      approvalStatus: 'Pending',
+      createdAt: new Date(),
+    };
+
+    const updatedItems = state.artCart.items.map(item =>
+      item.id === itemId
+        ? { ...item, options: [...item.options, newOption], updatedAt: new Date() }
+        : item
+    );
+
+    set({
+      artCart: {
+        ...state.artCart,
+        items: updatedItems,
+        updatedAt: new Date(),
+      },
+      isDirty: true,
+    });
+    return optionId;
+  },
+
+  updateItemOption: (itemId, optionId, updates) => {
+    const state = get();
+    if (!state.artCart) return;
+
+    const updatedItems = state.artCart.items.map(item =>
+      item.id === itemId
+        ? {
+            ...item,
+            options: item.options.map(opt =>
+              opt.id === optionId ? { ...opt, ...updates } : opt
+            ),
+            updatedAt: new Date(),
+          }
+        : item
+    );
+
+    set({
+      artCart: {
+        ...state.artCart,
+        items: updatedItems,
+        updatedAt: new Date(),
+      },
+      isDirty: true,
+    });
+  },
+
+  deleteItemOption: (itemId, optionId) => {
+    const state = get();
+    if (!state.artCart) return;
+
+    const updatedItems = state.artCart.items.map(item =>
+      item.id === itemId
+        ? {
+            ...item,
+            options: item.options.filter(opt => opt.id !== optionId),
+            selectedOptionId: item.selectedOptionId === optionId ? undefined : item.selectedOptionId,
+            updatedAt: new Date(),
+          }
+        : item
+    );
+
+    set({
+      artCart: {
+        ...state.artCart,
+        items: updatedItems,
+        updatedAt: new Date(),
+      },
+      isDirty: true,
+    });
+  },
+
+  approveItemOption: (itemId, optionId, approvedBy, status, notes) => {
+    const state = get();
+    if (!state.artCart) return;
+
+    const updatedItems = state.artCart.items.map(item => {
+      if (item.id !== itemId) return item;
+
+      const updatedOptions = item.options.map(opt =>
+        opt.id === optionId
+          ? {
+              ...opt,
+              approvalStatus: status,
+              approvedBy,
+              approvalDate: new Date(),
+              approvalNotes: notes,
+            }
+          : opt
+      );
+
+      // If approved, auto-select this option
+      const selectedOptionId = status === 'Approved' ? optionId : item.selectedOptionId;
+
+      // Update item approval status based on option approval
+      const approvalStatus = status === 'Approved' || status === 'Indifferent'
+        ? status
+        : item.approvalStatus;
+
+      return {
+        ...item,
+        options: updatedOptions,
+        selectedOptionId,
+        approvalStatus,
+        approvedBy: status === 'Approved' ? approvedBy : item.approvedBy,
+        approvalDate: status === 'Approved' ? new Date() : item.approvalDate,
+        updatedAt: new Date(),
+      };
+    });
+
+    set({
+      artCart: {
+        ...state.artCart,
+        items: updatedItems,
+        updatedAt: new Date(),
+      },
+      isDirty: true,
+    });
+  },
+
+  selectItemOption: (itemId, optionId) => {
+    const state = get();
+    if (!state.artCart) return;
+
+    const updatedItems = state.artCart.items.map(item => {
+      if (item.id !== itemId) return item;
+
+      const selectedOption = item.options.find(opt => opt.id === optionId);
+      if (!selectedOption) return item;
+
+      return {
+        ...item,
+        selectedOptionId: optionId,
+        estimatedCost: selectedOption.price,
+        vendorId: selectedOption.vendorId,
+        updatedAt: new Date(),
+      };
+    });
+
+    set({
+      artCart: {
+        ...state.artCart,
+        items: updatedItems,
+        updatedAt: new Date(),
+      },
+      isDirty: true,
+    });
+  },
+
+  setRecommendedOption: (itemId, optionId) => {
+    const state = get();
+    if (!state.artCart) return;
+
+    const updatedItems = state.artCart.items.map(item => {
+      if (item.id !== itemId) return item;
+
+      return {
+        ...item,
+        options: item.options.map(opt => ({
+          ...opt,
+          isRecommended: opt.id === optionId,
+        })),
+        updatedAt: new Date(),
+      };
+    });
+
+    set({
+      artCart: {
+        ...state.artCart,
+        items: updatedItems,
+        updatedAt: new Date(),
+      },
+      isDirty: true,
+    });
+  },
+
+  // Budget actions
+  setCategoryBudget: (category, allocated, status) => {
+    const state = get();
+    if (!state.artCart) return;
+
+    const existingBudget = state.artCart.budgets.find(b => b.category === category);
+    const spent = existingBudget?.spent || 0;
+    const committed = existingBudget?.committed || 0;
+
+    const newBudget: ArtCartBudget = {
+      category,
+      status,
+      allocated,
+      spent,
+      committed,
+      remaining: allocated - spent - committed,
+    };
+
+    const updatedBudgets = existingBudget
+      ? state.artCart.budgets.map(b => b.category === category ? newBudget : b)
+      : [...state.artCart.budgets, newBudget];
+
+    set({
+      artCart: {
+        ...state.artCart,
+        budgets: updatedBudgets,
+        updatedAt: new Date(),
+      },
+      isDirty: true,
+    });
+  },
+
+  updateBudgetSpent: (category, spent) => {
+    const state = get();
+    if (!state.artCart) return;
+
+    const updatedBudgets = state.artCart.budgets.map(b => {
+      if (b.category !== category) return b;
+      return {
+        ...b,
+        spent,
+        remaining: b.allocated - spent - b.committed,
+      };
+    });
+
+    set({
+      artCart: {
+        ...state.artCart,
+        budgets: updatedBudgets,
+        updatedAt: new Date(),
+      },
+      isDirty: true,
+    });
+  },
+
+  setTotalBudget: (amount, status) => {
+    const state = get();
+    if (!state.artCart) return;
+
+    set({
+      artCart: {
+        ...state.artCart,
+        totalBudgetAllocated: amount,
+        totalBudgetStatus: status,
+        updatedAt: new Date(),
+      },
+      isDirty: true,
+    });
+  },
+
+  calculateBudgetTotals: () => {
+    const state = get();
+    if (!state.artCart) return;
+
+    // Calculate spent/committed from items
+    const categoryTotals: Record<string, { spent: number; committed: number }> = {};
+
+    state.artCart.items.forEach(item => {
+      const category = item.category;
+      if (!categoryTotals[category]) {
+        categoryTotals[category] = { spent: 0, committed: 0 };
+      }
+
+      if (item.actualCost) {
+        categoryTotals[category].spent += item.actualCost * item.quantity;
+      } else if (item.estimatedCost && (item.status === 'Found' || item.status === 'Researching')) {
+        categoryTotals[category].committed += item.estimatedCost * item.quantity;
+      }
+    });
+
+    const updatedBudgets = state.artCart.budgets.map(b => {
+      const totals = categoryTotals[b.category] || { spent: 0, committed: 0 };
+      return {
+        ...b,
+        spent: totals.spent,
+        committed: totals.committed,
+        remaining: b.allocated - totals.spent - totals.committed,
+      };
+    });
+
+    set({
+      artCart: {
+        ...state.artCart,
+        budgets: updatedBudgets,
+        updatedAt: new Date(),
+      },
+    });
   },
 
   toggleDarkMode: () => set((state) => ({ darkMode: !state.darkMode })),

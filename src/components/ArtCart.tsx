@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useScreenplayStore } from '../store/screenplayStore';
-import type { ArtCartItem, SourcingStatus, ItemPriority } from '../types/screenplay';
+import type { ArtCartItem, SourcingStatus, ItemPriority, ApprovalStatus } from '../types/screenplay';
 import './ArtCart.css';
 
 // Category colors matching BreakDown
@@ -34,6 +34,14 @@ const PRIORITY_COLORS: Record<ItemPriority, string> = {
   'Low': '#6B7280',
 };
 
+// Approval colors
+const APPROVAL_COLORS: Record<ApprovalStatus, string> = {
+  'Pending': '#6B7280',
+  'Approved': '#22C55E',
+  'Rejected': '#EF4444',
+  'Indifferent': '#3B82F6',
+};
+
 const STATUS_OPTIONS: SourcingStatus[] = [
   'To Find', 'Researching', 'Found', 'Rented', 'Purchased', 'Built', 'Borrowed', 'On Hand'
 ];
@@ -51,18 +59,26 @@ export const ArtCart = () => {
     artCartFilterStatus,
     initializeArtCart,
     importFromBreakdown,
+    checkScriptVersionSync,
     addArtCartItem,
     updateArtCartItem,
     deleteArtCartItem,
     setArtCartItemStatus,
+    addItemOption,
+    deleteItemOption,
+    approveItemOption,
+    setRecommendedOption,
     addVendor,
     selectArtCartCategory,
     setArtCartFilterStatus,
+    calculateBudgetTotals,
   } = useScreenplayStore();
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showVendorModal, setShowVendorModal] = useState(false);
+  const [showOptionModal, setShowOptionModal] = useState(false);
   const [editingItem, setEditingItem] = useState<ArtCartItem | null>(null);
+  const [optionItemId, setOptionItemId] = useState<string | null>(null);
   const [newItem, setNewItem] = useState({
     name: '',
     category: 'Props',
@@ -70,12 +86,22 @@ export const ArtCart = () => {
     quantity: 1,
     estimatedCost: 0,
     priority: 'Medium' as ItemPriority,
+    needsApproval: false,
   });
   const [newVendor, setNewVendor] = useState({
     name: '',
     contact: '',
     phone: '',
     email: '',
+  });
+  const [newOption, setNewOption] = useState({
+    name: '',
+    description: '',
+    price: 0,
+    vendorName: '',
+    sourceUrl: '',
+    pros: '',
+    cons: '',
   });
 
   // Initialize ArtCart if not exists
@@ -84,6 +110,20 @@ export const ArtCart = () => {
       initializeArtCart();
     }
   }, [artCart, initializeArtCart]);
+
+  // Check script version sync periodically
+  useEffect(() => {
+    if (artCart) {
+      checkScriptVersionSync();
+    }
+  }, [artCart, checkScriptVersionSync]);
+
+  // Recalculate budgets when items change
+  useEffect(() => {
+    if (artCart) {
+      calculateBudgetTotals();
+    }
+  }, [artCart?.items]);
 
   // Filter items
   const filteredItems = artCart?.items.filter(item => {
@@ -107,6 +147,12 @@ export const ArtCart = () => {
   const totalActualCost = artCart?.items.reduce((sum, item) =>
     sum + (item.actualCost || 0) * item.quantity, 0) || 0;
   const itemsToFind = artCart?.items.filter(i => i.status === 'To Find').length || 0;
+  const itemsNeedingApproval = artCart?.items.filter(i => i.needsApproval && i.approvalStatus !== 'Approved').length || 0;
+
+  // Budget calculations
+  const totalAllocated = artCart?.totalBudgetAllocated || 0;
+  const budgetRemaining = totalAllocated - totalActualCost - (totalEstimatedCost - totalActualCost);
+  const isOverBudget = budgetRemaining < 0;
 
   // Handle add item
   const handleAddItem = () => {
@@ -118,6 +164,7 @@ export const ArtCart = () => {
       priority: newItem.priority,
       quantity: newItem.quantity,
       estimatedCost: newItem.estimatedCost,
+      needsApproval: newItem.needsApproval,
       sceneIds: [],
     });
     setNewItem({
@@ -127,6 +174,7 @@ export const ArtCart = () => {
       quantity: 1,
       estimatedCost: 0,
       priority: 'Medium',
+      needsApproval: false,
     });
     setShowAddModal(false);
   };
@@ -138,6 +186,30 @@ export const ArtCart = () => {
     setShowVendorModal(false);
   };
 
+  // Handle add option
+  const handleAddOption = () => {
+    if (!optionItemId) return;
+    addItemOption(optionItemId, {
+      name: newOption.name,
+      description: newOption.description,
+      price: newOption.price,
+      vendorName: newOption.vendorName,
+      sourceUrl: newOption.sourceUrl,
+      pros: newOption.pros,
+      cons: newOption.cons,
+    });
+    setNewOption({
+      name: '',
+      description: '',
+      price: 0,
+      vendorName: '',
+      sourceUrl: '',
+      pros: '',
+      cons: '',
+    });
+    setShowOptionModal(false);
+  };
+
   // Handle import from breakdown
   const handleImport = () => {
     if (breakdown) {
@@ -145,8 +217,25 @@ export const ArtCart = () => {
     }
   };
 
+  // Get item for option modal
+  const optionItem = artCart?.items.find(i => i.id === optionItemId);
+
   return (
     <div className={`artcart-container ${darkMode ? 'dark' : 'light'}`}>
+      {/* Script Version Status Bar */}
+      {artCart?.scriptSync.isOutdated && (
+        <div className="script-version-alert">
+          <span className="alert-icon">⚠️</span>
+          <span>
+            ArtCart data is from script version "{artCart.scriptSync.scriptVersionName}".
+            A newer version "{artCart.scriptSync.latestVersionName}" is available.
+          </span>
+          <button onClick={handleImport} className="sync-btn">
+            Sync with Latest
+          </button>
+        </div>
+      )}
+
       {/* Sidebar - Categories & Filters */}
       <div className="artcart-sidebar">
         <div className="sidebar-section">
@@ -199,14 +288,45 @@ export const ArtCart = () => {
             <span className="stat-label">To Find</span>
             <span className="stat-value warning">{itemsToFind}</span>
           </div>
-          <div className="stat-item">
-            <span className="stat-label">Est. Budget</span>
-            <span className="stat-value">${totalEstimatedCost.toLocaleString()}</span>
-          </div>
-          <div className="stat-item">
-            <span className="stat-label">Actual Spent</span>
-            <span className="stat-value">${totalActualCost.toLocaleString()}</span>
-          </div>
+          {itemsNeedingApproval > 0 && (
+            <div className="stat-item">
+              <span className="stat-label">Needs Approval</span>
+              <span className="stat-value pending">{itemsNeedingApproval}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Budget Section */}
+        <div className="sidebar-section budget">
+          <h3>Budget</h3>
+          {artCart?.totalBudgetStatus === 'Pending' ? (
+            <div className="budget-pending">
+              <span className="pending-icon">⏳</span>
+              <span>Budget pending producer allocation</span>
+            </div>
+          ) : (
+            <>
+              <div className="stat-item">
+                <span className="stat-label">Allocated</span>
+                <span className="stat-value">${totalAllocated.toLocaleString()}</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">Spent</span>
+                <span className="stat-value">${totalActualCost.toLocaleString()}</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">Committed</span>
+                <span className="stat-value">${(totalEstimatedCost - totalActualCost).toLocaleString()}</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">Remaining</span>
+                <span className={`stat-value ${isOverBudget ? 'over-budget' : 'under-budget'}`}>
+                  ${Math.abs(budgetRemaining).toLocaleString()}
+                  {isOverBudget && ' OVER'}
+                </span>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="sidebar-actions">
@@ -256,17 +376,27 @@ export const ArtCart = () => {
                   {items.map(item => (
                     <div
                       key={item.id}
-                      className={`item-card priority-${item.priority.toLowerCase()}`}
+                      className={`item-card priority-${item.priority.toLowerCase()} ${item.needsApproval ? 'needs-approval' : ''}`}
                       onClick={() => setEditingItem(item)}
                     >
                       <div className="item-header">
                         <h4>{item.name}</h4>
-                        <span
-                          className="priority-badge"
-                          style={{ background: PRIORITY_COLORS[item.priority] }}
-                        >
-                          {item.priority}
-                        </span>
+                        <div className="item-badges">
+                          {item.needsApproval && (
+                            <span
+                              className="approval-badge"
+                              style={{ background: APPROVAL_COLORS[item.approvalStatus || 'Pending'] }}
+                            >
+                              {item.approvalStatus || 'Pending'}
+                            </span>
+                          )}
+                          <span
+                            className="priority-badge"
+                            style={{ background: PRIORITY_COLORS[item.priority] }}
+                          >
+                            {item.priority}
+                          </span>
+                        </div>
                       </div>
 
                       <div className="item-details">
@@ -278,8 +408,30 @@ export const ArtCart = () => {
                           {item.estimatedCost && (
                             <span className="cost">${item.estimatedCost}</span>
                           )}
+                          {item.options.length > 0 && (
+                            <span className="options-count">{item.options.length} options</span>
+                          )}
                         </div>
                       </div>
+
+                      {/* Options preview */}
+                      {item.options.length > 0 && (
+                        <div className="options-preview">
+                          {item.options.slice(0, 2).map(opt => (
+                            <div
+                              key={opt.id}
+                              className={`option-chip ${opt.isRecommended ? 'recommended' : ''} ${item.selectedOptionId === opt.id ? 'selected' : ''}`}
+                            >
+                              <span className="option-name">{opt.name}</span>
+                              <span className="option-price">${opt.price}</span>
+                              {opt.isRecommended && <span className="rec-badge">★</span>}
+                            </div>
+                          ))}
+                          {item.options.length > 2 && (
+                            <span className="more-options">+{item.options.length - 2} more</span>
+                          )}
+                        </div>
+                      )}
 
                       <div className="item-status">
                         <select
@@ -297,17 +449,30 @@ export const ArtCart = () => {
                         </select>
                       </div>
 
-                      <button
-                        className="delete-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (confirm('Delete this item?')) {
-                            deleteArtCartItem(item.id);
-                          }
-                        }}
-                      >
-                        ×
-                      </button>
+                      <div className="item-actions">
+                        <button
+                          className="add-option-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOptionItemId(item.id);
+                            setShowOptionModal(true);
+                          }}
+                          title="Add purchasing option"
+                        >
+                          + Option
+                        </button>
+                        <button
+                          className="delete-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (confirm('Delete this item?')) {
+                              deleteArtCartItem(item.id);
+                            }
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -401,6 +566,16 @@ export const ArtCart = () => {
                 placeholder="Optional description..."
               />
             </div>
+            <div className="form-group checkbox-group">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={newItem.needsApproval}
+                  onChange={(e) => setNewItem({ ...newItem, needsApproval: e.target.checked })}
+                />
+                Requires Director/Producer Approval
+              </label>
+            </div>
             <div className="modal-actions">
               <button onClick={() => setShowAddModal(false)}>Cancel</button>
               <button className="primary" onClick={handleAddItem} disabled={!newItem.name.trim()}>
@@ -463,11 +638,96 @@ export const ArtCart = () => {
         </div>
       )}
 
-      {/* Edit Item Modal */}
+      {/* Add Option Modal */}
+      {showOptionModal && optionItem && (
+        <div className="modal-overlay" onClick={() => setShowOptionModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3>Add Option for "{optionItem.name}"</h3>
+            <p className="modal-subtitle">Add a purchasing option for the director to review</p>
+            <div className="form-group">
+              <label>Option Name</label>
+              <input
+                type="text"
+                value={newOption.name}
+                onChange={(e) => setNewOption({ ...newOption, name: e.target.value })}
+                placeholder="e.g., Vintage Oak Chair from Prop House"
+                autoFocus
+              />
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Price</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={newOption.price}
+                  onChange={(e) => setNewOption({ ...newOption, price: parseFloat(e.target.value) || 0 })}
+                />
+              </div>
+              <div className="form-group">
+                <label>Vendor/Source</label>
+                <input
+                  type="text"
+                  value={newOption.vendorName}
+                  onChange={(e) => setNewOption({ ...newOption, vendorName: e.target.value })}
+                  placeholder="Store or website name"
+                />
+              </div>
+            </div>
+            <div className="form-group">
+              <label>Source URL (optional)</label>
+              <input
+                type="url"
+                value={newOption.sourceUrl}
+                onChange={(e) => setNewOption({ ...newOption, sourceUrl: e.target.value })}
+                placeholder="https://..."
+              />
+            </div>
+            <div className="form-group">
+              <label>Description</label>
+              <textarea
+                value={newOption.description}
+                onChange={(e) => setNewOption({ ...newOption, description: e.target.value })}
+                placeholder="Describe this option..."
+              />
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Pros</label>
+                <textarea
+                  value={newOption.pros}
+                  onChange={(e) => setNewOption({ ...newOption, pros: e.target.value })}
+                  placeholder="Advantages of this option..."
+                  rows={2}
+                />
+              </div>
+              <div className="form-group">
+                <label>Cons</label>
+                <textarea
+                  value={newOption.cons}
+                  onChange={(e) => setNewOption({ ...newOption, cons: e.target.value })}
+                  placeholder="Disadvantages..."
+                  rows={2}
+                />
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button onClick={() => setShowOptionModal(false)}>Cancel</button>
+              <button className="primary" onClick={handleAddOption} disabled={!newOption.name.trim()}>
+                Add Option
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Item Modal with Options */}
       {editingItem && (
         <div className="modal-overlay" onClick={() => setEditingItem(null)}>
-          <div className="modal-content large" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content xlarge" onClick={(e) => e.stopPropagation()}>
             <h3>Edit Item</h3>
+
+            {/* Basic Info */}
             <div className="form-group">
               <label>Name</label>
               <input
@@ -522,6 +782,92 @@ export const ArtCart = () => {
                 </select>
               </div>
             </div>
+
+            {/* Options Section */}
+            <div className="options-section">
+              <div className="options-header">
+                <h4>Purchasing Options ({editingItem.options.length})</h4>
+                <button
+                  className="add-option-inline"
+                  onClick={() => {
+                    setOptionItemId(editingItem.id);
+                    setShowOptionModal(true);
+                  }}
+                >
+                  + Add Option
+                </button>
+              </div>
+
+              {editingItem.options.length === 0 ? (
+                <p className="no-options">No options added yet. Add options to present choices for approval.</p>
+              ) : (
+                <div className="options-list">
+                  {editingItem.options.map(option => (
+                    <div
+                      key={option.id}
+                      className={`option-card ${option.isRecommended ? 'recommended' : ''} ${editingItem.selectedOptionId === option.id ? 'selected' : ''}`}
+                    >
+                      <div className="option-header">
+                        <div className="option-title">
+                          <strong>{option.name}</strong>
+                          {option.isRecommended && <span className="rec-label">★ Recommended</span>}
+                          {editingItem.selectedOptionId === option.id && <span className="selected-label">✓ Selected</span>}
+                        </div>
+                        <span className="option-price">${option.price}</span>
+                      </div>
+                      {option.vendorName && <div className="option-vendor">From: {option.vendorName}</div>}
+                      {option.description && <p className="option-desc">{option.description}</p>}
+                      <div className="option-pros-cons">
+                        {option.pros && <div className="pros">✓ {option.pros}</div>}
+                        {option.cons && <div className="cons">✗ {option.cons}</div>}
+                      </div>
+                      <div className="option-approval">
+                        <span
+                          className="approval-status"
+                          style={{ color: APPROVAL_COLORS[option.approvalStatus] }}
+                        >
+                          {option.approvalStatus}
+                        </span>
+                        {option.approvedBy && (
+                          <span className="approved-by">by {option.approvedBy}</span>
+                        )}
+                      </div>
+                      <div className="option-actions">
+                        <button
+                          className={`recommend-btn ${option.isRecommended ? 'active' : ''}`}
+                          onClick={() => setRecommendedOption(editingItem.id, option.id)}
+                          title="Mark as recommended"
+                        >
+                          ★
+                        </button>
+                        <button
+                          className="approve-btn"
+                          onClick={() => approveItemOption(editingItem.id, option.id, 'Director', 'Approved')}
+                          title="Approve this option"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          className="indifferent-btn"
+                          onClick={() => approveItemOption(editingItem.id, option.id, 'Director', 'Indifferent')}
+                          title="Mark as OK with any choice"
+                        >
+                          Any is Fine
+                        </button>
+                        <button
+                          className="delete-option-btn"
+                          onClick={() => deleteItemOption(editingItem.id, option.id)}
+                          title="Delete option"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="form-row">
               <div className="form-group">
                 <label>Estimated Cost</label>
@@ -562,6 +908,16 @@ export const ArtCart = () => {
                 placeholder="Additional notes..."
                 rows={3}
               />
+            </div>
+            <div className="form-group checkbox-group">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={editingItem.needsApproval}
+                  onChange={(e) => setEditingItem({ ...editingItem, needsApproval: e.target.checked })}
+                />
+                Requires Director/Producer Approval
+              </label>
             </div>
             <div className="modal-actions">
               <button onClick={() => setEditingItem(null)}>Cancel</button>

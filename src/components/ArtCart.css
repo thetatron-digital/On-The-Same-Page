@@ -522,6 +522,576 @@
   cursor: not-allowed;
 }
 
+/* Script Version Bar */
+.script-version-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  font-size: 12px;
+}
+
+.script-version-bar.outdated {
+  background: #FEF3C7;
+  border-bottom-color: #F59E0B;
+}
+
+.artcart-container.dark .script-version-bar.outdated {
+  background: #422006;
+  border-bottom-color: #B45309;
+}
+
+.version-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.version-label {
+  color: var(--text-muted);
+}
+
+.version-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.version-date {
+  color: var(--text-muted);
+}
+
+.version-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #B45309;
+  font-weight: 500;
+}
+
+.artcart-container.dark .version-warning {
+  color: #FBBF24;
+}
+
+.sync-btn {
+  padding: 4px 12px;
+  background: #F59E0B;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.sync-btn:hover {
+  background: #D97706;
+}
+
+/* Budget Section */
+.budget-section {
+  background: var(--bg-secondary);
+}
+
+.budget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.budget-header h3 {
+  margin: 0;
+}
+
+.budget-status {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  text-transform: uppercase;
+}
+
+.budget-status.pending {
+  background: #FEF3C7;
+  color: #B45309;
+}
+
+.budget-status.allocated {
+  background: #DCFCE7;
+  color: #15803D;
+}
+
+.budget-status.locked {
+  background: #DBEAFE;
+  color: #1D4ED8;
+}
+
+.artcart-container.dark .budget-status.pending {
+  background: #422006;
+  color: #FBBF24;
+}
+
+.artcart-container.dark .budget-status.allocated {
+  background: #052E16;
+  color: #4ADE80;
+}
+
+.artcart-container.dark .budget-status.locked {
+  background: #1E3A5F;
+  color: #60A5FA;
+}
+
+.budget-pending-message {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 8px 0;
+}
+
+.budget-totals {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.budget-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.budget-row .label {
+  color: var(--text-muted);
+}
+
+.budget-row .value {
+  font-weight: 600;
+}
+
+.budget-row .value.positive {
+  color: #22C55E;
+}
+
+.budget-row .value.negative {
+  color: #EF4444;
+}
+
+.budget-row.total {
+  padding-top: 8px;
+  border-top: 1px solid var(--border-color);
+  font-weight: 600;
+}
+
+.budget-bar {
+  height: 8px;
+  background: var(--bg-primary);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.budget-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.budget-bar-fill.under {
+  background: linear-gradient(90deg, #22C55E, #4ADE80);
+}
+
+.budget-bar-fill.over {
+  background: linear-gradient(90deg, #EF4444, #F87171);
+}
+
+.budget-bar-fill.warning {
+  background: linear-gradient(90deg, #EAB308, #FACC15);
+}
+
+.budget-percentage {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Options Preview on Item Cards */
+.options-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-color);
+}
+
+.option-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: var(--bg-primary);
+  border-radius: 12px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.option-chip.recommended {
+  background: #DBEAFE;
+  color: #1D4ED8;
+}
+
+.option-chip.approved {
+  background: #DCFCE7;
+  color: #15803D;
+}
+
+.option-chip.selected {
+  background: var(--accent-color);
+  color: white;
+}
+
+.artcart-container.dark .option-chip.recommended {
+  background: #1E3A5F;
+  color: #60A5FA;
+}
+
+.artcart-container.dark .option-chip.approved {
+  background: #052E16;
+  color: #4ADE80;
+}
+
+.approval-needed {
+  font-size: 10px;
+  color: #F59E0B;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+/* Modal xlarge size */
+.modal-content.xlarge {
+  width: 700px;
+}
+
+/* Options Section in Modal */
+.options-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+}
+
+.options-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.options-header h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.add-option-btn {
+  padding: 4px 12px;
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.add-option-btn:hover {
+  opacity: 0.9;
+}
+
+.options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.option-card {
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 12px;
+  border: 2px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.option-card.selected {
+  border-color: var(--accent-color);
+}
+
+.option-card.recommended {
+  border-color: #3B82F6;
+}
+
+.option-card.approved {
+  border-color: #22C55E;
+}
+
+.option-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.option-card-header h5 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.option-badges {
+  display: flex;
+  gap: 4px;
+}
+
+.option-badge {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+
+.option-badge.recommended {
+  background: #DBEAFE;
+  color: #1D4ED8;
+}
+
+.option-badge.approved {
+  background: #DCFCE7;
+  color: #15803D;
+}
+
+.option-badge.selected {
+  background: var(--accent-color);
+  color: white;
+}
+
+.option-badge.indifferent {
+  background: #E5E7EB;
+  color: #6B7280;
+}
+
+.option-badge.rejected {
+  background: #FEE2E2;
+  color: #DC2626;
+}
+
+.artcart-container.dark .option-badge.recommended {
+  background: #1E3A5F;
+  color: #60A5FA;
+}
+
+.artcart-container.dark .option-badge.approved {
+  background: #052E16;
+  color: #4ADE80;
+}
+
+.artcart-container.dark .option-badge.indifferent {
+  background: #374151;
+  color: #9CA3AF;
+}
+
+.artcart-container.dark .option-badge.rejected {
+  background: #450A0A;
+  color: #FCA5A5;
+}
+
+.option-card-price {
+  font-size: 14px;
+  font-weight: 600;
+  color: #22C55E;
+}
+
+.option-card-details {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.option-card-details p {
+  margin: 0 0 4px 0;
+}
+
+.option-card-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.option-action-btn {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.option-action-btn.approve {
+  background: #22C55E;
+  color: white;
+}
+
+.option-action-btn.approve:hover {
+  background: #16A34A;
+}
+
+.option-action-btn.indifferent {
+  background: #6B7280;
+  color: white;
+}
+
+.option-action-btn.indifferent:hover {
+  background: #4B5563;
+}
+
+.option-action-btn.select {
+  background: var(--accent-color);
+  color: white;
+}
+
+.option-action-btn.select:hover {
+  opacity: 0.9;
+}
+
+.option-action-btn.recommend {
+  background: #3B82F6;
+  color: white;
+}
+
+.option-action-btn.recommend:hover {
+  background: #2563EB;
+}
+
+.option-action-btn.delete {
+  background: transparent;
+  color: #EF4444;
+  border: 1px solid #EF4444;
+}
+
+.option-action-btn.delete:hover {
+  background: #EF4444;
+  color: white;
+}
+
+.no-options {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 16px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+}
+
+/* Add Option Form in Modal */
+.add-option-form {
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 12px;
+}
+
+.add-option-form h5 {
+  margin: 0 0 12px 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.option-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.option-form-actions button {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.option-form-actions button:first-child {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.option-form-actions button:last-child {
+  background: var(--accent-color);
+  color: white;
+}
+
+/* Approval Status Indicator */
+.approval-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin-top: 8px;
+}
+
+.approval-indicator.pending {
+  background: #FEF3C7;
+  color: #B45309;
+}
+
+.approval-indicator.approved {
+  background: #DCFCE7;
+  color: #15803D;
+}
+
+.approval-indicator.rejected {
+  background: #FEE2E2;
+  color: #DC2626;
+}
+
+.approval-indicator.indifferent {
+  background: #E5E7EB;
+  color: #6B7280;
+}
+
+.artcart-container.dark .approval-indicator.pending {
+  background: #422006;
+  color: #FBBF24;
+}
+
+.artcart-container.dark .approval-indicator.approved {
+  background: #052E16;
+  color: #4ADE80;
+}
+
+.artcart-container.dark .approval-indicator.rejected {
+  background: #450A0A;
+  color: #FCA5A5;
+}
+
+.artcart-container.dark .approval-indicator.indifferent {
+  background: #374151;
+  color: #9CA3AF;
+}
+
 /* Dark mode */
 .artcart-container.dark {
   --bg-primary: #1a1a2e;

@@ -689,6 +689,40 @@ export type SourcingStatus =
 // Priority levels
 export type ItemPriority = 'Critical' | 'High' | 'Medium' | 'Low';
 
+// Approval status for options
+export type ApprovalStatus =
+  | 'Pending'        // Waiting for review
+  | 'Approved'       // Director/Producer approved
+  | 'Rejected'       // Not approved
+  | 'Indifferent';   // Approver is fine with any option
+
+// An option/variant for an item (multiple purchasing choices)
+export interface ItemOption {
+  id: string;
+  name: string;
+  description?: string;
+  vendorId?: string;
+  vendorName?: string;
+  price: number;
+  rentalPrice?: number;  // If rental option
+  rentalPeriod?: string;
+  sourceUrl?: string;    // Link to product page
+  referenceImages?: string[];
+  pros?: string;
+  cons?: string;
+
+  // Approval workflow
+  approvalStatus: ApprovalStatus;
+  approvedBy?: string;
+  approvalDate?: Date;
+  approvalNotes?: string;
+
+  // Recommended by art director
+  isRecommended?: boolean;
+
+  createdAt: Date;
+}
+
 // Vendor information
 export interface Vendor {
   id: string;
@@ -712,12 +746,16 @@ export interface ArtCartItem {
   priority: ItemPriority;
   quantity: number;
 
-  // Financial
+  // Options - multiple purchasing choices for approval
+  options: ItemOption[];
+  selectedOptionId?: string;  // Which option was approved/selected
+
+  // Financial (from selected option or manual entry)
   estimatedCost?: number;
   actualCost?: number;
   rentalPeriod?: string; // "2 weeks", "3 days"
 
-  // Vendor
+  // Vendor (from selected option or manual entry)
   vendorId?: string;
   vendorNotes?: string;
 
@@ -737,6 +775,12 @@ export interface ArtCartItem {
   referenceImages?: string[];
   notes?: string;
 
+  // Approval workflow
+  needsApproval: boolean;  // Does this item need director/producer sign-off?
+  approvalStatus?: ApprovalStatus;
+  approvedBy?: string;
+  approvalDate?: Date;
+
   // Metadata
   createdAt: Date;
   updatedAt: Date;
@@ -755,13 +799,31 @@ export interface ShoppingList {
   createdAt: Date;
 }
 
+// Budget status
+export type BudgetStatus =
+  | 'Pending'      // Producer hasn't allocated yet
+  | 'Allocated'    // Budget is set
+  | 'Locked';      // Budget is final, no changes
+
 // Department budget tracking
 export interface ArtCartBudget {
   category: ArtCartCategory | string;
+  status: BudgetStatus;
   allocated: number;
   spent: number;
   committed: number; // Pending purchases/rentals
-  remaining: number;
+  remaining: number; // calculated: allocated - spent - committed
+}
+
+// Script version info for ArtCart sync
+export interface ArtCartScriptSync {
+  scriptVersionId: string;
+  scriptVersionName: string;
+  syncedAt: Date;
+  isOutdated: boolean;  // True if newer script version exists
+  latestVersionId?: string;
+  latestVersionName?: string;
+  changesDetected?: number;  // Number of breakdown changes since sync
 }
 
 // Full ArtCart state
@@ -772,7 +834,15 @@ export interface ArtCart {
   vendors: Vendor[];
   shoppingLists: ShoppingList[];
   budgets: ArtCartBudget[];
+
+  // Script version tracking
+  scriptSync: ArtCartScriptSync;
   importedFromBreakdownId?: string;
+
+  // Total budget (from BaseCamp/LineItem)
+  totalBudgetAllocated?: number;
+  totalBudgetStatus: BudgetStatus;
+
   createdAt: Date;
   updatedAt: Date;
 }
