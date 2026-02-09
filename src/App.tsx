@@ -40,7 +40,7 @@ function App() {
   // Update document title with filename
   useEffect(() => {
     const baseName = fileName.replace('.fdx', '');
-    document.title = isDirty ? `${baseName}* - Re-writer` : `${baseName} - Re-writer`;
+    document.title = isDirty ? `${baseName}* - OTSP` : `${baseName} - OTSP`;
   }, [fileName, isDirty]);
 
   // Warn before leaving with unsaved changes

@@ -1,9 +1,9 @@
 {
-  "name": "re-writer",
+  "name": "otsp",
   "private": true,
   "version": "1.0.0",
-  "description": "Free online screenwriting software - Create, edit, and export professional screenplays in FDX format",
-  "author": "Re-writer",
+  "description": "OTSP - One True Screenwriting Platform. A complete film production ecosystem from development to wrap.",
+  "author": "OTSP",
   "license": "MIT",
   "type": "module",
   "homepage": "https://re-writer.netlify.app",

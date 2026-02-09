@@ -76,7 +76,7 @@ export const GOOGLE_CONFIG = {
   ].join(' '),
 
   // App folder name in Drive
-  APP_FOLDER_NAME: 'Re-writer Projects',
+  APP_FOLDER_NAME: 'OTSP Projects',
 
   // File MIME types
   MIME_TYPES: {
@@ -87,10 +87,10 @@ export const GOOGLE_CONFIG = {
 
 // Local storage keys
 export const STORAGE_KEYS = {
-  USER: 're-writer-user',
-  CURRENT_PROJECT: 're-writer-current-project',
-  LOCAL_PROJECTS: 're-writer-local-projects',
-  PREFERENCES: 're-writer-preferences',
+  USER: 'otsp-user',
+  CURRENT_PROJECT: 'otsp-current-project',
+  LOCAL_PROJECTS: 'otsp-local-projects',
+  PREFERENCES: 'otsp-preferences',
 };
 
 // Export type for project data (the actual screenplay content)

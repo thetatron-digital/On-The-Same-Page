@@ -1,6 +1,6 @@
-# Re-writer
+# OTSP - One True Screenwriting Platform
 
-Free online screenwriting software. Create, edit, and export professional screenplays in FDX format.
+A complete film production ecosystem from development to wrap. Write, break down, schedule, and manage your production all in one place.
 
 ## Features
 

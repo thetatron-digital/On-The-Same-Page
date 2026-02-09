@@ -173,7 +173,7 @@ export const Home = () => {
             <line x1="16" y1="13" x2="8" y2="13" />
             <line x1="16" y1="17" x2="8" y2="17" />
           </svg>
-          <span>Re-writer</span>
+          <span>OTSP</span>
         </div>
 
         <div className="home-user">
@@ -223,7 +223,7 @@ export const Home = () => {
       <main className="home-main">
         {/* Welcome Section */}
         <section className="welcome-section">
-          <h1>Welcome to Re-writer</h1>
+          <h1>Welcome to OTSP</h1>
           <p>Your complete film production ecosystem</p>
         </section>
 
