@@ -17,8 +17,6 @@
   min-height: 44px;
   justify-content: flex-start;
   gap: 0;
-  overflow-x: auto;
-  overflow-y: hidden;
 }
 
 .format-bar {
