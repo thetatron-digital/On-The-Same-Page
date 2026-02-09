@@ -9,10 +9,12 @@ const BaseCamp: React.FC = () => {
     darkMode,
     schedule,
     breakdownScenes,
+    viewFinder,
     selectedShootDayId,
     selectedStripId,
     initializeSchedule,
     importStripsFromBreakdown,
+    createShotPackagesFromViewFinder,
     addShootDay,
     updateShootDay,
     deleteShootDay,
@@ -42,6 +44,17 @@ const BaseCamp: React.FC = () => {
   // Get strip by ID
   const getStrip = (stripId: string): SceneStrip | undefined => {
     return schedule?.strips.find(s => s.id === stripId);
+  };
+
+  // Get shot count for a scene
+  const getShotCountForScene = (sceneId: string): number => {
+    if (!viewFinder?.shots) return 0;
+    return viewFinder.shots.filter(s => s.sceneId === sceneId).length;
+  };
+
+  // Get shot package for a scene
+  const getShotPackageForScene = (sceneId: string) => {
+    return schedule?.shotPackages.find(p => p.sceneId === sceneId);
   };
 
   // Handle drag start
@@ -105,6 +118,7 @@ const BaseCamp: React.FC = () => {
 
     const bgColor = STRIP_COLOR_HEX[strip.color] || '#FFFFFF';
     const isDark = strip.color === 'Black' || strip.color === 'Blue';
+    const shotCount = getShotCountForScene(strip.sceneId);
 
     return (
       <div
@@ -123,6 +137,7 @@ const BaseCamp: React.FC = () => {
         <span className="strip-location">{strip.location}</span>
         <span className="strip-time">{strip.timeOfDay}</span>
         <span className="strip-pages">{formatPageCount(strip.pageCount)}</span>
+        {shotCount > 0 && <span className="strip-shots" title={`${shotCount} shots planned`}>🎬{shotCount}</span>}
         {strip.isLocked && <span className="strip-lock">🔒</span>}
         {strip.hasStunts && <span className="strip-flag">⚡</span>}
         {strip.hasVFX && <span className="strip-flag">✨</span>}
@@ -131,12 +146,15 @@ const BaseCamp: React.FC = () => {
   };
 
   // Stats
+  const totalShots = viewFinder?.shots?.length || 0;
   const stats = {
     totalScenes: schedule?.strips.length || 0,
     scheduledScenes: schedule?.strips.filter(s => s.scheduledDayId).length || 0,
     unscheduledScenes: schedule?.unscheduledStrips.length || 0,
     totalDays: schedule?.shootDays.length || 0,
     totalPages: schedule?.strips.reduce((sum, s) => sum + s.pageCount, 0) || 0,
+    totalShots,
+    shotPackages: schedule?.shotPackages.length || 0,
   };
 
   return (
@@ -166,6 +184,12 @@ const BaseCamp: React.FC = () => {
             <span className="stat-label">Total Pages</span>
             <span className="stat-value">{formatPageCount(stats.totalPages)}</span>
           </div>
+          {stats.totalShots > 0 && (
+            <div className="stat-item highlight">
+              <span className="stat-label">Planned Shots</span>
+              <span className="stat-value">{stats.totalShots}</span>
+            </div>
+          )}
         </div>
 
         {/* Unscheduled Strips */}
@@ -195,6 +219,11 @@ const BaseCamp: React.FC = () => {
           {schedule?.strips.length === 0 && breakdownScenes.length > 0 && (
             <button className="import-btn" onClick={importStripsFromBreakdown}>
               Import from Breakdown
+            </button>
+          )}
+          {viewFinder && viewFinder.shots.length > 0 && (
+            <button className="sync-btn" onClick={createShotPackagesFromViewFinder}>
+              Sync Shots from ViewFinder
             </button>
           )}
           <button className="add-day-btn" onClick={() => {
@@ -338,6 +367,24 @@ const BaseCamp: React.FC = () => {
                     <label>Cast Required</label>
                     <p>{strip.castIds.length} cast members</p>
                   </div>
+
+                  {/* ViewFinder Integration */}
+                  {(() => {
+                    const shotCount = getShotCountForScene(strip.sceneId);
+                    const shotPackage = getShotPackageForScene(strip.sceneId);
+                    if (shotCount === 0) return null;
+                    return (
+                      <div className="info-group viewfinder-info">
+                        <label>Shot Coverage</label>
+                        <p>{shotCount} shots planned</p>
+                        {shotPackage && (
+                          <p className="shot-duration">
+                            Est. {shotPackage.estimatedDuration.toFixed(0)} min
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   <div className="panel-flags">
                     <label>

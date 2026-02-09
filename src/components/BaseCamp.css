@@ -117,6 +117,15 @@
   opacity: 0.9;
 }
 
+.sync-btn {
+  background: #8B5CF6;
+  color: white;
+}
+
+.sync-btn:hover {
+  background: #7C3AED;
+}
+
 .add-day-btn {
   background: #22C55E;
   color: white;
@@ -374,6 +383,45 @@
 .strip-lock,
 .strip-flag {
   font-size: 10px;
+}
+
+.strip-shots {
+  font-size: 10px;
+  padding: 2px 4px;
+  background: rgba(139, 92, 246, 0.2);
+  border-radius: 3px;
+  margin-left: auto;
+}
+
+/* ViewFinder info in panel */
+.viewfinder-info {
+  background: rgba(139, 92, 246, 0.1);
+  padding: 10px;
+  border-radius: 6px;
+  border-left: 3px solid #8B5CF6;
+}
+
+.viewfinder-info label {
+  color: #8B5CF6 !important;
+}
+
+.shot-duration {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* Stats highlight for shots */
+.stat-item.highlight {
+  background: rgba(139, 92, 246, 0.1);
+  padding: 6px 8px;
+  border-radius: 4px;
+  margin-top: 4px;
+}
+
+.stat-item.highlight .stat-label,
+.stat-item.highlight .stat-value {
+  color: #8B5CF6;
 }
 
 /* Right panel */
