@@ -7,7 +7,9 @@ import ViewFinder from './components/ViewFinder';
 import BaseCamp from './components/BaseCamp';
 import OnSet from './components/OnSet';
 import SuperVisor from './components/SuperVisor';
+import { Home } from './components/Home';
 import { useScreenplayStore } from './store/screenplayStore';
+import { useAuthStore } from './services/projectService';
 import { THEMES } from './types/screenplay';
 import './App.css';
 
@@ -54,9 +56,16 @@ function App() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isDirty]);
 
+  // Initialize auth on mount
+  useEffect(() => {
+    useAuthStore.getState().initialize();
+  }, []);
+
   // Render the appropriate app based on activeApp
   const renderApp = () => {
     switch (activeApp) {
+      case 'home':
+        return <Home />;
       case 'breakdown':
         return <Breakdown />;
       case 'artcart':
@@ -73,6 +82,11 @@ function App() {
         return <Editor />;
     }
   };
+
+  // Home page has its own layout, don't show toolbar
+  if (activeApp === 'home') {
+    return <Home />;
+  }
 
   return (
     <div className="app">

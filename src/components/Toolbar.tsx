@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react';
 import { useScreenplayStore } from '../store/screenplayStore';
+import { useAuthStore, useProjectsStore } from '../services/projectService';
+import { googleAuth } from '../services/googleAuth';
 import { downloadPDF } from '../utils/pdf';
 import type { ElementType, ThemeId } from '../types/screenplay';
 import { THEMES } from '../types/screenplay';
@@ -259,7 +261,13 @@ export const Toolbar = () => {
     clearSceneNumbers,
     setWatermarkSettings,
     toggleWatermark,
+    getProjectData,
   } = useScreenplayStore();
+
+  // Auth and projects state
+  const { user, signIn, signOut } = useAuthStore();
+  const { currentProjectId, isSaving, saveProject } = useProjectsStore();
+  const isGoogleConfigured = googleAuth.isConfigured();
 
   const handleNew = () => {
     if (isDirty) {
@@ -310,6 +318,22 @@ export const Toolbar = () => {
     URL.revokeObjectURL(url);
 
     setDirty(false);
+  };
+
+  const handleSaveToCloud = async () => {
+    if (!currentProjectId) {
+      // No project loaded, go to home to create one
+      setActiveApp('home');
+      return;
+    }
+
+    try {
+      const data = getProjectData();
+      await saveProject(currentProjectId, data);
+      setDirty(false);
+    } catch (error) {
+      alert('Failed to save to cloud. Please try again.');
+    }
   };
 
   const handleExportPDF = () => {
@@ -885,12 +909,29 @@ export const Toolbar = () => {
     </>
   );
 
-  const currentApp = APPS[activeApp];
+  // Get current app config (default to rewriter if home or not found)
+  const currentApp = activeApp !== 'home' && activeApp in APPS
+    ? APPS[activeApp as keyof typeof APPS]
+    : APPS.rewriter;
 
   return (
     <div className="toolbar">
       {/* Main Menu Bar */}
       <div className="toolbar-row menu-bar">
+        {/* Home Button */}
+        <button
+          className="menu-btn icon-only home-btn"
+          onClick={() => setActiveApp('home')}
+          title="Home - Projects"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            <polyline points="9 22 9 12 15 12 15 22" />
+          </svg>
+        </button>
+
+        <div className="menu-divider" />
+
         {/* App Switcher Dropdown */}
         <div className="app-switcher">
           <div className="dropdown-container">
@@ -941,6 +982,96 @@ export const Toolbar = () => {
         {activeApp === 'artcart' && renderArtCartToolbar()}
         {activeApp === 'viewfinder' && renderViewFinderToolbar()}
         {activeApp === 'basecamp' && renderBaseCampToolbar()}
+
+        {/* Spacer to push user controls to the right */}
+        <div style={{ flex: 1 }} />
+
+        {/* Cloud Save Button */}
+        {user && currentProjectId && (
+          <button
+            className={`menu-btn icon-only ${isSaving ? 'saving' : ''}`}
+            onClick={handleSaveToCloud}
+            disabled={isSaving}
+            title={isSaving ? 'Saving...' : 'Save to Cloud'}
+          >
+            {isSaving ? (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="spin">
+                <circle cx="12" cy="12" r="10" strokeDasharray="32" strokeDashoffset="16" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                <polyline points="17 21 17 13 7 13 7 21" />
+                <polyline points="7 3 7 8 15 8" />
+              </svg>
+            )}
+          </button>
+        )}
+
+        {/* User Controls */}
+        <div className="user-controls">
+          {user ? (
+            <div className="user-menu dropdown-container">
+              <button
+                className={`user-btn ${openDropdown === 'user-menu' ? 'active' : ''}`}
+                onClick={() => toggleDropdown('user-menu')}
+              >
+                {user.picture ? (
+                  <img src={user.picture} alt={user.name} className="user-avatar" />
+                ) : (
+                  <div className="user-avatar-placeholder">
+                    {user.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </button>
+              {openDropdown === 'user-menu' && (
+                <div className="dropdown-menu user-dropdown">
+                  <div className="user-info-header">
+                    <span className="user-name">{user.name}</span>
+                    <span className="user-email">{user.email}</span>
+                  </div>
+                  <div className="dropdown-divider" />
+                  <button
+                    className="dropdown-item"
+                    onClick={() => {
+                      setActiveApp('home');
+                      closeDropdowns();
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="item-icon">
+                      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                    </svg>
+                    My Projects
+                  </button>
+                  <button
+                    className="dropdown-item"
+                    onClick={() => {
+                      signOut();
+                      closeDropdowns();
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="item-icon">
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                      <polyline points="16 17 21 12 16 7" />
+                      <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
+                    Sign Out
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : isGoogleConfigured ? (
+            <button className="menu-btn sign-in-btn" onClick={signIn}>
+              <svg viewBox="0 0 24 24" width="16" height="16">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+              </svg>
+              Sign In
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {/* Secondary Bar - File Info and Stats (only for Re-writer) */}

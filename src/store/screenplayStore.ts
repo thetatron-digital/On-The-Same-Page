@@ -54,7 +54,7 @@ interface VisibilityState {
 type ViewMode = 'script' | 'split';
 
 // App modes (top-level application switching)
-type AppMode = 'blueprint' | 'corkboard' | 'rewriter' | 'breakdown' | 'artcart' | 'viewfinder' | 'basecamp' | 'onset' | 'supervisor';
+type AppMode = 'home' | 'blueprint' | 'corkboard' | 'rewriter' | 'breakdown' | 'artcart' | 'viewfinder' | 'basecamp' | 'onset' | 'supervisor';
 
 // Split View content (independent from main script)
 interface SplitEntry {
@@ -454,6 +454,11 @@ interface ScreenplayState {
   // Theme
   toggleDarkMode: () => void;
   setTheme: (themeId: ThemeId) => void;
+
+  // Project Data actions (for cloud storage)
+  loadFromProjectData: (data: import('../types/user').ProjectData) => void;
+  resetToNew: () => void;
+  getProjectData: () => import('../types/user').ProjectData;
 }
 
 // Calculate writing statistics from screenplay
@@ -4326,4 +4331,130 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
   toggleDarkMode: () => set((state) => ({ darkMode: !state.darkMode })),
 
   setTheme: (themeId: ThemeId) => set(() => ({ activeTheme: themeId })),
+
+  // Project Data actions (for cloud storage)
+  loadFromProjectData: (data) => {
+    const stats = calculateWritingStats(data.screenplay);
+    set({
+      screenplay: data.screenplay,
+      storyOutline: data.storyOutline || get().storyOutline,
+      beatBoards: data.beatBoards || [],
+      versions: data.versions || [],
+      scriptNotes: data.scriptNotes || [],
+      splitContent: data.splitContent || get().splitContent,
+      breakdown: data.breakdown || null,
+      artCart: data.artCart || null,
+      viewFinder: data.viewFinder || null,
+      schedule: data.schedule || null,
+      onSet: data.onSet || null,
+      superVisor: data.superVisor || null,
+      showSceneNumbers: data.showSceneNumbers ?? false,
+      sceneNumberStyle: data.sceneNumberStyle || 'numeric',
+      pageLocks: data.pageLocks || [],
+      watermarkSettings: data.watermarkSettings || get().watermarkSettings,
+      selectedElementId: data.screenplay.elements[0]?.id || null,
+      isDirty: false,
+      fileName: `${data.screenplay.title || 'Untitled'}.fdx`,
+      stats,
+      history: [],
+      future: [],
+    });
+  },
+
+  resetToNew: () => {
+    const newScript = createNewScreenplay();
+    const stats = calculateWritingStats(newScript);
+    set({
+      screenplay: newScript,
+      selectedElementId: newScript.elements[0]?.id || null,
+      isDirty: false,
+      fileName: 'Untitled.fdx',
+      stats,
+      currentPage: 1,
+      history: [],
+      future: [],
+      storyOutline: {
+        plot: {
+          title: '',
+          logline: '',
+          themes: '',
+          storyTypes: [],
+          genres: [],
+          tones: [],
+          audience: '',
+          setting: '',
+          bStory: '',
+          otherDetails: '',
+        },
+        characters: [],
+        acts: {
+          act1: '',
+          act2a: '',
+          act2b: '',
+          act3: '',
+        },
+        beats: DEFAULT_BEAT_STRUCTURE.map((beat, index) => ({
+          id: `beat-${index}`,
+          name: beat.name,
+          act: beat.act,
+          description: '',
+          linkedSceneId: undefined,
+        })),
+      },
+      beatBoards: [],
+      activeBeatBoardId: null,
+      versions: [],
+      activeVersionId: null,
+      scriptNotes: [],
+      splitContent: {
+        audio: [],
+        video: [],
+        isIndependent: false,
+        swapped: false,
+      },
+      breakdown: null,
+      breakdownScenes: [],
+      selectedBreakdownCategory: null,
+      selectedBreakdownSceneId: null,
+      artCart: null,
+      selectedArtCartCategory: null,
+      selectedArtCartItemId: null,
+      artCartFilterStatus: 'All',
+      viewFinder: null,
+      selectedViewFinderSceneId: null,
+      selectedShotId: null,
+      viewFinderFilterStatus: 'All',
+      schedule: null,
+      selectedShootDayId: null,
+      selectedStripId: null,
+      onSet: null,
+      superVisor: null,
+      showSceneNumbers: false,
+      pageLocks: [],
+    });
+  },
+
+  getProjectData: () => {
+    const state = get();
+    return {
+      screenplay: state.screenplay,
+      storyOutline: state.storyOutline,
+      beatBoards: state.beatBoards,
+      versions: state.versions,
+      scriptNotes: state.scriptNotes,
+      splitContent: state.splitContent,
+      breakdown: state.breakdown || undefined,
+      artCart: state.artCart || undefined,
+      viewFinder: state.viewFinder || undefined,
+      schedule: state.schedule || undefined,
+      onSet: state.onSet || undefined,
+      superVisor: state.superVisor || undefined,
+      showSceneNumbers: state.showSceneNumbers,
+      sceneNumberStyle: state.sceneNumberStyle,
+      pageLocks: state.pageLocks,
+      watermarkSettings: state.watermarkSettings,
+      version: 1,
+      savedAt: new Date(),
+    };
+  },
 }));
