@@ -5,8 +5,7 @@ import { googleAuth } from '../services/googleAuth';
 import { downloadPDF } from '../utils/pdf';
 import { downloadOTSP, generateBreakdownXML, generateScheduleXML, generateShotListXML, generateSupervisorXML, generateArtCartCSV } from '../utils/exportFormats';
 import { detectFileType, importFDX, importBreakdownXML, importScheduleXML, importShotListXML, importMMS, importALE, importArtCartCSV } from '../utils/importFormats';
-import type { ElementType, ThemeId } from '../types/screenplay';
-import { THEMES } from '../types/screenplay';
+import type { ElementType } from '../types/screenplay';
 import './Toolbar.css';
 
 // Export format options
@@ -152,83 +151,29 @@ export const Toolbar = () => {
     setOpenDropdown(null);
   };
 
-  // Reusable Theme Picker component
+  // Reusable Dark/Light mode toggle
   const renderThemePicker = () => (
-    <div className="dropdown-container">
-      <button
-        className={`menu-btn icon-only ${openDropdown === 'theme-picker' ? 'active' : ''}`}
-        onClick={() => toggleDropdown('theme-picker')}
-        title="Change Theme"
-      >
+    <button
+      className="menu-btn icon-only"
+      onClick={() => toggleDarkMode()}
+      title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+    >
+      {darkMode ? (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="12" r="10" />
-          <path d="M12 2a10 10 0 0 0 0 20" fill="currentColor" opacity="0.3" />
-          <circle cx="12" cy="12" r="3" />
+          <circle cx="12" cy="12" r="5" />
+          <line x1="12" y1="1" x2="12" y2="3" />
+          <line x1="12" y1="21" x2="12" y2="23" />
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+          <line x1="1" y1="12" x2="3" y2="12" />
+          <line x1="21" y1="12" x2="23" y2="12" />
         </svg>
-      </button>
-      {openDropdown === 'theme-picker' && (
-        <div className="dropdown-menu theme-picker-menu">
-          <div className="dropdown-header">Theme</div>
-          {THEMES.map(theme => (
-            <button
-              key={theme.id}
-              className={`dropdown-item theme-item ${activeTheme === theme.id ? 'active' : ''}`}
-              onClick={() => {
-                setTheme(theme.id as ThemeId);
-                closeDropdowns();
-              }}
-            >
-              <div
-                className="theme-preview"
-                style={{
-                  background: `linear-gradient(135deg, ${theme.preview.background} 0%, ${theme.preview.secondary} 50%, ${theme.preview.primary} 100%)`,
-                }}
-              />
-              <div className="theme-info">
-                <span className="theme-name">{theme.name}</span>
-                <span className="theme-desc">{theme.description}</span>
-              </div>
-              {activeTheme === theme.id && (
-                <svg className="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              )}
-            </button>
-          ))}
-          <div className="dropdown-divider" />
-          <div className="dropdown-header">Mode</div>
-          <button
-            className="dropdown-item"
-            onClick={() => {
-              toggleDarkMode();
-              closeDropdowns();
-            }}
-          >
-            {darkMode ? (
-              <>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="item-icon">
-                  <circle cx="12" cy="12" r="5" />
-                  <line x1="12" y1="1" x2="12" y2="3" />
-                  <line x1="12" y1="21" x2="12" y2="23" />
-                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                  <line x1="1" y1="12" x2="3" y2="12" />
-                  <line x1="21" y1="12" x2="23" y2="12" />
-                </svg>
-                Switch to Light Mode
-              </>
-            ) : (
-              <>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="item-icon">
-                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-                </svg>
-                Switch to Dark Mode
-              </>
-            )}
-          </button>
-        </div>
+      ) : (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+        </svg>
       )}
-    </div>
+    </button>
   );
 
   const {
@@ -237,7 +182,6 @@ export const Toolbar = () => {
     isDirty,
     fileName,
     darkMode,
-    activeTheme,
     panels,
     visibility,
     stats,
@@ -256,7 +200,6 @@ export const Toolbar = () => {
     selectedElementId,
     updateElementType,
     toggleDarkMode,
-    setTheme,
     togglePanel,
     toggleVisibility,
     setActiveApp,

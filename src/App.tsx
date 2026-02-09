@@ -10,32 +10,16 @@ import SuperVisor from './components/SuperVisor';
 import { Home } from './components/Home';
 import { useScreenplayStore } from './store/screenplayStore';
 import { useAuthStore } from './services/projectService';
-import { THEMES } from './types/screenplay';
 import './App.css';
 
 function App() {
-  const { darkMode, isDirty, fileName, activeApp, activeTheme } = useScreenplayStore();
+  const { darkMode, isDirty, fileName, activeApp } = useScreenplayStore();
 
   // Apply theme to document
   useEffect(() => {
-    // Get the theme config
-    const theme = THEMES.find(t => t.id === activeTheme);
-
-    // Determine the actual theme to apply (can include -dark variants)
-    let themeToApply: string = activeTheme;
-
-    // Handle dark mode toggle for themes that have dark variants
-    if (activeTheme === 'default') {
-      themeToApply = darkMode ? 'default-dark' : 'default';
-    } else if (activeTheme === 'macos-minimal') {
-      themeToApply = darkMode ? 'macos-minimal-dark' : 'macos-minimal';
-    } else if (theme?.isDark) {
-      // Theme is inherently dark, ignore darkMode toggle
-      themeToApply = activeTheme;
-    }
-
+    const themeToApply = darkMode ? 'default-dark' : 'default';
     document.documentElement.setAttribute('data-theme', themeToApply);
-  }, [darkMode, activeTheme]);
+  }, [darkMode]);
 
   // Update document title with filename
   useEffect(() => {
