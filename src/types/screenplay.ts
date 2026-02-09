@@ -1264,6 +1264,52 @@ export interface OnSetDisplaySettings {
   fontSize: 'normal' | 'large' | 'xlarge';
 }
 
+// View mode for dual-screen operation
+export type OnSetViewMode =
+  | 'control'      // Full AD control panel
+  | 'display'      // TV/monitor display (scoreboard view)
+  | 'crew';        // Crew read-only mobile view
+
+// Lunch status
+export interface LunchStatus {
+  isOnLunch: boolean;
+  lunchStartedAt?: Date;
+  scheduledDuration: number;      // Minutes
+  actualDuration?: number;
+}
+
+// Delay entry for tracking issues
+export interface DelayEntry {
+  id: string;
+  reason: string;
+  startedAt: Date;
+  endedAt?: Date;
+  duration?: number;              // Minutes
+  category: 'Weather' | 'Technical' | 'Talent' | 'Medical' | 'Other';
+  notes?: string;
+}
+
+// Quick status for crew display
+export interface QuickStatus {
+  currentScene: string;
+  currentSetup: string;
+  estimatedWrap: string;
+  aheadBehind: string;            // "+15 min" or "-10 min"
+  nextUp: string;
+  isOnLunch: boolean;
+  lunchCountdown?: string;        // "12:34" remaining
+}
+
+// Full OnSet state
+export interface OnSet {
+  productionStatus: ProductionStatus | null;
+  displaySettings: OnSetDisplaySettings;
+  viewMode: OnSetViewMode;
+  lunchStatus: LunchStatus | null;
+  delays: DelayEntry[];
+  isLive: boolean;                // Is the board actively tracking?
+}
+
 // ============================================
 // SUPERVISOR APP TYPES (Script Supervisor)
 // ============================================
