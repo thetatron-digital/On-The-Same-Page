@@ -693,3 +693,66 @@
     display: none;
   }
 }
+
+/* ============================================
+   PRODUCTION DROPDOWN
+   ============================================ */
+
+.production-menu {
+  min-width: 200px;
+}
+
+.dropdown-section-title {
+  padding: 6px 12px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  background: var(--surface-bg);
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 4px 0;
+}
+
+.watermark-input {
+  padding: 6px 12px !important;
+}
+
+.watermark-input input {
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+}
+
+.watermark-input input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+.watermark-select {
+  padding: 6px 12px !important;
+}
+
+.watermark-select select {
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.watermark-select select:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}

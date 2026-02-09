@@ -19,6 +19,26 @@ export interface ScreenplayElement {
   type: ElementType;
   content: TextRun[];
   sceneNumber?: string;
+  isDualDialogue?: boolean; // For dual dialogue (side-by-side)
+  dualDialoguePosition?: 'left' | 'right'; // Position in dual dialogue
+}
+
+// Page lock for production readiness
+export interface PageLock {
+  pageNumber: number;
+  lockedAt: Date;
+  lockedBy?: string;
+  color?: string; // Revision color (white, blue, pink, yellow, green, goldenrod, buff, salmon, cherry)
+}
+
+// Watermark settings for PDF export
+export interface WatermarkSettings {
+  enabled: boolean;
+  text: string;
+  opacity: number; // 0-1
+  fontSize: number;
+  angle: number; // degrees
+  position: 'center' | 'diagonal' | 'header' | 'footer';
 }
 
 export interface TitlePageInfo {

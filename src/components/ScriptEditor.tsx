@@ -71,6 +71,7 @@ export const ScriptEditor = () => {
     openAutoComplete,
     closeAutoComplete,
     refreshScriptData,
+    showSceneNumbers,
   } = useScreenplayStore();
 
   // Get the text offset within an element from a node
@@ -181,6 +182,21 @@ export const ScriptEditor = () => {
         div.setAttribute('data-placeholder', format.placeholder);
       }
 
+      // Add scene numbers for Scene Heading elements
+      if (element.type === 'Scene Heading' && showSceneNumbers && element.sceneNumber) {
+        const leftNum = document.createElement('span');
+        leftNum.className = 'scene-number';
+        leftNum.textContent = element.sceneNumber;
+        leftNum.setAttribute('contenteditable', 'false');
+        div.appendChild(leftNum);
+
+        const rightNum = document.createElement('span');
+        rightNum.className = 'scene-number-right';
+        rightNum.textContent = element.sceneNumber;
+        rightNum.setAttribute('contenteditable', 'false');
+        div.appendChild(rightNum);
+      }
+
       // Add text content - use <br> for empty
       if (text) {
         div.appendChild(document.createTextNode(text));
@@ -252,7 +268,7 @@ export const ScriptEditor = () => {
     }
 
     isUpdatingRef.current = false;
-  }, [screenplay.elements, getTextOffset]);
+  }, [screenplay.elements, getTextOffset, showSceneNumbers]);
 
   // Re-render only when elements change (not selection)
   useEffect(() => {

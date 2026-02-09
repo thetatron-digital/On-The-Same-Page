@@ -78,6 +78,8 @@ export const Toolbar = () => {
     viewMode,
     versions,
     activeVersionId,
+    showSceneNumbers,
+    watermarkSettings,
     newScreenplay,
     loadFromFDX,
     exportToFDX,
@@ -94,6 +96,11 @@ export const Toolbar = () => {
     createVersion,
     switchVersion,
     deleteVersion,
+    toggleSceneNumbers,
+    generateSceneNumbers,
+    clearSceneNumbers,
+    setWatermarkSettings,
+    toggleWatermark,
   } = useScreenplayStore();
 
   const handleNew = () => {
@@ -149,7 +156,10 @@ export const Toolbar = () => {
 
   const handleExportPDF = () => {
     const pdfFileName = fileName.replace(/\.fdx$/i, '') + '.pdf';
-    downloadPDF(screenplay, pdfFileName);
+    downloadPDF(screenplay, pdfFileName, {
+      showSceneNumbers,
+      watermark: watermarkSettings,
+    });
   };
 
   const handleElementTypeChange = (type: ElementType) => {
@@ -452,6 +462,88 @@ export const Toolbar = () => {
                 <span className="check-mark">{visibility.scriptNotes ? '✓' : ''}</span>
                 Script Notes
               </button>
+            </div>
+          )}
+        </div>
+
+        {/* Production Features Dropdown */}
+        <div className="dropdown-container">
+          <button
+            className={`menu-btn dropdown-trigger ${openDropdown === 'production' ? 'active' : ''}`}
+            onClick={() => toggleDropdown('production')}
+            title="Production Features"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <polygon points="10 8 16 12 10 16 10 8" />
+            </svg>
+            <span>Production</span>
+            <svg className="dropdown-arrow" viewBox="0 0 12 12" fill="currentColor">
+              <path d="M2 4l4 4 4-4" />
+            </svg>
+          </button>
+          {openDropdown === 'production' && (
+            <div className="dropdown-menu production-menu" onClick={(e) => e.stopPropagation()}>
+              <div className="dropdown-section-title">Scene Numbers</div>
+              <button
+                className={`dropdown-item ${showSceneNumbers ? 'checked' : ''}`}
+                onClick={() => {
+                  if (!showSceneNumbers) {
+                    generateSceneNumbers();
+                  } else {
+                    toggleSceneNumbers();
+                  }
+                }}
+              >
+                <span className="check-mark">{showSceneNumbers ? '✓' : ''}</span>
+                Show Scene Numbers
+              </button>
+              {showSceneNumbers && (
+                <button
+                  className="dropdown-item"
+                  onClick={() => {
+                    clearSceneNumbers();
+                    closeDropdowns();
+                  }}
+                >
+                  <span className="check-mark"></span>
+                  Clear Scene Numbers
+                </button>
+              )}
+              <div className="dropdown-divider" />
+              <div className="dropdown-section-title">Watermark</div>
+              <button
+                className={`dropdown-item ${watermarkSettings.enabled ? 'checked' : ''}`}
+                onClick={toggleWatermark}
+              >
+                <span className="check-mark">{watermarkSettings.enabled ? '✓' : ''}</span>
+                Enable Watermark
+              </button>
+              {watermarkSettings.enabled && (
+                <>
+                  <div className="dropdown-item watermark-input">
+                    <input
+                      type="text"
+                      value={watermarkSettings.text}
+                      onChange={(e) => setWatermarkSettings({ text: e.target.value })}
+                      placeholder="Watermark text"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                  <div className="dropdown-item watermark-select">
+                    <select
+                      value={watermarkSettings.position}
+                      onChange={(e) => setWatermarkSettings({ position: e.target.value as 'diagonal' | 'center' | 'header' | 'footer' })}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <option value="diagonal">Diagonal</option>
+                      <option value="center">Center</option>
+                      <option value="header">Header</option>
+                      <option value="footer">Footer</option>
+                    </select>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>

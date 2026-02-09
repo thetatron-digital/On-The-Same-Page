@@ -3,7 +3,8 @@ import type {
   Screenplay, ScreenplayElement, ElementType, TextRun, TitlePageInfo,
   Beat, BeatBoard, ScriptVersion, ScriptNote,
   StoryOutline, PlotOverview, StoryCharacter, ActsOverview, StoryBeat,
-  AutoCompleteState, ScriptCharacter, ScriptLocation, AutoCompleteSuggestion
+  AutoCompleteState, ScriptCharacter, ScriptLocation, AutoCompleteSuggestion,
+  PageLock, WatermarkSettings
 } from '../types/screenplay';
 import { LINES_PER_PAGE, DEFAULT_BEAT_STRUCTURE } from '../types/screenplay';
 import { createNewScreenplay, generateId, parseFDX, generateFDX, getPlainText } from '../utils/fdx';
@@ -113,6 +114,16 @@ interface ScreenplayState {
   scriptCharacters: Map<string, ScriptCharacter>;
   scriptLocations: ScriptLocation[];
 
+  // Scene Numbers
+  showSceneNumbers: boolean;
+  sceneNumberStyle: 'numeric' | 'alphanumeric'; // 1, 2, 3 or 1, 1A, 2, etc.
+
+  // Page Locking
+  pageLocks: PageLock[];
+
+  // Watermark Settings
+  watermarkSettings: WatermarkSettings;
+
   // Actions
   setScreenplay: (screenplay: Screenplay) => void;
   newScreenplay: () => void;
@@ -201,6 +212,25 @@ interface ScreenplayState {
   selectAutoCompleteSuggestion: (index: number) => void;
   moveAutoCompleteSelection: (direction: 'up' | 'down') => void;
   getAutoCompleteSuggestions: () => AutoCompleteSuggestion[];
+
+  // Scene Numbers actions
+  toggleSceneNumbers: () => void;
+  setSceneNumberStyle: (style: 'numeric' | 'alphanumeric') => void;
+  generateSceneNumbers: () => void;
+  clearSceneNumbers: () => void;
+
+  // Page Locking actions
+  lockPage: (pageNumber: number, color?: string) => void;
+  unlockPage: (pageNumber: number) => void;
+  isPageLocked: (pageNumber: number) => boolean;
+  getPageLock: (pageNumber: number) => PageLock | undefined;
+
+  // Watermark actions
+  setWatermarkSettings: (settings: Partial<WatermarkSettings>) => void;
+  toggleWatermark: () => void;
+
+  // Dual Dialogue actions
+  toggleDualDialogue: (characterElementId: string) => void;
 
   // Theme
   toggleDarkMode: () => void;
@@ -347,6 +377,23 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
   },
   scriptCharacters: new Map(),
   scriptLocations: [],
+
+  // Scene Numbers state
+  showSceneNumbers: false,
+  sceneNumberStyle: 'numeric',
+
+  // Page Locking state
+  pageLocks: [],
+
+  // Watermark Settings state
+  watermarkSettings: {
+    enabled: false,
+    text: 'DRAFT',
+    opacity: 0.15,
+    fontSize: 72,
+    angle: -45,
+    position: 'diagonal',
+  },
 
   // Save current state to history (call before making changes)
   saveToHistory: () => {
@@ -1155,6 +1202,162 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
     }),
 
   getAutoCompleteSuggestions: () => get().autoComplete.suggestions,
+
+  // Scene Numbers actions
+  toggleSceneNumbers: () => set((state) => ({ showSceneNumbers: !state.showSceneNumbers })),
+
+  setSceneNumberStyle: (style) => set({ sceneNumberStyle: style }),
+
+  generateSceneNumbers: () => {
+    const state = get();
+    let sceneCount = 0;
+
+    const elements = state.screenplay.elements.map((el) => {
+      if (el.type === 'Scene Heading') {
+        sceneCount++;
+        return { ...el, sceneNumber: String(sceneCount) };
+      }
+      return el;
+    });
+
+    set({
+      screenplay: { ...state.screenplay, elements },
+      showSceneNumbers: true,
+      isDirty: true,
+    });
+  },
+
+  clearSceneNumbers: () => {
+    const state = get();
+    const elements = state.screenplay.elements.map((el) => {
+      if (el.type === 'Scene Heading') {
+        const { sceneNumber, ...rest } = el;
+        return rest as typeof el;
+      }
+      return el;
+    });
+
+    set({
+      screenplay: { ...state.screenplay, elements },
+      showSceneNumbers: false,
+      isDirty: true,
+    });
+  },
+
+  // Page Locking actions
+  lockPage: (pageNumber, color = 'white') => {
+    const state = get();
+    const existingLock = state.pageLocks.find((l) => l.pageNumber === pageNumber);
+    if (existingLock) return;
+
+    const newLock: PageLock = {
+      pageNumber,
+      lockedAt: new Date(),
+      color,
+    };
+
+    set({
+      pageLocks: [...state.pageLocks, newLock],
+      isDirty: true,
+    });
+  },
+
+  unlockPage: (pageNumber) =>
+    set((state) => ({
+      pageLocks: state.pageLocks.filter((l) => l.pageNumber !== pageNumber),
+      isDirty: true,
+    })),
+
+  isPageLocked: (pageNumber) => {
+    const state = get();
+    return state.pageLocks.some((l) => l.pageNumber === pageNumber);
+  },
+
+  getPageLock: (pageNumber) => {
+    const state = get();
+    return state.pageLocks.find((l) => l.pageNumber === pageNumber);
+  },
+
+  // Watermark actions
+  setWatermarkSettings: (settings) =>
+    set((state) => ({
+      watermarkSettings: { ...state.watermarkSettings, ...settings },
+    })),
+
+  toggleWatermark: () =>
+    set((state) => ({
+      watermarkSettings: {
+        ...state.watermarkSettings,
+        enabled: !state.watermarkSettings.enabled,
+      },
+    })),
+
+  // Dual Dialogue actions
+  toggleDualDialogue: (characterElementId) => {
+    const state = get();
+    const elements = [...state.screenplay.elements];
+    const charIndex = elements.findIndex((el) => el.id === characterElementId);
+
+    if (charIndex === -1 || elements[charIndex].type !== 'Character') return;
+
+    const charElement = elements[charIndex];
+    const isCurrentlyDual = charElement.isDualDialogue;
+
+    if (isCurrentlyDual) {
+      // Turn off dual dialogue for this character and following dialogue
+      let i = charIndex;
+      while (i < elements.length) {
+        const el = elements[i];
+        if (el.type === 'Character' || el.type === 'Dialogue' || el.type === 'Parenthetical') {
+          elements[i] = { ...el, isDualDialogue: false, dualDialoguePosition: undefined };
+          // Stop if we hit the next character after processing current block
+          if (el.type === 'Character' && i > charIndex) break;
+        } else {
+          break;
+        }
+        i++;
+      }
+    } else {
+      // Turn on dual dialogue - mark this character block as 'right' (appears alongside previous)
+      // The previous character block is implicitly 'left'
+      let i = charIndex;
+      while (i < elements.length) {
+        const el = elements[i];
+        if (el.type === 'Character' || el.type === 'Dialogue' || el.type === 'Parenthetical') {
+          elements[i] = { ...el, isDualDialogue: true, dualDialoguePosition: 'right' };
+          if (el.type === 'Character' && i > charIndex) break;
+        } else {
+          break;
+        }
+        i++;
+      }
+
+      // Mark previous character block as 'left'
+      let j = charIndex - 1;
+      while (j >= 0) {
+        const el = elements[j];
+        if (el.type === 'Character') {
+          // Found the previous character, mark their block
+          let k = j;
+          while (k < charIndex) {
+            const kEl = elements[k];
+            if (kEl.type === 'Character' || kEl.type === 'Dialogue' || kEl.type === 'Parenthetical') {
+              elements[k] = { ...kEl, isDualDialogue: true, dualDialoguePosition: 'left' };
+            }
+            k++;
+          }
+          break;
+        }
+        j--;
+      }
+    }
+
+    state.saveToHistory();
+    set({
+      screenplay: { ...state.screenplay, elements },
+      isDirty: true,
+    });
+  },
 
   toggleDarkMode: () => set((state) => ({ darkMode: !state.darkMode })),
 }));
