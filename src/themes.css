@@ -6,7 +6,7 @@
    DEFAULT THEME (Light)
    Clean, professional look
    ============================================ */
-[data-theme="default"] {
+html[data-theme="default"] {
   --app-bg: #f5f5f5;
   --toolbar-bg: #ffffff;
   --toolbar-secondary-bg: #fafafa;
@@ -60,7 +60,7 @@
    DEFAULT THEME (Dark)
    Clean, professional dark mode
    ============================================ */
-[data-theme="default-dark"] {
+html[data-theme="default-dark"] {
   --app-bg: #1a1a1a;
   --toolbar-bg: #2d2d2d;
   --toolbar-secondary-bg: #252525;

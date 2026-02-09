@@ -17,7 +17,8 @@
   min-height: 44px;
   justify-content: flex-start;
   gap: 0;
-  flex-wrap: wrap;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .format-bar {
@@ -29,8 +30,7 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  flex-shrink: 1;
-  flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .menu-left {
@@ -78,15 +78,15 @@
   letter-spacing: -0.3px;
 }
 
-/* Menu Buttons - Vertical layout (icon above text) like Final Draft */
+/* Menu Buttons - Icon-first layout */
 .menu-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
-  padding: 4px 8px;
-  min-width: 40px;
+  padding: 6px;
+  min-width: 32px;
   background: transparent;
   border: none;
   border-radius: 4px;
@@ -96,6 +96,11 @@
   font-weight: 500;
   transition: all 0.12s ease;
   white-space: nowrap;
+}
+
+/* Hide text labels by default - show icons only */
+.menu-btn span {
+  display: none;
 }
 
 .menu-btn:hover {
@@ -758,52 +763,15 @@
   letter-spacing: 0.3px;
 }
 
-/* Responsive: hide text labels on narrow screens */
-@media (max-width: 1000px) {
-  .menu-btn span {
-    display: none;
-  }
-
-  .menu-btn {
-    padding: 4px;
-    min-width: 32px;
-  }
-
-  .brand-name {
-    display: none;
-  }
-
-  .toolbar-brand {
-    margin-right: 8px;
-  }
-
-  .menu-center {
-    margin: 0 4px;
-  }
-
-  .element-type-btn {
-    min-width: 120px;
-    padding: 6px 10px;
-  }
-
-  .toolbar-row {
-    padding: 4px 8px;
-  }
-}
-
+/* Responsive adjustments */
 @media (max-width: 768px) {
-  .menu-left,
-  .menu-right {
-    flex: 0 1 auto;
-  }
-
   .menu-center {
-    flex: 1;
     margin: 0 4px;
   }
 
   .element-type-btn {
     min-width: 100px;
+    padding: 6px 10px;
     font-size: 11px;
   }
 
@@ -816,16 +784,6 @@
   .format-bar {
     flex-wrap: wrap;
     gap: 8px;
-  }
-
-  .format-center {
-    order: 3;
-    flex: 0 0 100%;
-    justify-content: center;
-  }
-
-  .element-dropdown {
-    min-width: 100px;
   }
 
   .page-info {
