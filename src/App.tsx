@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Toolbar } from './components/Toolbar';
 import { Editor } from './components/Editor';
 import { Breakdown } from './components/Breakdown';
+import { ArtCart } from './components/ArtCart';
 import { useScreenplayStore } from './store/screenplayStore';
 import './App.css';
 
@@ -32,10 +33,22 @@ function App() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isDirty]);
 
+  // Render the appropriate app based on activeApp
+  const renderApp = () => {
+    switch (activeApp) {
+      case 'breakdown':
+        return <Breakdown />;
+      case 'artcart':
+        return <ArtCart />;
+      default:
+        return <Editor />;
+    }
+  };
+
   return (
     <div className="app">
       <Toolbar />
-      {activeApp === 'breakdown' ? <Breakdown /> : <Editor />}
+      {renderApp()}
     </div>
   );
 }

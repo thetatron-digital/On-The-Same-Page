@@ -660,3 +660,119 @@ export interface SceneShotList {
   shots: Shot[];
   linedScript: LinedScript;
 }
+
+// ============================================
+// ARTCART APP TYPES (Art Department Sourcing)
+// ============================================
+
+// Categories that ArtCart handles (subset of breakdown categories)
+export type ArtCartCategory =
+  | 'Props'
+  | 'Set Dressing'
+  | 'Greenery'
+  | 'Vehicles'
+  | 'Wardrobe'
+  | 'Makeup'
+  | 'Special Equipment';
+
+// Sourcing status for items
+export type SourcingStatus =
+  | 'To Find'      // Not yet sourced
+  | 'Researching'  // Looking for options
+  | 'Found'        // Located, not yet acquired
+  | 'Rented'       // Rented from vendor
+  | 'Purchased'    // Bought outright
+  | 'Built'        // Will be built/made
+  | 'Borrowed'     // Borrowed, no cost
+  | 'On Hand';     // Already in inventory
+
+// Priority levels
+export type ItemPriority = 'Critical' | 'High' | 'Medium' | 'Low';
+
+// Vendor information
+export interface Vendor {
+  id: string;
+  name: string;
+  contact?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  notes?: string;
+}
+
+// An item in ArtCart (sourced from BreakDown or manually added)
+export interface ArtCartItem {
+  id: string;
+  name: string;
+  category: ArtCartCategory | string;
+  description?: string;
+
+  // Sourcing info
+  status: SourcingStatus;
+  priority: ItemPriority;
+  quantity: number;
+
+  // Financial
+  estimatedCost?: number;
+  actualCost?: number;
+  rentalPeriod?: string; // "2 weeks", "3 days"
+
+  // Vendor
+  vendorId?: string;
+  vendorNotes?: string;
+
+  // Scenes where needed
+  sceneIds: string[];
+
+  // Link to breakdown element (if imported)
+  breakdownElementId?: string;
+
+  // Tracking
+  assignedTo?: string;
+  dueDate?: Date;
+  acquiredDate?: Date;
+  returnDate?: Date;
+
+  // Media
+  referenceImages?: string[];
+  notes?: string;
+
+  // Metadata
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Shopping list (grouped items for a department run)
+export interface ShoppingList {
+  id: string;
+  name: string;
+  itemIds: string[];
+  vendorId?: string;
+  assignedTo?: string;
+  dueDate?: Date;
+  notes?: string;
+  status: 'Draft' | 'Active' | 'Completed';
+  createdAt: Date;
+}
+
+// Department budget tracking
+export interface ArtCartBudget {
+  category: ArtCartCategory | string;
+  allocated: number;
+  spent: number;
+  committed: number; // Pending purchases/rentals
+  remaining: number;
+}
+
+// Full ArtCart state
+export interface ArtCart {
+  id: string;
+  projectName: string;
+  items: ArtCartItem[];
+  vendors: Vendor[];
+  shoppingLists: ShoppingList[];
+  budgets: ArtCartBudget[];
+  importedFromBreakdownId?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}

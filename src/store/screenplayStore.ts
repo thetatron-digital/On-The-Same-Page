@@ -6,7 +6,8 @@ import type {
   AutoCompleteState, ScriptCharacter, ScriptLocation, AutoCompleteSuggestion,
   PageLock, WatermarkSettings,
   Breakdown, BreakdownElement, BreakdownScene, BreakdownCategory,
-  CustomCategory
+  CustomCategory,
+  ArtCart, ArtCartItem, Vendor, ShoppingList, SourcingStatus, ItemPriority
 } from '../types/screenplay';
 import { LINES_PER_PAGE, DEFAULT_BEAT_STRUCTURE } from '../types/screenplay';
 import { createNewScreenplay, generateId, parseFDX, generateFDX, getPlainText } from '../utils/fdx';
@@ -44,7 +45,7 @@ interface VisibilityState {
 type ViewMode = 'script' | 'split';
 
 // App modes (top-level application switching)
-type AppMode = 'blueprint' | 'corkboard' | 'rewriter' | 'breakdown';
+type AppMode = 'blueprint' | 'corkboard' | 'rewriter' | 'breakdown' | 'artcart';
 
 // Split View content (independent from main script)
 interface SplitEntry {
@@ -135,6 +136,12 @@ interface ScreenplayState {
   breakdownScenes: BreakdownScene[];
   selectedBreakdownCategory: BreakdownCategory | null;
   selectedBreakdownSceneId: string | null;
+
+  // ArtCart State
+  artCart: ArtCart | null;
+  selectedArtCartCategory: string | null;
+  selectedArtCartItemId: string | null;
+  artCartFilterStatus: SourcingStatus | 'All';
 
   // Actions
   setScreenplay: (screenplay: Screenplay) => void;
@@ -254,6 +261,26 @@ interface ScreenplayState {
   deleteBreakdownElement: (elementId: string) => void;
   addCustomCategory: (category: CustomCategory) => void;
   getBreakdownElementsForScene: (sceneId: string) => BreakdownElement[];
+
+  // ArtCart actions
+  initializeArtCart: () => void;
+  importFromBreakdown: () => void;
+  addArtCartItem: (item: Omit<ArtCartItem, 'id' | 'createdAt' | 'updatedAt'>) => string;
+  updateArtCartItem: (itemId: string, updates: Partial<ArtCartItem>) => void;
+  deleteArtCartItem: (itemId: string) => void;
+  setArtCartItemStatus: (itemId: string, status: SourcingStatus) => void;
+  setArtCartItemPriority: (itemId: string, priority: ItemPriority) => void;
+  addVendor: (vendor: Omit<Vendor, 'id'>) => string;
+  updateVendor: (vendorId: string, updates: Partial<Vendor>) => void;
+  deleteVendor: (vendorId: string) => void;
+  createShoppingList: (name: string, itemIds: string[]) => string;
+  updateShoppingList: (listId: string, updates: Partial<ShoppingList>) => void;
+  deleteShoppingList: (listId: string) => void;
+  selectArtCartCategory: (category: string | null) => void;
+  selectArtCartItem: (itemId: string | null) => void;
+  setArtCartFilterStatus: (status: SourcingStatus | 'All') => void;
+  getArtCartItemsByCategory: (category: string) => ArtCartItem[];
+  getArtCartItemsByStatus: (status: SourcingStatus) => ArtCartItem[];
 
   // Theme
   toggleDarkMode: () => void;
@@ -423,6 +450,12 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
   breakdownScenes: [],
   selectedBreakdownCategory: null,
   selectedBreakdownSceneId: null,
+
+  // ArtCart state
+  artCart: null,
+  selectedArtCartCategory: null,
+  selectedArtCartItemId: null,
+  artCartFilterStatus: 'All',
 
   // Save current state to history (call before making changes)
   saveToHistory: () => {
@@ -1541,6 +1574,308 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
     const state = get();
     if (!state.breakdown) return [];
     return getElementsForScene(state.breakdown.elements, sceneId);
+  },
+
+  // ArtCart actions
+  initializeArtCart: () => {
+    const state = get();
+    const artCart: ArtCart = {
+      id: generateId(),
+      projectName: state.screenplay.title || 'Untitled Project',
+      items: [],
+      vendors: [],
+      shoppingLists: [],
+      budgets: [],
+      importedFromBreakdownId: state.breakdown?.id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    set({ artCart });
+  },
+
+  importFromBreakdown: () => {
+    const state = get();
+    if (!state.breakdown) return;
+
+    // Art-related categories to import
+    const artCategories = ['Props', 'Set Dressing', 'Greenery', 'Vehicles', 'Wardrobe', 'Makeup', 'Special Equipment'];
+
+    // Filter breakdown elements to art categories
+    const artElements = state.breakdown.elements.filter(el =>
+      artCategories.includes(el.category)
+    );
+
+    // Create ArtCartItems from breakdown elements
+    const newItems: ArtCartItem[] = artElements.map(el => ({
+      id: generateId(),
+      name: el.text,
+      category: el.category,
+      status: 'To Find' as SourcingStatus,
+      priority: 'Medium' as ItemPriority,
+      quantity: 1,
+      sceneIds: [el.sceneId],
+      breakdownElementId: el.id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }));
+
+    // Merge with existing items (avoid duplicates by breakdownElementId)
+    const existingIds = new Set(state.artCart?.items.map(i => i.breakdownElementId) || []);
+    const uniqueNewItems = newItems.filter(item =>
+      item.breakdownElementId && !existingIds.has(item.breakdownElementId)
+    );
+
+    const updatedArtCart: ArtCart = state.artCart ? {
+      ...state.artCart,
+      items: [...state.artCart.items, ...uniqueNewItems],
+      importedFromBreakdownId: state.breakdown.id,
+      updatedAt: new Date(),
+    } : {
+      id: generateId(),
+      projectName: state.screenplay.title || 'Untitled Project',
+      items: uniqueNewItems,
+      vendors: [],
+      shoppingLists: [],
+      budgets: [],
+      importedFromBreakdownId: state.breakdown.id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    set({ artCart: updatedArtCart, isDirty: true });
+  },
+
+  addArtCartItem: (itemData) => {
+    const state = get();
+    const id = generateId();
+    const newItem: ArtCartItem = {
+      ...itemData,
+      id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const updatedArtCart = state.artCart ? {
+      ...state.artCart,
+      items: [...state.artCart.items, newItem],
+      updatedAt: new Date(),
+    } : {
+      id: generateId(),
+      projectName: state.screenplay.title || 'Untitled Project',
+      items: [newItem],
+      vendors: [],
+      shoppingLists: [],
+      budgets: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    set({ artCart: updatedArtCart, isDirty: true });
+    return id;
+  },
+
+  updateArtCartItem: (itemId, updates) => {
+    const state = get();
+    if (!state.artCart) return;
+
+    const updatedItems = state.artCart.items.map(item =>
+      item.id === itemId ? { ...item, ...updates, updatedAt: new Date() } : item
+    );
+
+    set({
+      artCart: {
+        ...state.artCart,
+        items: updatedItems,
+        updatedAt: new Date(),
+      },
+      isDirty: true,
+    });
+  },
+
+  deleteArtCartItem: (itemId) => {
+    const state = get();
+    if (!state.artCart) return;
+
+    set({
+      artCart: {
+        ...state.artCart,
+        items: state.artCart.items.filter(item => item.id !== itemId),
+        updatedAt: new Date(),
+      },
+      isDirty: true,
+    });
+  },
+
+  setArtCartItemStatus: (itemId, status) => {
+    const state = get();
+    if (!state.artCart) return;
+
+    const updatedItems = state.artCart.items.map(item =>
+      item.id === itemId ? { ...item, status, updatedAt: new Date() } : item
+    );
+
+    set({
+      artCart: {
+        ...state.artCart,
+        items: updatedItems,
+        updatedAt: new Date(),
+      },
+      isDirty: true,
+    });
+  },
+
+  setArtCartItemPriority: (itemId, priority) => {
+    const state = get();
+    if (!state.artCart) return;
+
+    const updatedItems = state.artCart.items.map(item =>
+      item.id === itemId ? { ...item, priority, updatedAt: new Date() } : item
+    );
+
+    set({
+      artCart: {
+        ...state.artCart,
+        items: updatedItems,
+        updatedAt: new Date(),
+      },
+      isDirty: true,
+    });
+  },
+
+  addVendor: (vendorData) => {
+    const state = get();
+    const id = generateId();
+    const newVendor: Vendor = { ...vendorData, id };
+
+    const updatedArtCart = state.artCart ? {
+      ...state.artCart,
+      vendors: [...state.artCart.vendors, newVendor],
+      updatedAt: new Date(),
+    } : {
+      id: generateId(),
+      projectName: state.screenplay.title || 'Untitled Project',
+      items: [],
+      vendors: [newVendor],
+      shoppingLists: [],
+      budgets: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    set({ artCart: updatedArtCart, isDirty: true });
+    return id;
+  },
+
+  updateVendor: (vendorId, updates) => {
+    const state = get();
+    if (!state.artCart) return;
+
+    const updatedVendors = state.artCart.vendors.map(vendor =>
+      vendor.id === vendorId ? { ...vendor, ...updates } : vendor
+    );
+
+    set({
+      artCart: {
+        ...state.artCart,
+        vendors: updatedVendors,
+        updatedAt: new Date(),
+      },
+      isDirty: true,
+    });
+  },
+
+  deleteVendor: (vendorId) => {
+    const state = get();
+    if (!state.artCart) return;
+
+    set({
+      artCart: {
+        ...state.artCart,
+        vendors: state.artCart.vendors.filter(v => v.id !== vendorId),
+        updatedAt: new Date(),
+      },
+      isDirty: true,
+    });
+  },
+
+  createShoppingList: (name, itemIds) => {
+    const state = get();
+    const id = generateId();
+    const newList: ShoppingList = {
+      id,
+      name,
+      itemIds,
+      status: 'Draft',
+      createdAt: new Date(),
+    };
+
+    const updatedArtCart = state.artCart ? {
+      ...state.artCart,
+      shoppingLists: [...state.artCart.shoppingLists, newList],
+      updatedAt: new Date(),
+    } : {
+      id: generateId(),
+      projectName: state.screenplay.title || 'Untitled Project',
+      items: [],
+      vendors: [],
+      shoppingLists: [newList],
+      budgets: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    set({ artCart: updatedArtCart, isDirty: true });
+    return id;
+  },
+
+  updateShoppingList: (listId, updates) => {
+    const state = get();
+    if (!state.artCart) return;
+
+    const updatedLists = state.artCart.shoppingLists.map(list =>
+      list.id === listId ? { ...list, ...updates } : list
+    );
+
+    set({
+      artCart: {
+        ...state.artCart,
+        shoppingLists: updatedLists,
+        updatedAt: new Date(),
+      },
+      isDirty: true,
+    });
+  },
+
+  deleteShoppingList: (listId) => {
+    const state = get();
+    if (!state.artCart) return;
+
+    set({
+      artCart: {
+        ...state.artCart,
+        shoppingLists: state.artCart.shoppingLists.filter(l => l.id !== listId),
+        updatedAt: new Date(),
+      },
+      isDirty: true,
+    });
+  },
+
+  selectArtCartCategory: (category) => set({ selectedArtCartCategory: category }),
+
+  selectArtCartItem: (itemId) => set({ selectedArtCartItemId: itemId }),
+
+  setArtCartFilterStatus: (status) => set({ artCartFilterStatus: status }),
+
+  getArtCartItemsByCategory: (category) => {
+    const state = get();
+    if (!state.artCart) return [];
+    return state.artCart.items.filter(item => item.category === category);
+  },
+
+  getArtCartItemsByStatus: (status) => {
+    const state = get();
+    if (!state.artCart) return [];
+    return state.artCart.items.filter(item => item.status === status);
   },
 
   toggleDarkMode: () => set((state) => ({ darkMode: !state.darkMode })),
