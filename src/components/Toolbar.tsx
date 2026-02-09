@@ -1205,12 +1205,12 @@ export const Toolbar = () => {
         <div style={{ flex: 1 }} />
 
         {/* Cloud Save Button */}
-        {user && currentProjectId && (
+        {user && (
           <button
             className={`menu-btn icon-only ${isSaving ? 'saving' : ''}`}
-            onClick={handleSaveToCloud}
+            onClick={currentProjectId ? handleSaveToCloud : () => setActiveApp('home')}
             disabled={isSaving}
-            title={isSaving ? 'Saving...' : 'Save to Cloud'}
+            title={isSaving ? 'Saving...' : currentProjectId ? 'Save to Cloud' : 'Go to Projects to enable cloud save'}
           >
             {isSaving ? (
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="spin">

@@ -185,6 +185,16 @@ const OnSet: React.FC = () => {
             Exit Crew View
           </button>
         )}
+
+        {/* Mode toggle for display/TV */}
+        {viewMode === 'display' && (
+          <button
+            className="view-toggle"
+            onClick={() => setOnSetViewMode('control')}
+          >
+            Exit TV Display
+          </button>
+        )}
       </div>
     );
   }

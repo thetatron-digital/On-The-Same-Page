@@ -62,7 +62,6 @@ export const ArtCart = () => {
     checkScriptVersionSync,
     addArtCartItem,
     updateArtCartItem,
-    deleteArtCartItem,
     setArtCartItemStatus,
     addItemOption,
     deleteItemOption,
@@ -461,17 +460,6 @@ export const ArtCart = () => {
                         >
                           + Option
                         </button>
-                        <button
-                          className="delete-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (confirm('Delete this item?')) {
-                              deleteArtCartItem(item.id);
-                            }
-                          }}
-                        >
-                          ×
-                        </button>
                       </div>
                     </div>
                   ))}
@@ -841,16 +829,16 @@ export const ArtCart = () => {
                           ★
                         </button>
                         <button
-                          className="approve-btn"
-                          onClick={() => approveItemOption(editingItem.id, option.id, 'Director', 'Approved')}
-                          title="Approve this option"
+                          className={`approve-btn ${option.approvalStatus === 'Approved' ? 'active' : ''}`}
+                          onClick={() => approveItemOption(editingItem.id, option.id, 'Director', option.approvalStatus === 'Approved' ? 'Pending' : 'Approved')}
+                          title={option.approvalStatus === 'Approved' ? 'Remove approval' : 'Approve this option'}
                         >
                           Approve
                         </button>
                         <button
-                          className="indifferent-btn"
-                          onClick={() => approveItemOption(editingItem.id, option.id, 'Director', 'Indifferent')}
-                          title="Mark as OK with any choice"
+                          className={`indifferent-btn ${option.approvalStatus === 'Indifferent' ? 'active' : ''}`}
+                          onClick={() => approveItemOption(editingItem.id, option.id, 'Director', option.approvalStatus === 'Indifferent' ? 'Pending' : 'Indifferent')}
+                          title={option.approvalStatus === 'Indifferent' ? 'Remove status' : 'Mark as OK with any choice'}
                         >
                           Any is Fine
                         </button>

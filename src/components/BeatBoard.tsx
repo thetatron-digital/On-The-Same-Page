@@ -256,8 +256,8 @@ export const BeatBoard = () => {
     }
   };
 
-  // Convert story beats to card format - only show beats with content
-  const filledBeats = storyOutline.beats.filter((beat) => beat.description.trim() !== '');
+  // Convert story beats to card format - show beats with content or a custom name
+  const filledBeats = storyOutline.beats.filter((beat) => beat.description.trim() !== '' || beat.id.startsWith('manual-'));
   const storyBeatCards: StoryBeatCard[] = filledBeats.map((beat) => ({
     ...beat,
     position: storyBeatPositions[beat.id] || { x: 50, y: 50 },

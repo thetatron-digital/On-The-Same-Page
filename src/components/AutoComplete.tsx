@@ -47,8 +47,13 @@ export const AutoComplete = ({ onSelect, onClose }: AutoCompleteProps) => {
         onClose();
         break;
       case 'Tab':
-        // Close on tab - let focus move naturally
-        onClose();
+        e.preventDefault();
+        e.stopPropagation();
+        if (suggestions[selectedIndex]) {
+          onSelect(suggestions[selectedIndex].value);
+        } else {
+          onClose();
+        }
         break;
     }
   }, [isOpen, suggestions, selectedIndex, moveAutoCompleteSelection, onSelect, onClose]);
@@ -213,7 +218,11 @@ export const AutoComplete = ({ onSelect, onClose }: AutoCompleteProps) => {
           <div
             key={`${suggestion.value}-${index}`}
             className={`autocomplete-item ${index === selectedIndex ? 'selected' : ''}`}
-            onClick={() => onSelect(suggestion.value)}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onSelect(suggestion.value);
+            }}
             onMouseEnter={() => useScreenplayStore.getState().selectAutoCompleteSuggestion(index)}
           >
             {getTypeIcon(suggestion.type)}
