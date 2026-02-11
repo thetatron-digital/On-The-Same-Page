@@ -11,7 +11,7 @@ import type {
   ItemOption, ApprovalStatus, ArtCartBudget, BudgetStatus,
   ViewFinder, Shot, ShotStatus,
   Storyboard, StoryboardFrame, CameraPackage, SceneCoverage,
-  Schedule, SceneStrip, ShotPackage, ShootDay, StripColor,
+  Schedule, SceneStrip, ShotPackage, ShootDay, StripColor, DayTask, SubTask,
   DOODEntry, DOODStatus,
   OnSet, OnSetViewMode, OnSetDisplaySettings, ProductionStatus, LunchStatus, DelayEntry,
   SuperVisor, SupervisorSession, TakeEntry, ContinuityLog, DailyReport, SlateInfo,
@@ -400,6 +400,15 @@ interface ScreenplayState {
 
   // Schedule settings
   updateScheduleSettings: (settings: Partial<Pick<Schedule, 'defaultCallTime' | 'defaultLunchDuration' | 'showLunchOnBoard'>>) => void;
+
+  // Day task actions
+  addDayTask: (dayId: string, title: string) => void;
+  updateDayTask: (dayId: string, taskId: string, updates: Partial<DayTask>) => void;
+  deleteDayTask: (dayId: string, taskId: string) => void;
+  toggleDayTask: (dayId: string, taskId: string) => void;
+  addSubTask: (dayId: string, taskId: string, title: string) => void;
+  toggleSubTask: (dayId: string, taskId: string, subtaskId: string) => void;
+  deleteSubTask: (dayId: string, taskId: string, subtaskId: string) => void;
 
   // Selection
   selectShootDay: (dayId: string | null) => void;
@@ -3601,6 +3610,158 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
         ...settings,
         updatedAt: new Date(),
       },
+      isDirty: true,
+    });
+  },
+
+  // Day task actions
+  addDayTask: (dayId, title) => {
+    const state = get();
+    if (!state.schedule) return;
+
+    const newTask: DayTask = {
+      id: generateId(),
+      title,
+      completed: false,
+      subtasks: [],
+    };
+
+    const updatedDays = state.schedule.shootDays.map(day =>
+      day.id === dayId ? { ...day, tasks: [...(day.tasks || []), newTask] } : day
+    );
+
+    set({
+      schedule: { ...state.schedule, shootDays: updatedDays, updatedAt: new Date() },
+      isDirty: true,
+    });
+  },
+
+  updateDayTask: (dayId, taskId, updates) => {
+    const state = get();
+    if (!state.schedule) return;
+
+    const updatedDays = state.schedule.shootDays.map(day => {
+      if (day.id !== dayId) return day;
+      return {
+        ...day,
+        tasks: (day.tasks || []).map(t => t.id === taskId ? { ...t, ...updates } : t),
+      };
+    });
+
+    set({
+      schedule: { ...state.schedule, shootDays: updatedDays, updatedAt: new Date() },
+      isDirty: true,
+    });
+  },
+
+  deleteDayTask: (dayId, taskId) => {
+    const state = get();
+    if (!state.schedule) return;
+
+    const updatedDays = state.schedule.shootDays.map(day => {
+      if (day.id !== dayId) return day;
+      return { ...day, tasks: (day.tasks || []).filter(t => t.id !== taskId) };
+    });
+
+    set({
+      schedule: { ...state.schedule, shootDays: updatedDays, updatedAt: new Date() },
+      isDirty: true,
+    });
+  },
+
+  toggleDayTask: (dayId, taskId) => {
+    const state = get();
+    if (!state.schedule) return;
+
+    const updatedDays = state.schedule.shootDays.map(day => {
+      if (day.id !== dayId) return day;
+      return {
+        ...day,
+        tasks: (day.tasks || []).map(t => {
+          if (t.id !== taskId) return t;
+          const newCompleted = !t.completed;
+          return {
+            ...t,
+            completed: newCompleted,
+            subtasks: t.subtasks.map(st => ({ ...st, completed: newCompleted })),
+          };
+        }),
+      };
+    });
+
+    set({
+      schedule: { ...state.schedule, shootDays: updatedDays, updatedAt: new Date() },
+      isDirty: true,
+    });
+  },
+
+  addSubTask: (dayId, taskId, title) => {
+    const state = get();
+    if (!state.schedule) return;
+
+    const newSubTask: SubTask = { id: generateId(), title, completed: false };
+
+    const updatedDays = state.schedule.shootDays.map(day => {
+      if (day.id !== dayId) return day;
+      return {
+        ...day,
+        tasks: (day.tasks || []).map(t => {
+          if (t.id !== taskId) return t;
+          return { ...t, subtasks: [...t.subtasks, newSubTask] };
+        }),
+      };
+    });
+
+    set({
+      schedule: { ...state.schedule, shootDays: updatedDays, updatedAt: new Date() },
+      isDirty: true,
+    });
+  },
+
+  toggleSubTask: (dayId, taskId, subtaskId) => {
+    const state = get();
+    if (!state.schedule) return;
+
+    const updatedDays = state.schedule.shootDays.map(day => {
+      if (day.id !== dayId) return day;
+      return {
+        ...day,
+        tasks: (day.tasks || []).map(t => {
+          if (t.id !== taskId) return t;
+          const updatedSubtasks = t.subtasks.map(st =>
+            st.id === subtaskId ? { ...st, completed: !st.completed } : st
+          );
+          const allDone = updatedSubtasks.length > 0 && updatedSubtasks.every(st => st.completed);
+          return { ...t, subtasks: updatedSubtasks, completed: allDone };
+        }),
+      };
+    });
+
+    set({
+      schedule: { ...state.schedule, shootDays: updatedDays, updatedAt: new Date() },
+      isDirty: true,
+    });
+  },
+
+  deleteSubTask: (dayId, taskId, subtaskId) => {
+    const state = get();
+    if (!state.schedule) return;
+
+    const updatedDays = state.schedule.shootDays.map(day => {
+      if (day.id !== dayId) return day;
+      return {
+        ...day,
+        tasks: (day.tasks || []).map(t => {
+          if (t.id !== taskId) return t;
+          const updatedSubtasks = t.subtasks.filter(st => st.id !== subtaskId);
+          const allDone = updatedSubtasks.length > 0 && updatedSubtasks.every(st => st.completed);
+          return { ...t, subtasks: updatedSubtasks, completed: allDone };
+        }),
+      };
+    });
+
+    set({
+      schedule: { ...state.schedule, shootDays: updatedDays, updatedAt: new Date() },
       isDirty: true,
     });
   },

@@ -682,6 +682,407 @@
   --accent-color: #007AFF;
 }
 
+/* Tasks button in day actions */
+.day-actions .tasks-btn {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.day-actions .tasks-btn:hover {
+  background: var(--bg-hover, var(--bg-secondary));
+}
+
+/* ============================================
+   DAY DETAIL / TASKS MODAL
+   Grey/black/white scheme with colorful progress
+   ============================================ */
+
+.day-detail-modal {
+  background: #ffffff;
+  border-radius: 12px;
+  width: 440px;
+  max-width: 92%;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.basecamp-container.dark .day-detail-modal {
+  background: #1e1e1e;
+}
+
+/* Header */
+.day-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 20px 24px 12px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.basecamp-container.dark .day-detail-header {
+  border-bottom-color: #333;
+}
+
+.day-detail-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.basecamp-container.dark .day-detail-header h3 {
+  color: #e0e0e0;
+}
+
+.day-detail-location {
+  font-size: 13px;
+  color: #888;
+  margin-top: 4px;
+}
+
+.day-detail-close {
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  color: #999;
+  font-size: 22px;
+  cursor: pointer;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.day-detail-close:hover {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.basecamp-container.dark .day-detail-close:hover {
+  background: #333;
+  color: #ccc;
+}
+
+/* Progress bar */
+.day-detail-progress {
+  padding: 16px 24px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.basecamp-container.dark .day-detail-progress {
+  border-bottom-color: #333;
+}
+
+.progress-bar-track {
+  height: 8px;
+  background: #e8e8e8;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.basecamp-container.dark .progress-bar-track {
+  background: #333;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #ef4444, #f59e0b, #22c55e, #3b82f6);
+  background-size: 400% 100%;
+  transition: width 0.4s ease;
+  position: relative;
+}
+
+/* The gradient position shifts based on width via animation keyframes */
+.progress-bar-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg,
+    #ef4444 0%,
+    #f97316 20%,
+    #eab308 40%,
+    #22c55e 65%,
+    #14b8a6 80%,
+    #3b82f6 100%
+  );
+  border-radius: 4px;
+}
+
+.progress-label {
+  font-size: 12px;
+  color: #888;
+  margin-top: 6px;
+}
+
+/* Tasks list */
+.day-detail-tasks {
+  padding: 12px 24px 20px;
+}
+
+/* Individual task */
+.task-item {
+  border-bottom: 1px solid #f0f0f0;
+  padding: 10px 0;
+}
+
+.basecamp-container.dark .task-item {
+  border-bottom-color: #2a2a2a;
+}
+
+.task-item:last-of-type {
+  border-bottom: none;
+}
+
+.task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.task-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  cursor: pointer;
+}
+
+.task-checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: #555;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.task-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: #1a1a1a;
+}
+
+.basecamp-container.dark .task-title {
+  color: #e0e0e0;
+}
+
+.task-title.completed {
+  text-decoration: line-through;
+  color: #aaa;
+}
+
+.basecamp-container.dark .task-title.completed {
+  color: #666;
+}
+
+.task-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.task-subtask-count {
+  font-size: 12px;
+  color: #999;
+  background: #f0f0f0;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.basecamp-container.dark .task-subtask-count {
+  background: #333;
+  color: #888;
+}
+
+.task-delete {
+  width: 22px;
+  height: 22px;
+  background: transparent;
+  border: none;
+  color: #ccc;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.task-delete:hover {
+  background: #fee2e2;
+  color: #ef4444;
+}
+
+.basecamp-container.dark .task-delete:hover {
+  background: #3b1111;
+  color: #ef4444;
+}
+
+/* Subtasks */
+.subtask-list {
+  margin-left: 28px;
+  margin-top: 4px;
+}
+
+.subtask-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.subtask-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  cursor: pointer;
+}
+
+.subtask-checkbox {
+  width: 15px;
+  height: 15px;
+  accent-color: #777;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.subtask-title {
+  font-size: 13px;
+  color: #444;
+}
+
+.basecamp-container.dark .subtask-title {
+  color: #bbb;
+}
+
+.subtask-title.completed {
+  text-decoration: line-through;
+  color: #bbb;
+}
+
+.basecamp-container.dark .subtask-title.completed {
+  color: #555;
+}
+
+.subtask-delete {
+  width: 18px;
+  height: 18px;
+  background: transparent;
+  border: none;
+  color: #ddd;
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.subtask-item:hover .subtask-delete {
+  opacity: 1;
+}
+
+.subtask-delete:hover {
+  color: #ef4444;
+}
+
+/* Add subtask / task */
+.add-subtask-btn {
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 0;
+  margin-left: 28px;
+  margin-top: 2px;
+}
+
+.add-subtask-btn:hover {
+  color: #666;
+}
+
+.basecamp-container.dark .add-subtask-btn:hover {
+  color: #ccc;
+}
+
+.add-subtask-input {
+  margin-left: 28px;
+  margin-top: 4px;
+}
+
+.add-subtask-input input {
+  width: 100%;
+  padding: 6px 10px;
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #1a1a1a;
+}
+
+.basecamp-container.dark .add-subtask-input input {
+  background: #2a2a2a;
+  border-color: #444;
+  color: #e0e0e0;
+}
+
+.add-subtask-input input:focus {
+  outline: none;
+  border-color: #999;
+}
+
+.add-task-input {
+  margin-top: 8px;
+}
+
+.add-task-input input {
+  width: 100%;
+  padding: 10px 12px;
+  background: #f8f8f8;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1a1a1a;
+}
+
+.basecamp-container.dark .add-task-input input {
+  background: #252525;
+  border-color: #444;
+  color: #e0e0e0;
+}
+
+.add-task-input input:focus {
+  outline: none;
+  border-color: #999;
+}
+
+.add-task-input input::placeholder,
+.add-subtask-input input::placeholder {
+  color: #bbb;
+}
+
+.basecamp-container.dark .add-task-input input::placeholder,
+.basecamp-container.dark .add-subtask-input input::placeholder {
+  color: #555;
+}
+
 /* Responsive */
 @media (max-width: 1100px) {
   .basecamp-panel {
