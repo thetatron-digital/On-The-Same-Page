@@ -24,22 +24,12 @@ const BaseCamp: React.FC = () => {
     selectShootDay,
     selectStrip,
     updateScheduleSettings,
-    addDayTask,
-    toggleDayTask,
-    deleteDayTask,
-    addSubTask,
-    toggleSubTask,
-    deleteSubTask,
   } = useScreenplayStore();
 
   // Modal states
   const [showDayModal, setShowDayModal] = useState(false);
   const [editingDay, setEditingDay] = useState<ShootDay | null>(null);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [showDayDetailModal, setShowDayDetailModal] = useState<string | null>(null);
-  const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [addingSubtaskFor, setAddingSubtaskFor] = useState<string | null>(null);
-  const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
 
   // Drag state
   const [draggedStrip, setDraggedStrip] = useState<string | null>(null);
@@ -291,15 +281,6 @@ const BaseCamp: React.FC = () => {
                       <span>Call: {day.callTime}</span>
                     </div>
                     <div className="day-actions">
-                      <button
-                        className="tasks-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowDayDetailModal(day.id);
-                        }}
-                      >
-                        Tasks
-                      </button>
                       <button
                         className="edit-btn"
                         onClick={(e) => {
@@ -587,187 +568,6 @@ const BaseCamp: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Day Detail / Tasks Modal */}
-      {showDayDetailModal && (() => {
-        const day = schedule?.shootDays.find(d => d.id === showDayDetailModal);
-        if (!day) return null;
-
-        const tasks = day.tasks || [];
-        // Calculate progress: each subtask counts as a fraction of its parent task's weight
-        // Each task has equal weight (1/totalTasks). If a task has subtasks, each subtask
-        // contributes (1/totalTasks) * (1/subtaskCount) to the progress.
-        let totalUnits = 0;
-        let completedUnits = 0;
-        tasks.forEach(task => {
-          if (task.subtasks.length === 0) {
-            totalUnits += 1;
-            if (task.completed) completedUnits += 1;
-          } else {
-            totalUnits += task.subtasks.length;
-            completedUnits += task.subtasks.filter(st => st.completed).length;
-          }
-        });
-        const progressPercent = totalUnits > 0 ? Math.round((completedUnits / totalUnits) * 100) : 0;
-
-        const dateStr = day.date
-          ? new Date(day.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
-          : `Day ${day.dayNumber}`;
-
-        return (
-          <div className="modal-overlay" onClick={() => {
-            setShowDayDetailModal(null);
-            setNewTaskTitle('');
-            setAddingSubtaskFor(null);
-            setNewSubtaskTitle('');
-          }}>
-            <div className="day-detail-modal" onClick={(e) => e.stopPropagation()}>
-              <div className="day-detail-header">
-                <div>
-                  <h3>{dateStr}</h3>
-                  {day.location && <div className="day-detail-location">{day.location}</div>}
-                </div>
-                <button className="day-detail-close" onClick={() => {
-                  setShowDayDetailModal(null);
-                  setNewTaskTitle('');
-                  setAddingSubtaskFor(null);
-                  setNewSubtaskTitle('');
-                }}>
-                  ×
-                </button>
-              </div>
-
-              {/* Progress bar */}
-              <div className="day-detail-progress">
-                <div className="progress-bar-track">
-                  <div
-                    className="progress-bar-fill"
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </div>
-                <div className="progress-label">
-                  {completedUnits}/{totalUnits} done ({progressPercent}%)
-                </div>
-              </div>
-
-              {/* Tasks list */}
-              <div className="day-detail-tasks">
-                {tasks.map(task => {
-                  const taskSubtasks = task.subtasks;
-                  const taskCompletedCount = taskSubtasks.filter(st => st.completed).length;
-
-                  return (
-                    <div key={task.id} className="task-item">
-                      <div className="task-header">
-                        <label className="task-checkbox-label">
-                          <input
-                            type="checkbox"
-                            checked={task.completed}
-                            onChange={() => toggleDayTask(day.id, task.id)}
-                            className="task-checkbox"
-                          />
-                          <span className={`task-title ${task.completed ? 'completed' : ''}`}>
-                            {task.title}
-                          </span>
-                        </label>
-                        <div className="task-meta">
-                          {taskSubtasks.length > 0 && (
-                            <span className="task-subtask-count">
-                              {taskCompletedCount}/{taskSubtasks.length}
-                            </span>
-                          )}
-                          <button
-                            className="task-delete"
-                            onClick={() => deleteDayTask(day.id, task.id)}
-                          >
-                            ×
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Subtasks */}
-                      {taskSubtasks.length > 0 && (
-                        <div className="subtask-list">
-                          {taskSubtasks.map(st => (
-                            <div key={st.id} className="subtask-item">
-                              <label className="subtask-checkbox-label">
-                                <input
-                                  type="checkbox"
-                                  checked={st.completed}
-                                  onChange={() => toggleSubTask(day.id, task.id, st.id)}
-                                  className="subtask-checkbox"
-                                />
-                                <span className={`subtask-title ${st.completed ? 'completed' : ''}`}>
-                                  {st.title}
-                                </span>
-                              </label>
-                              <button
-                                className="subtask-delete"
-                                onClick={() => deleteSubTask(day.id, task.id, st.id)}
-                              >
-                                ×
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Add subtask */}
-                      {addingSubtaskFor === task.id ? (
-                        <div className="add-subtask-input">
-                          <input
-                            type="text"
-                            value={newSubtaskTitle}
-                            onChange={(e) => setNewSubtaskTitle(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' && newSubtaskTitle.trim()) {
-                                addSubTask(day.id, task.id, newSubtaskTitle.trim());
-                                setNewSubtaskTitle('');
-                              }
-                              if (e.key === 'Escape') {
-                                setAddingSubtaskFor(null);
-                                setNewSubtaskTitle('');
-                              }
-                            }}
-                            placeholder="Add subtask..."
-                            autoFocus
-                          />
-                        </div>
-                      ) : (
-                        <button
-                          className="add-subtask-btn"
-                          onClick={() => {
-                            setAddingSubtaskFor(task.id);
-                            setNewSubtaskTitle('');
-                          }}
-                        >
-                          + Add subtask
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-
-                {/* Add task */}
-                <div className="add-task-input">
-                  <input
-                    type="text"
-                    value={newTaskTitle}
-                    onChange={(e) => setNewTaskTitle(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && newTaskTitle.trim()) {
-                        addDayTask(day.id, newTaskTitle.trim());
-                        setNewTaskTitle('');
-                      }
-                    }}
-                    placeholder="Add a task..."
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
     </div>
   );
 };

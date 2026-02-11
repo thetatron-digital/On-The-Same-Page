@@ -1107,21 +1107,6 @@ export interface ShotPackage {
   notes?: string;
 }
 
-// Task subtask
-export interface SubTask {
-  id: string;
-  title: string;
-  completed: boolean;
-}
-
-// Task for a shoot day
-export interface DayTask {
-  id: string;
-  title: string;
-  completed: boolean;
-  subtasks: SubTask[];
-}
-
 // Shoot day
 export interface ShootDay {
   id: string;
@@ -1148,9 +1133,6 @@ export interface ShootDay {
   // Flags
   isLocked: boolean;
   hasNightWork: boolean;
-
-  // Tasks
-  tasks?: DayTask[];
 
   notes?: string;
 }
