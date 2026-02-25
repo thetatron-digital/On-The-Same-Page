@@ -46,10 +46,6 @@ const BaseCamp: React.FC = () => {
     addProductionScene,
     updateProductionScene,
     deleteProductionScene,
-    addDepartment,
-    deleteDepartment,
-    addPosition,
-    removePosition,
     addCallSheet,
     updateCallSheet,
     deleteCallSheet,
@@ -68,7 +64,7 @@ const BaseCamp: React.FC = () => {
 
   // Generate a call sheet from a shoot day's data
   const generateCallSheetFromDay = (day: ShootDay) => {
-    const { people, scenes, settings } = productionData;
+    const { people, scenes, locations, settings } = productionData;
     const talent = people.filter(p => p.group === 'Talent' || p.roles.some(r => r.group === 'Talent'));
     const crew = people.filter(p => p.group === 'Crew');
 
@@ -83,12 +79,23 @@ const BaseCamp: React.FC = () => {
         return p ? `${p.firstName[0]}${p.lastName[0]}` : '';
       }).filter(Boolean).join(', ');
 
+      // Try to resolve location: first from production scene, then by name match
+      let locId = prodScene?.locationId;
+      if (!locId && strip.location) {
+        const matchedLoc = locations.find(l =>
+          l.name.toLowerCase() === strip.location.toLowerCase() ||
+          l.name.toLowerCase().includes(strip.location.toLowerCase()) ||
+          strip.location.toLowerCase().includes(l.name.toLowerCase())
+        );
+        if (matchedLoc) locId = matchedLoc.id;
+      }
+
       return {
         sceneId: strip.sceneId,
         sceneNumber: strip.sceneNumber,
         setDescription: `${strip.intExt} - ${strip.location}`,
         cast: castInitials,
-        locationId: prodScene?.locationId,
+        locationId: locId,
         notes: '',
       };
     }).filter(Boolean) as CallSheetScene[];
@@ -103,6 +110,11 @@ const BaseCamp: React.FC = () => {
       return prodScene?.castIds || strip.castIds;
     }));
     const dayTalent = talent.filter(t => sceneCastIds.has(t.id));
+
+    // Auto-populate nearest hospital from the first location that has one
+    const nearestHospital = locationIds
+      .map(lid => locations.find(l => l.id === lid))
+      .find(l => l?.nearestHospital)?.nearestHospital || '';
 
     const csData = {
       title: settings.projectName || 'Untitled Production',
@@ -128,7 +140,7 @@ const BaseCamp: React.FC = () => {
         callTime: day.callTime || settings.defaultCallTime || '7:00 AM',
       })),
       notes: day.notes || '',
-      nearestHospital: '',
+      nearestHospital,
       disclaimer: productionData.settings.defaultDisclaimer || DEFAULT_DISCLAIMER,
       status: 'draft' as const,
     };
@@ -148,8 +160,6 @@ const BaseCamp: React.FC = () => {
         return <ScenesView />;
       case 'locations':
         return <LocationsView />;
-      case 'departments':
-        return <DepartmentsView />;
       case 'callsheets':
         return <CallSheetsView />;
       case 'settings':
@@ -164,12 +174,11 @@ const BaseCamp: React.FC = () => {
   // Sidebar nav items
   const navItems: { id: typeof basecampView; label: string; icon: string }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: '◎' },
-    { id: 'callsheets', label: 'Call Sheets', icon: '▤' },
     { id: 'people', label: 'All People', icon: '👥' },
-    { id: 'scenes', label: 'Scenes', icon: '☰' },
     { id: 'locations', label: 'Locations', icon: '◉' },
-    { id: 'departments', label: 'Departments', icon: '⚙' },
+    { id: 'scenes', label: 'Scenes', icon: '☰' },
     { id: 'stripboard', label: 'Strip Board', icon: '▥' },
+    { id: 'callsheets', label: 'Call Sheets', icon: '▤' },
     { id: 'settings', label: 'Settings', icon: '⚙' },
   ];
 
@@ -1173,7 +1182,7 @@ const BaseCamp: React.FC = () => {
     const { locations } = productionData;
 
     const emptyLocation = (): Omit<ProductionLocation, 'id'> => ({
-      name: '', streetAddress: '', city: '', state: '', postalCode: '', phone: '',
+      name: '', streetAddress: '', city: '', state: '', postalCode: '', phone: '', nearestHospital: '',
     });
 
     const handleGeocode = async () => {
@@ -1212,6 +1221,7 @@ const BaseCamp: React.FC = () => {
         latitude: loc.latitude,
         longitude: loc.longitude,
         mapLink: loc.mapLink,
+        nearestHospital: loc.nearestHospital || '',
       });
       setShowModal(true);
     };
@@ -1425,6 +1435,17 @@ const BaseCamp: React.FC = () => {
                     placeholder="Custom map link (overrides auto-generated Google Maps link)"
                   />
                 </div>
+
+                <h4 className="bc-form-section-title">Safety</h4>
+                <div className="bc-form-group">
+                  <label>NEAREST HOSPITAL</label>
+                  <input
+                    type="text"
+                    value={formData.nearestHospital || ''}
+                    onChange={e => setFormData({ ...formData, nearestHospital: e.target.value })}
+                    placeholder="Hospital name and address"
+                  />
+                </div>
               </div>
 
               <div className="bc-modal-footer">
@@ -1439,111 +1460,6 @@ const BaseCamp: React.FC = () => {
             </div>
           </div>
         )}
-      </div>
-    );
-  }
-
-  // ==========================================
-  // DEPARTMENTS VIEW
-  // ==========================================
-  function DepartmentsView() {
-    const [expandedDept, setExpandedDept] = useState<string | null>(null);
-    const [newDeptName, setNewDeptName] = useState('');
-    const [newPositionName, setNewPositionName] = useState('');
-    const { departments } = productionData;
-
-    return (
-      <div className="bc-content-area">
-        <div className="bc-page-header">
-          <h2>Departments</h2>
-        </div>
-
-        <div className="bc-departments-list">
-          {departments.map(dept => (
-            <div key={dept.id} className={`bc-dept-item ${expandedDept === dept.id ? 'expanded' : ''}`}>
-              <div
-                className="bc-dept-header"
-                onClick={() => setExpandedDept(expandedDept === dept.id ? null : dept.id)}
-              >
-                <span className="bc-dept-arrow">{expandedDept === dept.id ? '▾' : '▸'}</span>
-                <span className="bc-dept-name">{dept.name}</span>
-                <span className="bc-dept-count">{dept.positions.length} positions</span>
-                {!dept.isDefault && (
-                  <button
-                    className="bc-icon-btn danger"
-                    onClick={e => {
-                      e.stopPropagation();
-                      if (confirm(`Delete ${dept.name} department?`)) {
-                        deleteDepartment(dept.id);
-                      }
-                    }}
-                  >×</button>
-                )}
-              </div>
-
-              {expandedDept === dept.id && (
-                <div className="bc-dept-positions">
-                  {dept.positions.map((pos, i) => (
-                    <div key={i} className="bc-position-item">
-                      <span>{pos}</span>
-                      <button
-                        className="bc-icon-btn danger small"
-                        onClick={() => removePosition(dept.id, pos)}
-                      >×</button>
-                    </div>
-                  ))}
-                  <div className="bc-add-position">
-                    <input
-                      type="text"
-                      value={newPositionName}
-                      onChange={e => setNewPositionName(e.target.value)}
-                      placeholder="New position name..."
-                      onKeyDown={e => {
-                        if (e.key === 'Enter' && newPositionName.trim()) {
-                          addPosition(dept.id, newPositionName.trim());
-                          setNewPositionName('');
-                        }
-                      }}
-                    />
-                    <button
-                      className="bc-btn bc-btn-primary small"
-                      onClick={() => {
-                        if (newPositionName.trim()) {
-                          addPosition(dept.id, newPositionName.trim());
-                          setNewPositionName('');
-                        }
-                      }}
-                    >+ Add</button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-
-          <div className="bc-add-department">
-            <input
-              type="text"
-              value={newDeptName}
-              onChange={e => setNewDeptName(e.target.value)}
-              placeholder="New department name..."
-              onKeyDown={e => {
-                if (e.key === 'Enter' && newDeptName.trim()) {
-                  addDepartment(newDeptName.trim());
-                  setNewDeptName('');
-                }
-              }}
-            />
-            <button
-              className="bc-btn bc-btn-primary"
-              onClick={() => {
-                if (newDeptName.trim()) {
-                  addDepartment(newDeptName.trim());
-                  setNewDeptName('');
-                }
-              }}
-            >+ Add Department</button>
-          </div>
-        </div>
       </div>
     );
   }
@@ -1572,31 +1488,35 @@ const BaseCamp: React.FC = () => {
       }
     }, [autoEditCallSheetId, callSheets]);
 
-    const emptyCallSheet = (): Omit<CallSheet, 'id' | 'createdAt' | 'updatedAt'> => ({
-      title: settings.projectName || 'Untitled Production',
-      date: new Date().toISOString().split('T')[0],
-      dayNumber: callSheets.length + 1,
-      totalDays: callSheets.length + 1,
-      crewCall: settings.defaultCallTime || '8:00 AM',
-      shootingCall: '8:15 AM',
-      firstMeal: '2:00 PM',
-      estimatedWrap: '7:00 PM',
-      producer: settings.producer || '',
-      director: settings.director || '',
-      locationIds: [],
-      scenes: [],
-      talentCalls: talent.map(t => ({ personId: t.id, callTime: '8:00 AM' })),
-      crewCalls: crew.map(c => ({
-        personId: c.id,
-        department: c.roles[0]?.department || '',
-        position: c.roles[0]?.position || c.group,
-        callTime: settings.defaultCallTime || '8:00 AM',
-      })),
-      notes: '',
-      nearestHospital: '',
-      disclaimer: settings.defaultDisclaimer || DEFAULT_DISCLAIMER,
-      status: 'draft',
-    });
+    const emptyCallSheet = (): Omit<CallSheet, 'id' | 'createdAt' | 'updatedAt'> => {
+      // Auto-populate nearest hospital from any location that has one
+      const defaultHospital = locations.find(l => l.nearestHospital)?.nearestHospital || '';
+      return {
+        title: settings.projectName || 'Untitled Production',
+        date: new Date().toISOString().split('T')[0],
+        dayNumber: callSheets.length + 1,
+        totalDays: callSheets.length + 1,
+        crewCall: settings.defaultCallTime || '8:00 AM',
+        shootingCall: '8:15 AM',
+        firstMeal: '2:00 PM',
+        estimatedWrap: '7:00 PM',
+        producer: settings.producer || '',
+        director: settings.director || '',
+        locationIds: [],
+        scenes: [],
+        talentCalls: talent.map(t => ({ personId: t.id, callTime: settings.defaultCallTime || '8:00 AM' })),
+        crewCalls: crew.map(c => ({
+          personId: c.id,
+          department: c.roles[0]?.department || '',
+          position: c.roles[0]?.position || c.group,
+          callTime: settings.defaultCallTime || '8:00 AM',
+        })),
+        notes: '',
+        nearestHospital: defaultHospital,
+        disclaimer: settings.defaultDisclaimer || DEFAULT_DISCLAIMER,
+        status: 'draft',
+      };
+    };
 
     const [formData, setFormData] = useState(emptyCallSheet());
 
@@ -1668,6 +1588,16 @@ const BaseCamp: React.FC = () => {
     const addSceneToCS = (sceneId: string) => {
       const scene = scenes.find(s => s.id === sceneId);
       if (!scene) return;
+      // Resolve locationId and auto-add to call sheet locationIds if new
+      let locId = scene.locationId;
+      if (!locId && scene.set) {
+        const matchedLoc = locations.find(l =>
+          l.name.toLowerCase() === scene.set.toLowerCase() ||
+          l.name.toLowerCase().includes(scene.set.toLowerCase()) ||
+          scene.set.toLowerCase().includes(l.name.toLowerCase())
+        );
+        if (matchedLoc) locId = matchedLoc.id;
+      }
       const csScene: CallSheetScene = {
         sceneId: scene.id,
         sceneNumber: scene.sceneNumber,
@@ -1676,10 +1606,14 @@ const BaseCamp: React.FC = () => {
           const p = people.find(pp => pp.id === cid);
           return p ? `${p.firstName[0]}${p.lastName[0]}` : '';
         }).filter(Boolean).join(', '),
-        locationId: scene.locationId,
+        locationId: locId,
         notes: '',
       };
-      setFormData({ ...formData, scenes: [...formData.scenes, csScene] });
+      // Auto-add the location to the call sheet header if not already there
+      const newLocationIds = locId && !formData.locationIds.includes(locId)
+        ? [...formData.locationIds, locId]
+        : formData.locationIds;
+      setFormData({ ...formData, scenes: [...formData.scenes, csScene], locationIds: newLocationIds });
     };
 
     const removeSceneFromCS = (index: number) => {
@@ -2054,7 +1988,7 @@ const BaseCamp: React.FC = () => {
                               </td>
                               <td>{s.cast}</td>
                               <td>
-                                {loc && (
+                                {loc ? (
                                   <div>
                                     <strong>{loc.name}</strong>
                                     {mapsUrl ? (
@@ -2062,9 +1996,11 @@ const BaseCamp: React.FC = () => {
                                         {[loc.streetAddress, [loc.city, loc.state, loc.postalCode].filter(Boolean).join(', ')].filter(Boolean).join('\n')}
                                       </a>
                                     ) : (
-                                      <div>{loc.streetAddress}</div>
+                                      loc.streetAddress && <div>{loc.streetAddress}</div>
                                     )}
                                   </div>
+                                ) : (
+                                  s.setDescription.includes(' - ') && <span>{s.setDescription.split(' - ').slice(1).join(' - ')}</span>
                                 )}
                               </td>
                             </tr>

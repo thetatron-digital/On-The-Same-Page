@@ -1264,6 +1264,7 @@ export interface ProductionLocation {
   latitude?: number;
   longitude?: number;
   mapLink?: string;
+  nearestHospital?: string;
 }
 
 // Production scene (standalone, not from script)

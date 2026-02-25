@@ -168,7 +168,7 @@ interface ScreenplayState {
 
   // Production Management State (shared)
   productionData: ProductionData;
-  basecampView: 'dashboard' | 'callsheets' | 'people' | 'scenes' | 'locations' | 'departments' | 'settings' | 'stripboard';
+  basecampView: 'dashboard' | 'callsheets' | 'people' | 'scenes' | 'locations' | 'settings' | 'stripboard';
 
   // OnSet State (Live Production)
   onSet: OnSet | null;

@@ -115,24 +115,27 @@ export async function fetchWeather(
 
 /**
  * Geocode a location name/address to lat/long.
- * Uses Open-Meteo geocoding API (no key needed).
+ * Uses Nominatim (OpenStreetMap) geocoding API — free, no key needed,
+ * and supports full street addresses unlike Open-Meteo which only handles place names.
  */
 export async function geocodeAddress(query: string): Promise<GeocodingResult | null> {
   try {
-    const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=en&format=json`;
-    const response = await fetch(url);
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&addressdetails=1`;
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'OTSP-BaseCamp/1.0' },
+    });
     if (!response.ok) return null;
 
     const data = await response.json();
-    if (!data.results || data.results.length === 0) return null;
+    if (!data || data.length === 0) return null;
 
-    const result = data.results[0];
+    const result = data[0];
     return {
-      latitude: result.latitude,
-      longitude: result.longitude,
-      name: result.name,
-      country: result.country || '',
-      state: result.admin1 || undefined,
+      latitude: parseFloat(result.lat),
+      longitude: parseFloat(result.lon),
+      name: result.display_name?.split(',')[0] || query,
+      country: result.address?.country || '',
+      state: result.address?.state || undefined,
     };
   } catch {
     return null;
