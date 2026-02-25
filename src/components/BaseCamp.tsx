@@ -1865,108 +1865,123 @@ const BaseCamp: React.FC = () => {
             {/* Right: Preview */}
             <div className="bc-cs-preview">
               <div className="bc-cs-page">
-                {/* Header */}
-                <div className="bc-cs-header-section">
-                  <div className="bc-cs-title-block">
-                    <h2>{formData.title || 'Untitled'}</h2>
-                    <div className="bc-cs-crew-call">
-                      <div className="bc-cs-call-label">Crew Call</div>
-                      <div className="bc-cs-call-time">{formData.crewCall}</div>
-                    </div>
-                  </div>
-                  <div className="bc-cs-date-block">
-                    <div>{formData.date}</div>
-                    <div>Day {formData.dayNumber} of {formData.totalDays}</div>
-                  </div>
-                  <div className="bc-cs-times-block">
-                    <div>Crew Call: {formData.crewCall}</div>
-                    <div>Shooting Call: {formData.shootingCall}</div>
-                    <div>First Meal: {formData.firstMeal}</div>
-                    <div>Est. Wrap: {formData.estimatedWrap}</div>
-                  </div>
-                </div>
-
-                <div className="bc-cs-meta-row">
-                  <div><strong>Producer:</strong> {formData.producer}</div>
-                  <div><strong>Director:</strong> {formData.director}</div>
-                </div>
-
-                {/* Weather & Sunrise/Sunset */}
-                {(weatherData || weatherLoading) && (
-                  <div className="bc-cs-weather-section">
-                    {weatherLoading ? (
-                      <div className="bc-cs-weather-loading">Loading weather...</div>
-                    ) : weatherData && (
-                      <div className="bc-cs-weather-grid">
-                        <div className="bc-cs-weather-item">
-                          <span className="bc-cs-weather-icon">🌡</span>
-                          <span className="bc-cs-weather-label">High / Low</span>
-                          <span className="bc-cs-weather-value">{weatherData.tempHigh}°F / {weatherData.tempLow}°F</span>
-                        </div>
-                        <div className="bc-cs-weather-item">
-                          <span className="bc-cs-weather-icon">☁</span>
-                          <span className="bc-cs-weather-label">Conditions</span>
-                          <span className="bc-cs-weather-value">{weatherData.description}</span>
-                        </div>
-                        <div className="bc-cs-weather-item">
-                          <span className="bc-cs-weather-icon">🌧</span>
-                          <span className="bc-cs-weather-label">Precip.</span>
-                          <span className="bc-cs-weather-value">{weatherData.precipChance}%</span>
-                        </div>
-                        <div className="bc-cs-weather-item">
-                          <span className="bc-cs-weather-icon">💨</span>
-                          <span className="bc-cs-weather-label">Wind</span>
-                          <span className="bc-cs-weather-value">{weatherData.windSpeed} mph (gusts {weatherData.windGusts})</span>
-                        </div>
-                        <div className="bc-cs-weather-item sunrise">
-                          <span className="bc-cs-weather-icon">🌅</span>
-                          <span className="bc-cs-weather-label">Sunrise</span>
-                          <span className="bc-cs-weather-value">{weatherData.sunrise}</span>
-                        </div>
-                        <div className="bc-cs-weather-item sunset">
-                          <span className="bc-cs-weather-icon">🌇</span>
-                          <span className="bc-cs-weather-label">Sunset</span>
-                          <span className="bc-cs-weather-value">{weatherData.sunset}</span>
-                        </div>
-                      </div>
+                {/* === ROW 1: Title | Crew Call | Date === */}
+                <div className="cs-row1">
+                  <div className="cs-title-col">
+                    <h2 className="cs-production-title">{formData.title || 'Untitled'}</h2>
+                    {productionData.settings.projectName && formData.title !== productionData.settings.projectName && (
+                      <div className="cs-company-name">{productionData.settings.projectName}</div>
                     )}
                   </div>
-                )}
+                  <div className="cs-crewcall-col">
+                    <div className="cs-crewcall-label">Crew Call</div>
+                    <div className="cs-crewcall-time">{formData.crewCall}</div>
+                  </div>
+                  <div className="cs-date-col">
+                    <div className="cs-date-full">
+                      {formData.date ? new Date(formData.date + 'T12:00:00').toLocaleDateString('en-US', {
+                        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+                      }) : 'Date TBD'}
+                    </div>
+                    <div className="cs-day-of">Day {formData.dayNumber} of {formData.totalDays}</div>
+                  </div>
+                </div>
 
-                {/* Locations */}
-                {formData.locationIds.length > 0 && (
-                  <div className="bc-cs-locations-section">
+                {/* === ROW 2: Producer | Hospital | Locations | Times + Weather === */}
+                <div className="cs-row2">
+                  <div className="cs-producer-col">
+                    <div><strong>Producer</strong></div>
+                    <div>{formData.producer || '—'}</div>
+                    {formData.director && (
+                      <>
+                        <div style={{ marginTop: 4 }}><strong>Director</strong></div>
+                        <div>{formData.director}</div>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="cs-hospital-col">
+                    <div className="cs-hospital-header">Nearest Hospital</div>
+                    <div className="cs-hospital-body">
+                      {formData.nearestHospital ? (
+                        <div>{formData.nearestHospital}</div>
+                      ) : (
+                        <div className="cs-placeholder">Not set</div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="cs-locations-col">
                     {formData.locationIds.map(lid => {
                       const loc = getLocationById(lid);
                       if (!loc) return null;
                       const mapsUrl = generateMapsLink(loc);
                       return (
-                        <div key={lid} className="bc-cs-location-card">
-                          <div className="bc-cs-loc-info">
-                            <strong>{loc.name}</strong>
-                            {loc.streetAddress && <div>{loc.streetAddress}</div>}
-                            {(loc.city || loc.state) && <div>{[loc.city, loc.state, loc.postalCode].filter(Boolean).join(', ')}</div>}
-                            {loc.phone && <div>{loc.phone}</div>}
-                          </div>
-                          {mapsUrl && (
-                            <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="bc-cs-map-btn">
-                              📍 Google Maps
+                        <div key={lid} className="cs-loc-card">
+                          <strong>{loc.name}</strong>
+                          {mapsUrl ? (
+                            <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="cs-loc-address">
+                              {[loc.streetAddress, [loc.city, loc.state, loc.postalCode].filter(Boolean).join(', ')].filter(Boolean).join('\n')}
                             </a>
+                          ) : (
+                            <div className="cs-loc-address-plain">
+                              {[loc.streetAddress, [loc.city, loc.state, loc.postalCode].filter(Boolean).join(', ')].filter(Boolean).join('\n')}
+                            </div>
                           )}
+                          {loc.phone && <div>📞 {loc.phone}</div>}
                         </div>
                       );
                     })}
                   </div>
-                )}
 
-                {/* Schedule */}
+                  <div className="cs-times-weather-col">
+                    <div className="cs-times-list">
+                      <div>Crew Call ◷ {formData.crewCall}</div>
+                      <div>Shooting Call ◷ {formData.shootingCall}</div>
+                      <div>First Meal ◷ {formData.firstMeal}</div>
+                      <div><strong>Est. Wrap ◷ {formData.estimatedWrap}</strong></div>
+                    </div>
+                    {weatherData && (
+                      <div className="cs-weather-box">
+                        <div className="cs-weather-temps">
+                          <span className="cs-temp-low">{weatherData.tempLow}°F</span>
+                          <span className="cs-temp-icon">☀</span>
+                          <span className="cs-temp-high">{weatherData.tempHigh}°F</span>
+                        </div>
+                        <div className="cs-temp-labels">
+                          <span>low</span>
+                          <span>high</span>
+                        </div>
+                        <div className="cs-weather-desc">
+                          {weatherData.description}. Wind {weatherData.windSpeed}mph.
+                          {weatherData.precipChance > 0 && ` ${weatherData.precipChance}% precip.`}
+                        </div>
+                        <div className="cs-sun-times">
+                          <span>Sunrise: {weatherData.sunrise}</span>
+                          <span>Sunset: {weatherData.sunset}</span>
+                        </div>
+                      </div>
+                    )}
+                    {weatherLoading && <div className="cs-weather-box cs-loading">Loading weather...</div>}
+                  </div>
+                </div>
+
+                {/* === DISCLAIMER BANNER === */}
+                <div className="cs-disclaimer">
+                  NO VISITORS WITHOUT PRIOR APPROVAL OF PRODUCTION | NO PHOTOS ON SET | PUT CELLPHONES ON SILENT WHEN ON SET
+                </div>
+
+                {/* === TODAY'S SCHEDULE === */}
                 {formData.scenes.length > 0 && (
-                  <div className="bc-cs-schedule-section">
-                    <h4>Today's Schedule</h4>
-                    <table className="bc-cs-table">
+                  <div className="cs-section">
+                    <div className="cs-section-header">
+                      <span className="cs-section-icon">📅</span>
+                      Today's Schedule
+                    </div>
+                    <table className="cs-table">
                       <thead>
                         <tr>
-                          <th>SCENE</th>
+                          <th className="cs-th-scene">SCENE</th>
                           <th>SET / DESCRIPTION</th>
                           <th>CAST</th>
                           <th>LOCATION</th>
@@ -1975,12 +1990,29 @@ const BaseCamp: React.FC = () => {
                       <tbody>
                         {formData.scenes.map((s, i) => {
                           const loc = getLocationById(s.locationId);
+                          const mapsUrl = loc ? generateMapsLink(loc) : '';
                           return (
                             <tr key={i}>
-                              <td>{s.sceneNumber}</td>
-                              <td>{s.setDescription}</td>
+                              <td className="cs-scene-num">{s.sceneNumber}</td>
+                              <td>
+                                <strong>{s.setDescription}</strong>
+                                {s.notes && <div className="cs-scene-note">{s.notes}</div>}
+                              </td>
                               <td>{s.cast}</td>
-                              <td>{loc ? `${loc.name}${loc.streetAddress ? `\n${loc.streetAddress}` : ''}` : ''}</td>
+                              <td>
+                                {loc && (
+                                  <div>
+                                    <strong>{loc.name}</strong>
+                                    {mapsUrl ? (
+                                      <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="cs-loc-address">
+                                        {[loc.streetAddress, [loc.city, loc.state, loc.postalCode].filter(Boolean).join(', ')].filter(Boolean).join('\n')}
+                                      </a>
+                                    ) : (
+                                      <div>{loc.streetAddress}</div>
+                                    )}
+                                  </div>
+                                )}
+                              </td>
                             </tr>
                           );
                         })}
@@ -1989,28 +2021,37 @@ const BaseCamp: React.FC = () => {
                   </div>
                 )}
 
-                {/* Talent */}
+                {/* === TALENT === */}
                 {formData.talentCalls.length > 0 && (
-                  <div className="bc-cs-talent-section">
-                    <h4>Talent</h4>
-                    <table className="bc-cs-table">
+                  <div className="cs-section">
+                    <div className="cs-section-header">
+                      <span className="cs-section-icon">⭐</span>
+                      Talent
+                    </div>
+                    <table className="cs-table">
                       <thead>
                         <tr>
-                          <th>ID</th>
+                          <th style={{ width: 40 }}>ID</th>
                           <th>TALENT</th>
                           <th>ROLE</th>
                           <th>CALL</th>
+                          <th>CONTACT</th>
                         </tr>
                       </thead>
                       <tbody>
                         {formData.talentCalls.map((tc, i) => {
                           const p = people.find(pp => pp.id === tc.personId);
+                          const talentRole = p?.roles.find(r => r.group === 'Talent');
                           return (
                             <tr key={i}>
-                              <td>{p ? `${p.firstName[0]}${p.lastName[0]}` : ''}</td>
+                              <td className="cs-talent-id">{p ? `${p.firstName[0]}${p.lastName[0]}` : ''}</td>
                               <td>{getPersonName(tc.personId)}</td>
-                              <td>{p?.roles.find(r => r.group === 'Talent')?.position || 'Talent'}</td>
+                              <td>{talentRole?.characterName || talentRole?.position || 'Talent'}</td>
                               <td>{tc.callTime}</td>
+                              <td className="cs-contact-cell">
+                                {p?.phone && <div>{p.phone}</div>}
+                                {p?.email && <div className="cs-email">{p.email}</div>}
+                              </td>
                             </tr>
                           );
                         })}
@@ -2019,30 +2060,34 @@ const BaseCamp: React.FC = () => {
                   </div>
                 )}
 
-                {/* Crew by Department */}
+                {/* === CREW BY DEPARTMENT (multi-column grid) === */}
                 {Object.keys(crewByDept).length > 0 && (
-                  <div className="bc-cs-crew-section">
+                  <div className="cs-crew-grid">
                     {Object.entries(crewByDept).map(([dept, calls]) => (
-                      <div key={dept} className="bc-cs-dept-block">
-                        <h5>{dept.toUpperCase()}</h5>
-                        <table className="bc-cs-table">
-                          <tbody>
-                            {calls.map((cc, i) => (
-                              <tr key={i}>
-                                <td><strong>{cc.position}</strong></td>
-                                <td>{getPersonName(cc.personId)}</td>
-                                <td>{cc.callTime}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                      <div key={dept} className="cs-dept-box">
+                        <div className="cs-dept-header">{dept.toUpperCase()}</div>
+                        <div className="cs-dept-body">
+                          {calls.map((cc, i) => {
+                            const p = people.find(pp => pp.id === cc.personId);
+                            return (
+                              <div key={i} className="cs-crew-row">
+                                <div className="cs-crew-position"><strong>{cc.position}</strong></div>
+                                <div className="cs-crew-name">{getPersonName(cc.personId)}</div>
+                                <div className="cs-crew-phone">{p?.phone || ''}</div>
+                                <div className="cs-crew-call">{cc.callTime}</div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     ))}
                   </div>
                 )}
 
+                {/* === NOTES === */}
                 {formData.notes && (
-                  <div className="bc-cs-notes-section">
+                  <div className="cs-notes">
+                    <strong>Additional Notes:</strong>
                     <p>{formData.notes}</p>
                   </div>
                 )}
