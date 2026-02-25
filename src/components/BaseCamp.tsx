@@ -21,6 +21,7 @@ const BaseCamp: React.FC = () => {
     selectedStripId,
     initializeSchedule,
     importStripsFromBreakdown,
+    importProductionScenesAsStrips,
     createShotPackagesFromViewFinder,
     addShootDay,
     updateShootDay,
@@ -262,7 +263,17 @@ const BaseCamp: React.FC = () => {
     const emptyPerson = (): Omit<ProductionPerson, 'id' | 'avatarColor'> => ({
       firstName: '', lastName: '', email: '', phone: '',
       group: 'Crew', roles: [], tags: [], notes: '', location: '',
+      availability: { blockedDates: [] },
     });
+
+    // Derive the person's group from their roles
+    const deriveGroup = (roles: PersonRole[]): 'Crew' | 'Talent' | 'Client' => {
+      if (roles.length === 0) return 'Crew';
+      // Talent takes priority, then Client, then Crew
+      if (roles.some(r => r.group === 'Talent')) return 'Talent';
+      if (roles.some(r => r.group === 'Client')) return 'Client';
+      return 'Crew';
+    };
 
     const [formData, setFormData] = useState(emptyPerson());
     const openCreate = () => {
@@ -285,16 +296,23 @@ const BaseCamp: React.FC = () => {
         notes: person.notes,
         location: person.location,
         payRate: person.payRate ? { ...person.payRate } : undefined,
+        availability: person.availability ? {
+          ...person.availability,
+          blockedDates: [...(person.availability.blockedDates || [])],
+        } : { blockedDates: [] },
       });
       setActiveTab('basic');
       setShowModal(true);
     };
 
     const handleSave = (andAddAnother: boolean) => {
+      // Auto-derive group from roles
+      const derivedGroup = deriveGroup(formData.roles);
+      const dataToSave = { ...formData, group: derivedGroup };
       if (editingPerson) {
-        updatePerson(editingPerson.id, formData);
+        updatePerson(editingPerson.id, dataToSave);
       } else {
-        addPerson(formData);
+        addPerson(dataToSave);
       }
       if (andAddAnother) {
         setEditingPerson(null);
@@ -411,7 +429,9 @@ const BaseCamp: React.FC = () => {
                         {person.roles.map((role, i) => (
                           <span key={i} className={`bc-role-badge ${role.group.toLowerCase()}`}>
                             {role.group === 'Crew' ? '🔧' : role.group === 'Talent' ? '⭐' : '📋'}
-                            {role.position || role.department || role.group}
+                            {role.group === 'Talent'
+                              ? (role.characterName || 'Talent')
+                              : (role.position || role.department || role.group)}
                           </span>
                         ))}
                         {person.roles.length === 0 && (
@@ -522,32 +542,62 @@ const BaseCamp: React.FC = () => {
                         <div key={i} className="bc-role-row">
                           <select
                             value={role.group}
-                            onChange={e => updateRole(i, { group: e.target.value as PersonRole['group'] })}
+                            onChange={e => {
+                              const newGroup = e.target.value as PersonRole['group'];
+                              // Clear department/position when switching to Talent/Client
+                              if (newGroup !== 'Crew') {
+                                updateRole(i, { group: newGroup, department: '', position: '' });
+                              } else {
+                                updateRole(i, { group: newGroup });
+                              }
+                            }}
                           >
                             <option value="Crew">Crew</option>
                             <option value="Talent">Talent</option>
                             <option value="Client">Client</option>
                           </select>
-                          <select
-                            value={role.department}
-                            onChange={e => updateRole(i, { department: e.target.value })}
-                          >
-                            <option value="">-- Department --</option>
-                            {departments.map(d => (
-                              <option key={d.id} value={d.name}>{d.name}</option>
-                            ))}
-                          </select>
-                          <select
-                            value={role.position}
-                            onChange={e => updateRole(i, { position: e.target.value })}
-                          >
-                            <option value="">-- Position --</option>
-                            {departments
-                              .find(d => d.name === role.department)
-                              ?.positions.map(pos => (
-                                <option key={pos} value={pos}>{pos}</option>
-                              ))}
-                          </select>
+                          {role.group === 'Crew' && (
+                            <>
+                              <select
+                                value={role.department}
+                                onChange={e => updateRole(i, { department: e.target.value })}
+                              >
+                                <option value="">-- Department --</option>
+                                {departments.map(d => (
+                                  <option key={d.id} value={d.name}>{d.name}</option>
+                                ))}
+                              </select>
+                              <select
+                                value={role.position}
+                                onChange={e => updateRole(i, { position: e.target.value })}
+                              >
+                                <option value="">-- Position --</option>
+                                {departments
+                                  .find(d => d.name === role.department)
+                                  ?.positions.map(pos => (
+                                    <option key={pos} value={pos}>{pos}</option>
+                                  ))}
+                              </select>
+                            </>
+                          )}
+                          {role.group === 'Talent' && (
+                            <input
+                              type="text"
+                              value={role.characterName || ''}
+                              onChange={e => updateRole(i, { characterName: e.target.value })}
+                              placeholder="Character name (e.g., Ted)"
+                              className="bc-role-input"
+                            />
+                          )}
+                          {role.group === 'Client' && (
+                            <input
+                              type="text"
+                              value={role.position || ''}
+                              onChange={e => updateRole(i, { position: e.target.value })}
+                              placeholder="Title (e.g., Executive Producer)"
+                              className="bc-role-input"
+                            />
+                          )}
                           <button className="bc-icon-btn danger" onClick={() => removeRole(i)}>×</button>
                         </div>
                       ))}
@@ -625,6 +675,86 @@ const BaseCamp: React.FC = () => {
                         rows={5}
                       />
                       <span className="bc-form-hint">(Notes are internal and not visible to the contact)</span>
+                    </div>
+
+                    <h4 className="bc-form-section-title">Availability</h4>
+                    <div className="bc-form-row">
+                      <div className="bc-form-group">
+                        <label>AVAILABLE FROM</label>
+                        <input
+                          type="date"
+                          value={formData.availability?.startDate || ''}
+                          onChange={e => setFormData({
+                            ...formData,
+                            availability: {
+                              ...formData.availability!,
+                              startDate: e.target.value || undefined,
+                            },
+                          })}
+                        />
+                      </div>
+                      <div className="bc-form-group">
+                        <label>AVAILABLE UNTIL</label>
+                        <input
+                          type="date"
+                          value={formData.availability?.endDate || ''}
+                          onChange={e => setFormData({
+                            ...formData,
+                            availability: {
+                              ...formData.availability!,
+                              endDate: e.target.value || undefined,
+                            },
+                          })}
+                        />
+                      </div>
+                    </div>
+                    <div className="bc-form-group">
+                      <label>BLOCKED DATES (unavailable)</label>
+                      <div className="bc-blocked-dates">
+                        {(formData.availability?.blockedDates || []).map((date, i) => (
+                          <span key={i} className="bc-tag">
+                            {date}
+                            <button onClick={() => {
+                              const newDates = [...(formData.availability?.blockedDates || [])];
+                              newDates.splice(i, 1);
+                              setFormData({
+                                ...formData,
+                                availability: { ...formData.availability!, blockedDates: newDates },
+                              });
+                            }}>×</button>
+                          </span>
+                        ))}
+                        <input
+                          type="date"
+                          onChange={e => {
+                            if (e.target.value) {
+                              const current = formData.availability?.blockedDates || [];
+                              if (!current.includes(e.target.value)) {
+                                setFormData({
+                                  ...formData,
+                                  availability: {
+                                    ...formData.availability!,
+                                    blockedDates: [...current, e.target.value].sort(),
+                                  },
+                                });
+                              }
+                              e.target.value = '';
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div className="bc-form-group">
+                      <label>AVAILABILITY NOTES</label>
+                      <input
+                        type="text"
+                        value={formData.availability?.notes || ''}
+                        onChange={e => setFormData({
+                          ...formData,
+                          availability: { ...formData.availability!, notes: e.target.value },
+                        })}
+                        placeholder="e.g., Only available after 2pm on Tuesdays"
+                      />
                     </div>
                   </>
                 )}
@@ -707,7 +837,10 @@ const BaseCamp: React.FC = () => {
       setFormData({ ...formData, castIds: newCast });
     };
 
-    const talent = people.filter(p => p.group === 'Talent');
+    // Find talent: people whose group is Talent OR who have any Talent role
+    const talent = people.filter(p =>
+      p.group === 'Talent' || p.roles.some(r => r.group === 'Talent')
+    );
     const getLocationName = (id?: string) => locations.find(l => l.id === id)?.name || '';
 
     return (
@@ -861,15 +994,18 @@ const BaseCamp: React.FC = () => {
                 <div className="bc-form-group">
                   <label>CAST MEMBERS</label>
                   <div className="bc-cast-tags">
-                    {talent.map(t => (
-                      <button
-                        key={t.id}
-                        className={`bc-cast-tag ${formData.castIds.includes(t.id) ? 'selected' : ''}`}
-                        onClick={() => toggleCast(t.id)}
-                      >
-                        {t.firstName} {t.lastName}
-                      </button>
-                    ))}
+                    {talent.map(t => {
+                      const charName = t.roles.find(r => r.group === 'Talent')?.characterName;
+                      return (
+                        <button
+                          key={t.id}
+                          className={`bc-cast-tag ${formData.castIds.includes(t.id) ? 'selected' : ''}`}
+                          onClick={() => toggleCast(t.id)}
+                        >
+                          {t.firstName} {t.lastName}{charName ? ` (${charName})` : ''}
+                        </button>
+                      );
+                    })}
                     {talent.length === 0 && <span className="bc-form-hint">Add talent in All People first</span>}
                   </div>
                 </div>
@@ -1841,6 +1977,7 @@ const BaseCamp: React.FC = () => {
     const [editingDay, setEditingDay] = useState<ShootDay | null>(null);
     const [showSettingsModal, setShowSettingsModal] = useState(false);
     const [draggedStrip, setDraggedStrip] = useState<string | null>(null);
+    const [conflictWarning, setConflictWarning] = useState<{ stripId: string; dayId: string; conflicts: string[] } | null>(null);
 
     const getStrip = (stripId: string): SceneStrip | undefined => {
       return schedule?.strips.find(s => s.id === stripId);
@@ -1849,6 +1986,41 @@ const BaseCamp: React.FC = () => {
     const getShotCountForScene = (sceneId: string): number => {
       if (!viewFinder?.shots) return 0;
       return viewFinder.shots.filter(s => s.sceneId === sceneId).length;
+    };
+
+    // Check talent availability conflicts for a strip on a given day
+    const checkConflicts = (stripId: string, dayId: string): string[] => {
+      const strip = getStrip(stripId);
+      const day = schedule?.shootDays.find(d => d.id === dayId);
+      if (!strip || !day || !day.date) return [];
+
+      const dayDate = new Date(day.date).toISOString().split('T')[0];
+      const conflicts: string[] = [];
+
+      // Check each cast member's availability
+      strip.castIds.forEach(castId => {
+        const person = productionData.people.find(p => p.id === castId);
+        if (!person?.availability) return;
+
+        const avail = person.availability;
+        const name = `${person.firstName} ${person.lastName}`;
+
+        // Check blocked dates
+        if (avail.blockedDates?.includes(dayDate)) {
+          conflicts.push(`${name} is blocked on ${dayDate}`);
+          return;
+        }
+
+        // Check date range
+        if (avail.startDate && dayDate < avail.startDate) {
+          conflicts.push(`${name} not available until ${avail.startDate}`);
+        }
+        if (avail.endDate && dayDate > avail.endDate) {
+          conflicts.push(`${name} not available after ${avail.endDate}`);
+        }
+      });
+
+      return conflicts;
     };
 
     const handleDragStart = (e: React.DragEvent, stripId: string) => {
@@ -1864,7 +2036,13 @@ const BaseCamp: React.FC = () => {
     const handleDropOnDay = (e: React.DragEvent, dayId: string) => {
       e.preventDefault();
       if (draggedStrip) {
-        assignStripToDay(draggedStrip, dayId);
+        const conflicts = checkConflicts(draggedStrip, dayId);
+        if (conflicts.length > 0) {
+          // Show warning but allow override
+          setConflictWarning({ stripId: draggedStrip, dayId, conflicts });
+        } else {
+          assignStripToDay(draggedStrip, dayId);
+        }
         setDraggedStrip(null);
       }
     };
@@ -1949,7 +2127,11 @@ const BaseCamp: React.FC = () => {
             <div className="unscheduled-area" onDragOver={handleDragOver} onDrop={handleDropOnUnscheduled}>
               {schedule?.unscheduledStrips.length === 0 ? (
                 <div className="empty-text">
-                  {schedule?.strips.length === 0 ? 'Import scenes from Breakdown first' : 'All scenes scheduled!'}
+                  {schedule?.strips.length === 0
+                    ? (productionData.scenes.length > 0
+                      ? 'Click "Import from Scenes" to add strips'
+                      : 'Add scenes first, then import them here')
+                    : 'All scenes scheduled!'}
                 </div>
               ) : (
                 <div className="strip-list vertical">
@@ -1960,7 +2142,12 @@ const BaseCamp: React.FC = () => {
           </div>
 
           <div className="sidebar-actions">
-            {schedule?.strips.length === 0 && breakdownScenes.length > 0 && (
+            {productionData.scenes.length > 0 && (
+              <button className="import-btn" onClick={importProductionScenesAsStrips}>
+                Import from Scenes ({productionData.scenes.length})
+              </button>
+            )}
+            {breakdownScenes.length > 0 && (
               <button className="import-btn" onClick={importStripsFromBreakdown}>Import from Breakdown</button>
             )}
             {viewFinder && viewFinder.shots.length > 0 && (
@@ -1998,7 +2185,10 @@ const BaseCamp: React.FC = () => {
                       <div className="day-number">Day {day.dayNumber}</div>
                       <div className="day-date">{day.date ? new Date(day.date).toLocaleDateString() : 'TBD'}</div>
                       <div className="day-info"><span>{totals.scenes} scenes</span><span>{totals.pages} pgs</span></div>
-                      <div className="day-times"><span>Call: {day.callTime}</span></div>
+                      <div className="day-times">
+                        <span>Call: {day.callTime}</span>
+                        {day.lunchTime && <span>Lunch: {day.lunchTime} ({day.lunchDuration || 30}m)</span>}
+                      </div>
                       <div className="day-actions">
                         <button className="edit-btn" onClick={e => { e.stopPropagation(); setEditingDay(day); setShowDayModal(true); }}>Edit</button>
                         <button className="delete-btn" onClick={e => { e.stopPropagation(); if (confirm(`Delete Day ${day.dayNumber}?`)) deleteShootDay(day.id); }}>×</button>
@@ -2024,13 +2214,44 @@ const BaseCamp: React.FC = () => {
             <div className="bc-modal" onClick={e => e.stopPropagation()}>
               <div className="bc-modal-header"><h3>Edit Day {editingDay.dayNumber}</h3><button className="bc-modal-close" onClick={() => { setShowDayModal(false); setEditingDay(null); }}>×</button></div>
               <div className="bc-modal-body">
-                <div className="bc-form-group"><label>Shoot Date</label><input type="date" value={editingDay.date ? new Date(editingDay.date).toISOString().split('T')[0] : ''} onChange={e => setEditingDay({ ...editingDay, date: e.target.value ? new Date(e.target.value) : undefined })} /></div>
-                <div className="bc-form-row">
-                  <div className="bc-form-group"><label>Call Time</label><input type="text" value={editingDay.callTime} onChange={e => setEditingDay({ ...editingDay, callTime: e.target.value })} placeholder="7:00 AM" /></div>
-                  <div className="bc-form-group"><label>Est. Wrap</label><input type="text" value={editingDay.estimatedWrap} onChange={e => setEditingDay({ ...editingDay, estimatedWrap: e.target.value })} placeholder="7:00 PM" /></div>
+                <div className="bc-form-group">
+                  <label>SHOOT DATE</label>
+                  <input type="date" value={editingDay.date ? new Date(editingDay.date).toISOString().split('T')[0] : ''} onChange={e => setEditingDay({ ...editingDay, date: e.target.value ? new Date(e.target.value) : undefined })} />
                 </div>
-                <div className="bc-form-group"><label>Location</label><input type="text" value={editingDay.location || ''} onChange={e => setEditingDay({ ...editingDay, location: e.target.value })} placeholder="Main location" /></div>
-                <div className="bc-form-group"><label>Notes</label><textarea value={editingDay.notes || ''} onChange={e => setEditingDay({ ...editingDay, notes: e.target.value })} placeholder="Day notes..." /></div>
+                <div className="bc-form-row">
+                  <div className="bc-form-group">
+                    <label>CALL TIME</label>
+                    <input type="text" value={editingDay.callTime} onChange={e => setEditingDay({ ...editingDay, callTime: e.target.value })} placeholder="7:00 AM" />
+                  </div>
+                  <div className="bc-form-group">
+                    <label>EST. WRAP</label>
+                    <input type="text" value={editingDay.estimatedWrap} onChange={e => setEditingDay({ ...editingDay, estimatedWrap: e.target.value })} placeholder="7:00 PM" />
+                  </div>
+                </div>
+
+                <h4 className="bc-form-section-title">Lunch & Breaks</h4>
+                <div className="bc-form-row">
+                  <div className="bc-form-group">
+                    <label>LUNCH TIME</label>
+                    <input type="text" value={editingDay.lunchTime || ''} onChange={e => setEditingDay({ ...editingDay, lunchTime: e.target.value })} placeholder="12:30 PM" />
+                  </div>
+                  <div className="bc-form-group">
+                    <label>LUNCH DURATION (min)</label>
+                    <input type="number" value={editingDay.lunchDuration || schedule?.defaultLunchDuration || 30} onChange={e => setEditingDay({ ...editingDay, lunchDuration: parseInt(e.target.value) || 30 })} min="15" step="15" />
+                  </div>
+                </div>
+                <span className="bc-form-hint">
+                  Adjust lunch time if you need to accommodate actor arrivals or wrap early scenes first.
+                </span>
+
+                <div className="bc-form-group" style={{ marginTop: 12 }}>
+                  <label>LOCATION</label>
+                  <input type="text" value={editingDay.location || ''} onChange={e => setEditingDay({ ...editingDay, location: e.target.value })} placeholder="Main location" />
+                </div>
+                <div className="bc-form-group">
+                  <label>NOTES</label>
+                  <textarea value={editingDay.notes || ''} onChange={e => setEditingDay({ ...editingDay, notes: e.target.value })} placeholder="Day notes... (e.g., early lunch due to actor schedule, long lunch for company move)" rows={3} />
+                </div>
               </div>
               <div className="bc-modal-footer">
                 <button className="bc-btn bc-btn-secondary" onClick={() => { setShowDayModal(false); setEditingDay(null); }}>Cancel</button>
@@ -2050,6 +2271,42 @@ const BaseCamp: React.FC = () => {
                 <div className="bc-form-group"><label>Default Lunch Duration (minutes)</label><input type="number" value={schedule?.defaultLunchDuration || 30} onChange={e => updateScheduleSettings({ defaultLunchDuration: parseInt(e.target.value) || 30 })} /></div>
               </div>
               <div className="bc-modal-footer"><button className="bc-btn bc-btn-secondary" onClick={() => setShowSettingsModal(false)}>Close</button></div>
+            </div>
+          </div>
+        )}
+
+        {/* Conflict Warning Modal */}
+        {conflictWarning && (
+          <div className="bc-modal-overlay" onClick={() => setConflictWarning(null)}>
+            <div className="bc-modal bc-conflict-modal" onClick={e => e.stopPropagation()}>
+              <div className="bc-modal-header bc-conflict-header">
+                <h3>⚠ Scheduling Conflict</h3>
+                <button className="bc-modal-close" onClick={() => setConflictWarning(null)}>×</button>
+              </div>
+              <div className="bc-modal-body">
+                <p>The following talent availability conflicts were detected:</p>
+                <ul className="bc-conflict-list">
+                  {conflictWarning.conflicts.map((conflict, i) => (
+                    <li key={i}>{conflict}</li>
+                  ))}
+                </ul>
+                <p className="bc-form-hint">
+                  You can override this and schedule anyway, or cancel and adjust the schedule.
+                  Consider adjusting call times or moving scenes later in the day.
+                </p>
+              </div>
+              <div className="bc-modal-footer">
+                <button className="bc-btn bc-btn-secondary" onClick={() => setConflictWarning(null)}>Cancel</button>
+                <button
+                  className="bc-btn bc-btn-warning"
+                  onClick={() => {
+                    assignStripToDay(conflictWarning.stripId, conflictWarning.dayId);
+                    setConflictWarning(null);
+                  }}
+                >
+                  Schedule Anyway
+                </button>
+              </div>
             </div>
           </div>
         )}

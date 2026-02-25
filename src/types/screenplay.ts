@@ -1224,8 +1224,9 @@ export interface Schedule {
 // Person role assignment
 export interface PersonRole {
   group: 'Crew' | 'Talent' | 'Client';
-  department: string;    // e.g., "Camera", "Wardrobe"
-  position: string;      // e.g., "Director of Photography"
+  department: string;    // e.g., "Camera", "Wardrobe" (Crew only)
+  position: string;      // e.g., "Director of Photography" (Crew) or character name (Talent)
+  characterName?: string; // For Talent: the character they play
 }
 
 // Person in the production
@@ -1242,6 +1243,13 @@ export interface ProductionPerson {
   tags: string[];
   notes: string;
   avatarColor: string;
+  // Availability for scheduling
+  availability?: {
+    startDate?: string;      // Available from (ISO date)
+    endDate?: string;        // Available until (ISO date)
+    blockedDates: string[];  // Specific dates not available (ISO dates)
+    notes?: string;          // Availability notes
+  };
 }
 
 // Production location

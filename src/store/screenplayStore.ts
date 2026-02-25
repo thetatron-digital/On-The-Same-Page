@@ -377,6 +377,7 @@ interface ScreenplayState {
   // BaseCamp actions
   initializeSchedule: () => void;
   importStripsFromBreakdown: () => void;
+  importProductionScenesAsStrips: () => void;
   createShotPackagesFromViewFinder: () => void;
 
   // Shoot day actions
@@ -3108,6 +3109,55 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
         ...state.schedule!,
         strips,
         unscheduledStrips: stripIds,
+        updatedAt: new Date(),
+      },
+      isDirty: true,
+    });
+  },
+
+  importProductionScenesAsStrips: () => {
+    const state = get();
+    if (!state.schedule) {
+      get().initializeSchedule();
+    }
+    const currentSchedule = get().schedule!;
+    const existingSceneIds = new Set(currentSchedule.strips.map(s => s.sceneId));
+
+    // Convert production scenes to strips (skip already-imported ones)
+    const newStrips: SceneStrip[] = state.productionData.scenes
+      .filter(scene => !existingSceneIds.has(scene.id))
+      .map(scene => {
+        const dayNightMap: Record<string, string> = { 'Day': 'DAY', 'Night': 'NIGHT', 'Dawn': 'DAWN', 'Dusk': 'DUSK' };
+        const colorKey = `${scene.intExt}-${dayNightMap[scene.dayNight] || 'DAY'}`;
+        const color = STRIP_COLOR_MAP[colorKey] || 'White';
+
+        return {
+          id: generateId(),
+          sceneId: scene.id,
+          sceneNumber: scene.sceneNumber,
+          intExt: scene.intExt,
+          location: scene.set,
+          timeOfDay: dayNightMap[scene.dayNight] || 'DAY',
+          description: scene.description.substring(0, 50),
+          pageCount: scene.pageCount,
+          color: color as StripColor,
+          castIds: scene.castIds,
+          castNumbers: [],
+          isLocked: false,
+          hasStunts: false,
+          hasVFX: false,
+          hasSpecialEquipment: false,
+        };
+      });
+
+    if (newStrips.length === 0) return;
+
+    const newStripIds = newStrips.map(s => s.id);
+    set({
+      schedule: {
+        ...currentSchedule,
+        strips: [...currentSchedule.strips, ...newStrips],
+        unscheduledStrips: [...currentSchedule.unscheduledStrips, ...newStripIds],
         updatedAt: new Date(),
       },
       isDirty: true,

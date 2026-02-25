@@ -1400,3 +1400,81 @@
   .bc-nav-icon { margin: 0; }
   .bc-people-sidebar { display: none; }
 }
+
+/* Role input for Talent character name / Client title */
+.bc-role-input {
+  flex: 2;
+  padding: 6px 10px;
+  border: 1px solid #4a5568;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.05);
+  color: inherit;
+  font-size: 13px;
+}
+.basecamp-container.light .bc-role-input {
+  border-color: #d1d5db;
+  background: white;
+}
+
+/* Blocked dates / availability */
+.bc-blocked-dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.bc-blocked-dates input[type="date"] {
+  max-width: 180px;
+}
+
+/* Conflict warning modal */
+.bc-conflict-modal { max-width: 500px; }
+.bc-conflict-header { background: #E74C6B !important; }
+.bc-conflict-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+}
+.bc-conflict-list li {
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  background: rgba(231, 76, 107, 0.15);
+  border-left: 3px solid #E74C6B;
+  border-radius: 4px;
+  font-size: 14px;
+}
+.bc-btn-warning {
+  background: #E67E22;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.bc-btn-warning:hover { background: #D35400; }
+
+/* Day times in strip board */
+.day-times {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  color: #95a5a6;
+}
+
+/* Form section title (reusable) */
+.bc-form-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #95a5a6;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 16px 0 8px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+.basecamp-container.light .bc-form-section-title {
+  color: #6b7280;
+  border-top-color: #e5e7eb;
+}
