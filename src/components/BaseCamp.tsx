@@ -5,7 +5,7 @@ import type {
   CallSheet, PersonRole, CallSheetScene,
 } from '../types/screenplay';
 import { STRIP_COLOR_HEX } from '../types/screenplay';
-import { fetchWeather, geocodeAddress, generateMapsLink, findNearestHospital, type WeatherData } from '../utils/weather';
+import { fetchWeather, geocodeAddress, generateMapsLink, findNearestHospital, lookupTimezone, type WeatherData } from '../utils/weather';
 import { generateCallSheetPDF } from '../utils/callSheetPdf';
 import { DEFAULT_DISCLAIMER } from '../types/screenplay';
 import './BaseCamp.css';
@@ -13,6 +13,17 @@ import './BaseCamp.css';
 // ============================================
 // BASECAMP - Production Management & Call Sheets
 // ============================================
+
+/** Format a phone string to (000) 000-0000 on blur. Handles 10 or 11-digit US numbers. */
+function formatPhone(raw: string): string {
+  const digits = raw.replace(/\D/g, '');
+  // Strip leading '1' for US country code
+  const d = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;
+  if (d.length === 10) {
+    return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
+  }
+  return raw; // Return as-is if not a standard 10-digit number
+}
 
 const BaseCamp: React.FC = () => {
   const {
@@ -644,7 +655,8 @@ const BaseCamp: React.FC = () => {
                         type="tel"
                         value={formData.phone}
                         onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                        placeholder="+1 (555) 000-0000"
+                        onBlur={e => setFormData(prev => ({ ...prev, phone: formatPhone(e.target.value) }))}
+                        placeholder="(555) 000-0000"
                       />
                     </div>
 
@@ -1222,7 +1234,7 @@ const BaseCamp: React.FC = () => {
           latitude: result.latitude,
           longitude: result.longitude,
         };
-        // Also auto-find nearest hospital
+        // Also auto-find nearest hospital and timezone
         if (!formData.nearestHospital) {
           const hospital = await findNearestHospital(result.latitude, result.longitude);
           if (hospital) {
@@ -1232,6 +1244,10 @@ const BaseCamp: React.FC = () => {
               hospital.phone ? `Ph: ${hospital.phone}` : '',
             ].filter(Boolean).join('\n');
           }
+        }
+        if (!formData.timezone) {
+          const tz = await lookupTimezone(result.latitude, result.longitude);
+          if (tz) updates.timezone = tz;
         }
         setFormData(prev => ({ ...prev, ...updates }));
       }
@@ -1276,16 +1292,24 @@ const BaseCamp: React.FC = () => {
           }
         }
       }
-      // Auto-find nearest hospital if we have coords but no hospital set
-      if (dataToSave.latitude && dataToSave.longitude && !dataToSave.nearestHospital) {
-        const hospital = await findNearestHospital(dataToSave.latitude, dataToSave.longitude);
-        if (hospital) {
-          const hospitalStr = [
-            hospital.name,
-            hospital.address,
-            hospital.phone ? `Ph: ${hospital.phone}` : '',
-          ].filter(Boolean).join('\n');
-          dataToSave = { ...dataToSave, nearestHospital: hospitalStr };
+      // Auto-find nearest hospital and timezone if we have coords
+      const saveLat = dataToSave.latitude;
+      const saveLng = dataToSave.longitude;
+      if (saveLat && saveLng) {
+        if (!dataToSave.nearestHospital) {
+          const hospital = await findNearestHospital(saveLat, saveLng);
+          if (hospital) {
+            const hospitalStr = [
+              hospital.name,
+              hospital.address,
+              hospital.phone ? `Ph: ${hospital.phone}` : '',
+            ].filter(Boolean).join('\n');
+            dataToSave = { ...dataToSave, nearestHospital: hospitalStr };
+          }
+        }
+        if (!dataToSave.timezone) {
+          const tz = await lookupTimezone(saveLat, saveLng);
+          if (tz) dataToSave = { ...dataToSave, timezone: tz };
         }
       }
       if (editingLocation) {
@@ -1437,6 +1461,7 @@ const BaseCamp: React.FC = () => {
                       type="tel"
                       value={formData.phone}
                       onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                      onBlur={e => setFormData(prev => ({ ...prev, phone: formatPhone(e.target.value) }))}
                       placeholder="(201) 555-0123"
                     />
                   </div>
@@ -2529,7 +2554,16 @@ const BaseCamp: React.FC = () => {
                   <div key={day.id} className={`day-column ${selectedShootDayId === day.id ? 'selected' : ''}`} onClick={() => selectShootDay(day.id)}>
                     <div className="day-header">
                       <div className="day-number">Day {day.dayNumber}</div>
-                      <div className="day-date">{day.date ? new Date(new Date(day.date).toISOString().split('T')[0] + 'T12:00:00').toLocaleDateString() : 'TBD'}</div>
+                      <div className="day-date">{day.date ? new Date(new Date(day.date).toISOString().split('T')[0] + 'T12:00:00').toLocaleDateString() : 'TBD'}{(() => {
+                        const tz = day.timezone || productionData.locations.find(l =>
+                          day.location && (l.name.toLowerCase() === day.location.toLowerCase() ||
+                            l.name.toLowerCase().includes(day.location.toLowerCase()) ||
+                            day.location.toLowerCase().includes(l.name.toLowerCase()))
+                        )?.timezone;
+                        if (!tz) return null;
+                        const short = tz.split('/').pop()?.replace(/_/g, ' ') || tz;
+                        return <span className="day-tz"> ({short})</span>;
+                      })()}</div>
                       <div className="day-info"><span>{totals.scenes} scenes</span><span>{totals.pages} pgs</span></div>
                       <div className="day-times">
                         <span>Call: {day.callTime}</span>
@@ -2606,6 +2640,61 @@ const BaseCamp: React.FC = () => {
                 <div className="bc-form-group">
                   <label>NOTES</label>
                   <textarea value={editingDay.notes || ''} onChange={e => setEditingDay({ ...editingDay, notes: e.target.value })} placeholder="Day notes... (e.g., early lunch due to actor schedule, long lunch for company move)" rows={3} />
+                </div>
+
+                <div className="bc-form-group" style={{ marginTop: 16, borderTop: '1px solid var(--bc-border, #ddd)', paddingTop: 12 }}>
+                  <label>TIMEZONE {(() => {
+                    // Derive timezone from location
+                    const locMatch = productionData.locations.find(l =>
+                      editingDay.location && (l.name.toLowerCase() === editingDay.location.toLowerCase() ||
+                        l.name.toLowerCase().includes(editingDay.location.toLowerCase()) ||
+                        editingDay.location.toLowerCase().includes(l.name.toLowerCase()))
+                    );
+                    const derivedTz = locMatch?.timezone;
+                    if (derivedTz && !editingDay.timezone) return <span className="bc-auto-tag">from {locMatch.name}</span>;
+                    if (editingDay.timezone) return <span className="bc-auto-tag">override</span>;
+                    return null;
+                  })()}</label>
+                  <select
+                    value={editingDay.timezone || (() => {
+                      const locMatch = productionData.locations.find(l =>
+                        editingDay.location && (l.name.toLowerCase() === editingDay.location.toLowerCase() ||
+                          l.name.toLowerCase().includes(editingDay.location.toLowerCase()) ||
+                          editingDay.location.toLowerCase().includes(l.name.toLowerCase()))
+                      );
+                      return locMatch?.timezone || '';
+                    })()}
+                    onChange={e => setEditingDay({ ...editingDay, timezone: e.target.value || undefined })}
+                  >
+                    <option value="">Auto (from location)</option>
+                    <optgroup label="US Timezones">
+                      <option value="America/New_York">Eastern (ET)</option>
+                      <option value="America/Chicago">Central (CT)</option>
+                      <option value="America/Denver">Mountain (MT)</option>
+                      <option value="America/Los_Angeles">Pacific (PT)</option>
+                      <option value="America/Anchorage">Alaska (AKT)</option>
+                      <option value="Pacific/Honolulu">Hawaii (HT)</option>
+                    </optgroup>
+                    <optgroup label="Canada">
+                      <option value="America/Toronto">Eastern (Toronto)</option>
+                      <option value="America/Vancouver">Pacific (Vancouver)</option>
+                      <option value="America/Edmonton">Mountain (Edmonton)</option>
+                      <option value="America/Halifax">Atlantic (Halifax)</option>
+                    </optgroup>
+                    <optgroup label="Europe">
+                      <option value="Europe/London">UK (GMT/BST)</option>
+                      <option value="Europe/Paris">Central Europe (CET)</option>
+                      <option value="Europe/Berlin">Germany (CET)</option>
+                    </optgroup>
+                    <optgroup label="Asia/Pacific">
+                      <option value="Asia/Tokyo">Japan (JST)</option>
+                      <option value="Asia/Shanghai">China (CST)</option>
+                      <option value="Asia/Kolkata">India (IST)</option>
+                      <option value="Australia/Sydney">Sydney (AEST)</option>
+                      <option value="Pacific/Auckland">New Zealand (NZST)</option>
+                    </optgroup>
+                  </select>
+                  <span className="bc-form-hint">Locked to shoot location by default. Override only if shooting in a different timezone.</span>
                 </div>
               </div>
               <div className="bc-modal-footer">

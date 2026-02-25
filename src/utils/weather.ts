@@ -275,3 +275,20 @@ export function generateMapsLink(address: {
   if (parts.length === 0) return '';
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(parts.join(', '))}`;
 }
+
+/**
+ * Look up the IANA timezone for a lat/lng using Open-Meteo's forecast endpoint.
+ * Open-Meteo returns the timezone in its response headers/body for any coordinate.
+ */
+export async function lookupTimezone(lat: number, lng: number): Promise<string | null> {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&daily=temperature_2m_max&start_date=${today}&end_date=${today}&timezone=auto`;
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data.timezone || null;
+  } catch {
+    return null;
+  }
+}

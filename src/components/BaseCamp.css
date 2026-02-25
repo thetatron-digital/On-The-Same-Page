@@ -1552,6 +1552,7 @@
 .day-number { font-weight: 700; font-size: 14px; color: #2C3E50; }
 .basecamp-container.dark .day-number { color: #e0e0e0; }
 .day-date { font-size: 12px; color: #7F8C8D; }
+.day-tz { font-size: 10px; opacity: 0.7; }
 .day-info { display: flex; gap: 12px; font-size: 12px; color: #95A5A6; margin-top: 4px; }
 .day-times { font-size: 11px; color: #7F8C8D; margin-top: 2px; }
 .day-actions { display: flex; gap: 4px; margin-top: 4px; }

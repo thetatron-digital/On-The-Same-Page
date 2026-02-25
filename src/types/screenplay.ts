@@ -1134,6 +1134,9 @@ export interface ShootDay {
   isLocked: boolean;
   hasNightWork: boolean;
 
+  // Timezone (auto-derived from location, overridable)
+  timezone?: string;
+
   notes?: string;
 }
 
@@ -1265,6 +1268,7 @@ export interface ProductionLocation {
   longitude?: number;
   mapLink?: string;
   nearestHospital?: string;
+  timezone?: string;
 }
 
 // Production scene (standalone, not from script)
