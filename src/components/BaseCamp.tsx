@@ -5,7 +5,7 @@ import type {
   CallSheet, PersonRole, CallSheetScene,
 } from '../types/screenplay';
 import { STRIP_COLOR_HEX } from '../types/screenplay';
-import { fetchWeather, geocodeAddress, generateMapsLink, type WeatherData } from '../utils/weather';
+import { fetchWeather, geocodeAddress, generateMapsLink, findNearestHospital, type WeatherData } from '../utils/weather';
 import { generateCallSheetPDF } from '../utils/callSheetPdf';
 import { DEFAULT_DISCLAIMER } from '../types/screenplay';
 import './BaseCamp.css';
@@ -1218,11 +1218,22 @@ const BaseCamp: React.FC = () => {
       setGeocoding(true);
       const result = await geocodeAddress(query);
       if (result) {
-        setFormData(prev => ({
-          ...prev,
+        let updates: Partial<typeof formData> = {
           latitude: result.latitude,
           longitude: result.longitude,
-        }));
+        };
+        // Also auto-find nearest hospital
+        if (!formData.nearestHospital) {
+          const hospital = await findNearestHospital(result.latitude, result.longitude);
+          if (hospital) {
+            updates.nearestHospital = [
+              hospital.name,
+              hospital.address,
+              hospital.phone ? `Ph: ${hospital.phone}` : '',
+            ].filter(Boolean).join('\n');
+          }
+        }
+        setFormData(prev => ({ ...prev, ...updates }));
       }
       setGeocoding(false);
     };
@@ -1263,6 +1274,18 @@ const BaseCamp: React.FC = () => {
           if (result) {
             dataToSave = { ...dataToSave, latitude: result.latitude, longitude: result.longitude };
           }
+        }
+      }
+      // Auto-find nearest hospital if we have coords but no hospital set
+      if (dataToSave.latitude && dataToSave.longitude && !dataToSave.nearestHospital) {
+        const hospital = await findNearestHospital(dataToSave.latitude, dataToSave.longitude);
+        if (hospital) {
+          const hospitalStr = [
+            hospital.name,
+            hospital.address,
+            hospital.phone ? `Ph: ${hospital.phone}` : '',
+          ].filter(Boolean).join('\n');
+          dataToSave = { ...dataToSave, nearestHospital: hospitalStr };
         }
       }
       if (editingLocation) {
@@ -2506,7 +2529,7 @@ const BaseCamp: React.FC = () => {
                   <div key={day.id} className={`day-column ${selectedShootDayId === day.id ? 'selected' : ''}`} onClick={() => selectShootDay(day.id)}>
                     <div className="day-header">
                       <div className="day-number">Day {day.dayNumber}</div>
-                      <div className="day-date">{day.date ? new Date(day.date).toLocaleDateString() : 'TBD'}</div>
+                      <div className="day-date">{day.date ? new Date(new Date(day.date).toISOString().split('T')[0] + 'T12:00:00').toLocaleDateString() : 'TBD'}</div>
                       <div className="day-info"><span>{totals.scenes} scenes</span><span>{totals.pages} pgs</span></div>
                       <div className="day-times">
                         <span>Call: {day.callTime}</span>
@@ -2548,7 +2571,7 @@ const BaseCamp: React.FC = () => {
               <div className="bc-modal-body">
                 <div className="bc-form-group">
                   <label>SHOOT DATE</label>
-                  <input type="date" value={editingDay.date ? new Date(editingDay.date).toISOString().split('T')[0] : ''} onChange={e => setEditingDay({ ...editingDay, date: e.target.value ? new Date(e.target.value) : undefined })} />
+                  <input type="date" value={editingDay.date ? new Date(editingDay.date).toISOString().split('T')[0] : ''} onChange={e => setEditingDay({ ...editingDay, date: e.target.value ? new Date(e.target.value + 'T12:00:00') : undefined })} />
                 </div>
                 <div className="bc-form-row">
                   <div className="bc-form-group">

@@ -166,6 +166,84 @@ export async function geocodeAddress(query: string): Promise<GeocodingResult | n
   }
 }
 
+export interface NearestHospitalResult {
+  name: string;
+  address: string;
+  phone?: string;
+  latitude: number;
+  longitude: number;
+  distance?: string;
+}
+
+/**
+ * Find the nearest hospital/emergency room to the given coordinates.
+ * Uses Overpass API (OpenStreetMap) to find hospitals within ~15km radius.
+ */
+export async function findNearestHospital(lat: number, lng: number): Promise<NearestHospitalResult | null> {
+  try {
+    // Overpass API query for hospitals within ~15km
+    const query = `[out:json][timeout:10];(node["amenity"="hospital"](around:15000,${lat},${lng});way["amenity"="hospital"](around:15000,${lat},${lng}););out center 1;`;
+    const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      // Fallback to Nominatim search
+      return findNearestHospitalFallback(lat, lng);
+    }
+
+    const data = await response.json();
+    if (!data.elements || data.elements.length === 0) {
+      return findNearestHospitalFallback(lat, lng);
+    }
+
+    const el = data.elements[0];
+    const hLat = el.center?.lat || el.lat;
+    const hLng = el.center?.lon || el.lon;
+    const tags = el.tags || {};
+
+    // Build address from tags
+    const addrParts = [
+      tags['addr:housenumber'] && tags['addr:street'] ? `${tags['addr:housenumber']} ${tags['addr:street']}` : tags['addr:street'],
+      tags['addr:city'],
+      tags['addr:state'],
+      tags['addr:postcode'],
+    ].filter(Boolean);
+
+    return {
+      name: tags.name || 'Hospital',
+      address: addrParts.join(', ') || `${hLat.toFixed(4)}, ${hLng.toFixed(4)}`,
+      phone: tags.phone || tags['contact:phone'] || undefined,
+      latitude: hLat,
+      longitude: hLng,
+    };
+  } catch {
+    return findNearestHospitalFallback(lat, lng);
+  }
+}
+
+async function findNearestHospitalFallback(lat: number, lng: number): Promise<NearestHospitalResult | null> {
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=hospital+near+${lat},${lng}&format=json&limit=1&addressdetails=1`;
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'OTSP-BaseCamp/1.0 (production-scheduling-app)' },
+    });
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    if (!data || data.length === 0) return null;
+
+    const result = data[0];
+    return {
+      name: result.display_name?.split(',')[0] || 'Hospital',
+      address: result.display_name?.split(',').slice(0, 4).join(',').trim() || '',
+      latitude: parseFloat(result.lat),
+      longitude: parseFloat(result.lon),
+    };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Generate a Google Maps URL from address components.
  */

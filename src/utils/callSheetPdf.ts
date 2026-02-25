@@ -374,25 +374,31 @@ export function generateCallSheetPDF(data: CallSheetPdfData): jsPDF {
       doc.text('CALL', startX + halfW - 6, startY + 11, { align: 'right' });
 
       let rowY = startY + 15;
+      // Column layout: position | name | phone | call time
+      const posW = 70;
+      const callW = 46;
+      const phoneW = 66;
+      const nameW = halfW - posW - phoneW - callW - 8;
+
       calls.forEach(cc => {
         const p = getPerson(cc.personId);
-        const posW = 76;
-        const nameW = halfW - posW - 60 - 10;
 
         setFont(doc, 8, 'bold', BLACK);
-        const posText = doc.splitTextToSize(cc.position, posW);
+        const posText = doc.splitTextToSize(cc.position, posW - 4);
         doc.text(posText[0], startX + 6, rowY + 11);
 
         setFont(doc, 8, 'normal');
-        doc.text(p ? (p.firstName + ' ' + p.lastName) : '', startX + posW + 6, rowY + 11);
+        const fullName = p ? (p.firstName + ' ' + p.lastName) : '';
+        const nameText = doc.splitTextToSize(fullName, nameW - 4);
+        doc.text(nameText[0], startX + posW + 4, rowY + 11);
 
         if (p?.phone) {
           setFont(doc, 7, 'normal', GRAY);
-          doc.text(p.phone, startX + posW + nameW + 6, rowY + 11);
+          doc.text(p.phone, startX + posW + nameW + 4, rowY + 11);
         }
 
         setFont(doc, 8, 'normal', BLACK);
-        doc.text(cc.callTime, startX + halfW - 6, rowY + 11, { align: 'right' });
+        doc.text(cc.callTime, startX + halfW - 4, rowY + 11, { align: 'right' });
 
         doc.setDrawColor('#e0e0e0');
         doc.setLineWidth(0.3);
