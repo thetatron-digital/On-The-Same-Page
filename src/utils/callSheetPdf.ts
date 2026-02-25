@@ -30,34 +30,29 @@ interface CallSheetPdfData {
   disclaimer: string;
 }
 
-// Helper: draw a filled rect
 function fillRect(doc: jsPDF, x: number, y: number, w: number, h: number, color: string) {
   doc.setFillColor(color);
   doc.rect(x, y, w, h, 'F');
 }
 
-// Helper: draw a stroked rect
 function strokeRect(doc: jsPDF, x: number, y: number, w: number, h: number, color = BORDER) {
   doc.setDrawColor(color);
   doc.setLineWidth(0.5);
   doc.rect(x, y, w, h, 'S');
 }
 
-// Helper: draw a horizontal line
 function hLine(doc: jsPDF, x: number, y: number, w: number, color = BORDER, width = 0.5) {
   doc.setDrawColor(color);
   doc.setLineWidth(width);
   doc.line(x, y, x + w, y);
 }
 
-// Helper: set font
 function setFont(doc: jsPDF, size: number, style: 'normal' | 'bold' = 'normal', color = BLACK) {
   doc.setFontSize(size);
   doc.setFont('helvetica', style);
   doc.setTextColor(color);
 }
 
-// Helper: check if we need a new page
 function checkPage(doc: jsPDF, y: number, needed: number): number {
   if (y + needed > PH - MB) {
     doc.addPage();
@@ -70,7 +65,6 @@ export function generateCallSheetPDF(data: CallSheetPdfData): jsPDF {
   const { callSheet: cs, people, locations, weather, disclaimer } = data;
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
 
-  // Helpers to look up data
   const getPerson = (id: string) => people.find(p => p.id === id);
   const getLoc = (id: string) => locations.find(l => l.id === id);
 
@@ -79,33 +73,26 @@ export function generateCallSheetPDF(data: CallSheetPdfData): jsPDF {
   // ============================================================
   // ROW 1: Title | Crew Call | Date
   // ============================================================
-  const row1Top = y;
-  const row1H = 60;
-
-  // Title (left)
-  setFont(doc, 16, 'bold');
+  setFont(doc, 18, 'bold');
   const titleLines = doc.splitTextToSize(cs.title || 'Untitled', 220);
-  doc.text(titleLines, ML, row1Top + 14);
+  doc.text(titleLines, ML, y + 16);
 
-  // Crew Call (center)
-  const ccX = PW / 2;
   setFont(doc, 8, 'normal', GRAY);
-  doc.text('Crew Call', ccX, row1Top + 10, { align: 'center' });
-  setFont(doc, 26, 'bold');
-  doc.text(cs.crewCall, ccX, row1Top + 34, { align: 'center' });
+  doc.text('Crew Call', PW / 2, y + 8, { align: 'center' });
+  setFont(doc, 28, 'bold');
+  doc.text(cs.crewCall, PW / 2, y + 34, { align: 'center' });
 
-  // Date + Day (right)
   const dateStr = cs.date
     ? new Date(cs.date + 'T12:00:00').toLocaleDateString('en-US', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
       })
     : 'Date TBD';
-  setFont(doc, 10, 'bold');
-  doc.text(dateStr, PW - MR, row1Top + 14, { align: 'right' });
-  setFont(doc, 16, 'bold');
-  doc.text(`Day ${cs.dayNumber} of ${cs.totalDays}`, PW - MR, row1Top + 32, { align: 'right' });
+  setFont(doc, 11, 'bold');
+  doc.text(dateStr, PW - MR, y + 14, { align: 'right' });
+  setFont(doc, 18, 'bold');
+  doc.text(`Day ${cs.dayNumber} of ${cs.totalDays}`, PW - MR, y + 34, { align: 'right' });
 
-  y = row1Top + row1H;
+  y += 50;
   hLine(doc, ML, y, CW, BLACK, 1.5);
   y += 4;
 
@@ -113,122 +100,118 @@ export function generateCallSheetPDF(data: CallSheetPdfData): jsPDF {
   // ROW 2: Producer | Hospital | Locations | Times + Weather
   // ============================================================
   const row2Top = y;
-  const col1W = 100;
-  const col4W = 170;
-  const col23W = (CW - col1W - col4W) / 2;
+  const col1W = 90;
+  const col4W = 155;
+  const midSpace = CW - col1W - col4W;
+  const col2W = midSpace * 0.45;
+  const col3W = midSpace * 0.55;
   const col2X = ML + col1W;
-  const col3X = col2X + col23W;
-  const col4X = col3X + col23W;
+  const col3X = col2X + col2W;
+  const col4X = col3X + col3W;
 
-  // Column 1: Producer / Director
-  setFont(doc, 7, 'bold');
-  doc.text('Producer', ML + 4, row2Top + 10);
-  setFont(doc, 7, 'normal');
-  doc.text(cs.producer || '—', ML + 4, row2Top + 20);
-  if (cs.director) {
-    setFont(doc, 7, 'bold');
-    doc.text('Director', ML + 4, row2Top + 34);
-    setFont(doc, 7, 'normal');
-    doc.text(cs.director, ML + 4, row2Top + 44);
-  }
-
-  // Column 2: Nearest Hospital
+  // Col 1: Producer / Director
   setFont(doc, 8, 'bold');
-  doc.text('Nearest Hospital', col2X + col23W / 2, row2Top + 10, { align: 'center' });
-  hLine(doc, col2X + 10, row2Top + 13, col23W - 20, LIGHT_GRAY, 0.3);
-  if (cs.nearestHospital) {
-    setFont(doc, 7, 'normal');
-    const hospLines = doc.splitTextToSize(cs.nearestHospital, col23W - 16);
-    doc.text(hospLines, col2X + col23W / 2, row2Top + 24, { align: 'center' });
+  doc.text('Producer', ML + 4, row2Top + 12);
+  setFont(doc, 8, 'normal');
+  doc.text(cs.producer || '--', ML + 4, row2Top + 24);
+  if (cs.director) {
+    setFont(doc, 8, 'bold');
+    doc.text('Director', ML + 4, row2Top + 40);
+    setFont(doc, 8, 'normal');
+    doc.text(cs.director, ML + 4, row2Top + 52);
   }
 
-  // Column 3: Locations
-  let locY = row2Top + 6;
+  // Col 2: Nearest Hospital
+  setFont(doc, 9, 'bold');
+  doc.text('Nearest Hospital', col2X + col2W / 2, row2Top + 12, { align: 'center' });
+  hLine(doc, col2X + 8, row2Top + 15, col2W - 16, LIGHT_GRAY, 0.3);
+  if (cs.nearestHospital) {
+    setFont(doc, 8, 'normal');
+    const hospLines = doc.splitTextToSize(cs.nearestHospital, col2W - 16);
+    doc.text(hospLines, col2X + col2W / 2, row2Top + 28, { align: 'center' });
+  } else {
+    setFont(doc, 8, 'normal', LIGHT_GRAY);
+    doc.text('Not set', col2X + col2W / 2, row2Top + 28, { align: 'center' });
+  }
+
+  // Col 3: Locations
+  let locY = row2Top + 4;
   cs.locationIds.forEach(lid => {
     const loc = getLoc(lid);
     if (!loc) return;
-    setFont(doc, 8, 'bold');
-    doc.text(loc.name, col3X + col23W / 2, locY + 8, { align: 'center' });
+    setFont(doc, 9, 'bold');
+    doc.text(loc.name, col3X + col3W / 2, locY + 10, { align: 'center' });
     const addrParts = [loc.streetAddress, [loc.city, loc.state, loc.postalCode].filter(Boolean).join(', ')].filter(Boolean);
     if (addrParts.length > 0) {
-      setFont(doc, 7, 'normal', LINK_BLUE);
+      setFont(doc, 8, 'normal', LINK_BLUE);
       addrParts.forEach((part, i) => {
-        doc.text(part, col3X + col23W / 2, locY + 18 + (i * 9), { align: 'center' });
+        doc.text(part, col3X + col3W / 2, locY + 22 + (i * 10), { align: 'center' });
       });
-      // Add link annotation
       const mapsUrl = generateMapsLink(loc);
       if (mapsUrl) {
-        doc.link(col3X + 4, locY + 10, col23W - 8, 24, { url: mapsUrl });
+        doc.link(col3X + 4, locY + 12, col3W - 8, addrParts.length * 10 + 8, { url: mapsUrl });
       }
     }
     if (loc.phone) {
       setFont(doc, 7, 'normal', GRAY);
-      doc.text(`📞 ${loc.phone}`, col3X + col23W / 2, locY + 38, { align: 'center' });
+      doc.text(loc.phone, col3X + col3W / 2, locY + 22 + (addrParts.length * 10), { align: 'center' });
     }
-    locY += 46;
+    locY += 22 + (addrParts.length * 10) + 12;
   });
 
-  // Column 4: Times + Weather
-  setFont(doc, 8, 'normal');
-  const timesData = [
-    `Crew Call ◷ ${cs.crewCall}`,
-    `Shooting Call ◷ ${cs.shootingCall}`,
-    `First Meal ◷ ${cs.firstMeal}`,
-  ];
-  timesData.forEach((t, i) => {
-    doc.text(t, col4X + 4, row2Top + 10 + (i * 12));
-  });
-  setFont(doc, 8, 'bold');
-  doc.text(`Est. Wrap ◷ ${cs.estimatedWrap}`, col4X + 4, row2Top + 10 + (timesData.length * 12));
+  // Col 4: Times + Weather
+  setFont(doc, 9, 'normal');
+  doc.text('Crew Call: ' + cs.crewCall, col4X + 4, row2Top + 12);
+  doc.text('Shooting Call: ' + cs.shootingCall, col4X + 4, row2Top + 24);
+  doc.text('First Meal: ' + cs.firstMeal, col4X + 4, row2Top + 36);
+  setFont(doc, 9, 'bold');
+  doc.text('Est. Wrap: ' + cs.estimatedWrap, col4X + 4, row2Top + 48);
 
-  // Weather
   if (weather) {
-    const wxY = row2Top + 56;
-    fillRect(doc, col4X + 4, wxY, col4W - 8, 56, '#f8f9fa');
-    strokeRect(doc, col4X + 4, wxY, col4W - 8, 56, '#e5e7eb');
+    const wxY = row2Top + 58;
+    fillRect(doc, col4X + 4, wxY, col4W - 8, 50, '#f8f9fa');
+    strokeRect(doc, col4X + 4, wxY, col4W - 8, 50, '#e5e7eb');
+    const wxCx = col4X + col4W / 2;
 
-    const wxCenterX = col4X + col4W / 2;
     setFont(doc, 14, 'bold');
-    doc.text(`${weather.tempLow}°F`, wxCenterX - 30, wxY + 14, { align: 'center' });
-    doc.text(`${weather.tempHigh}°F`, wxCenterX + 30, wxY + 14, { align: 'center' });
-    setFont(doc, 14, 'normal');
-    doc.text('☀', wxCenterX, wxY + 14, { align: 'center' });
+    doc.text(weather.tempLow + 'F', wxCx - 28, wxY + 14, { align: 'center' });
+    doc.text(weather.tempHigh + 'F', wxCx + 28, wxY + 14, { align: 'center' });
     setFont(doc, 6, 'normal', LIGHT_GRAY);
-    doc.text('low', wxCenterX - 30, wxY + 22, { align: 'center' });
-    doc.text('high', wxCenterX + 30, wxY + 22, { align: 'center' });
+    doc.text('low', wxCx - 28, wxY + 22, { align: 'center' });
+    doc.text('high', wxCx + 28, wxY + 22, { align: 'center' });
 
     setFont(doc, 7, 'normal', GRAY);
-    const wxDesc = `${weather.description}. Wind ${weather.windSpeed}mph.${weather.precipChance > 0 ? ` ${weather.precipChance}% precip.` : ''}`;
+    const wxDesc = weather.description + '. Wind ' + weather.windSpeed + 'mph.' +
+      (weather.precipChance > 0 ? ' ' + weather.precipChance + '% precip.' : '');
     const wxLines = doc.splitTextToSize(wxDesc, col4W - 20);
-    doc.text(wxLines, wxCenterX, wxY + 32, { align: 'center' });
+    doc.text(wxLines, wxCx, wxY + 32, { align: 'center' });
 
     setFont(doc, 7, 'bold', BLACK);
-    doc.text(`Sunrise: ${weather.sunrise}`, col4X + 10, wxY + 50);
-    doc.text(`Sunset: ${weather.sunset}`, col4X + col4W - 10, wxY + 50, { align: 'right' });
+    doc.text('Sunrise: ' + weather.sunrise, col4X + 10, wxY + 46);
+    doc.text('Sunset: ' + weather.sunset, col4X + col4W - 10, wxY + 46, { align: 'right' });
   }
 
-  // Vertical dividers for row 2
-  const row2Bottom = Math.max(row2Top + 70, weather ? row2Top + 120 : row2Top + 70);
+  const row2H = weather ? 116 : Math.max(70, locY - row2Top);
   [col2X, col3X, col4X].forEach(x => {
     doc.setDrawColor(BORDER);
     doc.setLineWidth(0.3);
-    doc.line(x, row2Top, x, row2Bottom);
+    doc.line(x, row2Top, x, row2Top + row2H);
   });
+  strokeRect(doc, ML, row2Top, CW, row2H, BORDER);
 
-  y = row2Bottom;
-  hLine(doc, ML, y, CW, BORDER);
-  y += 1;
+  y = row2Top + row2H + 1;
 
   // ============================================================
   // DISCLAIMER BANNER
   // ============================================================
   if (disclaimer) {
-    fillRect(doc, ML, y, CW, 18, BG_GRAY);
+    fillRect(doc, ML, y, CW, 20, BG_GRAY);
     hLine(doc, ML, y, CW, BORDER, 0.3);
-    hLine(doc, ML, y + 18, CW, BORDER, 0.3);
+    hLine(doc, ML, y + 20, CW, BORDER, 0.3);
     setFont(doc, 7, 'bold', '#333333');
-    doc.text(disclaimer, PW / 2, y + 12, { align: 'center' });
-    y += 20;
+    const disclaimerLines = doc.splitTextToSize(disclaimer, CW - 20);
+    doc.text(disclaimerLines, PW / 2, y + (disclaimerLines.length > 1 ? 8 : 13), { align: 'center' });
+    y += 22;
   }
 
   // ============================================================
@@ -236,65 +219,56 @@ export function generateCallSheetPDF(data: CallSheetPdfData): jsPDF {
   // ============================================================
   if (cs.scenes.length > 0) {
     y = checkPage(doc, y, 60);
+    y += 4;
+    setFont(doc, 12, 'bold');
+    doc.text("Today's Schedule", ML + 8, y + 12);
+    y += 18;
 
-    // Section header
-    setFont(doc, 11, 'bold');
-    doc.text('📅  Today\'s Schedule', ML + 4, y + 14);
-    y += 20;
-    hLine(doc, ML, y, CW, BORDER, 0.3);
-    y += 1;
+    const sCols = [55, 0, 70, 150];
+    sCols[1] = CW - sCols[0] - sCols[2] - sCols[3];
 
-    // Table header
-    const sceneCols = [60, 0, 80, 160]; // SCENE, SET/DESC (flex), CAST, LOCATION
-    sceneCols[1] = CW - sceneCols[0] - sceneCols[2] - sceneCols[3];
-
-    fillRect(doc, ML, y, CW, 14, DARK);
-    setFont(doc, 7, 'bold', '#ffffff');
-    doc.text('SCENE', ML + 4, y + 10);
-    doc.text('SET / DESCRIPTION', ML + sceneCols[0] + 4, y + 10);
-    doc.text('CAST', ML + sceneCols[0] + sceneCols[1] + 4, y + 10);
-    doc.text('LOCATION', ML + sceneCols[0] + sceneCols[1] + sceneCols[2] + 4, y + 10);
-    y += 14;
+    fillRect(doc, ML, y, CW, 15, DARK);
+    setFont(doc, 8, 'bold', '#ffffff');
+    doc.text('SCENE', ML + sCols[0] / 2, y + 11, { align: 'center' });
+    doc.text('SET / DESCRIPTION', ML + sCols[0] + 6, y + 11);
+    doc.text('CAST', ML + sCols[0] + sCols[1] + 6, y + 11);
+    doc.text('LOCATION', ML + sCols[0] + sCols[1] + sCols[2] + 6, y + 11);
+    y += 15;
 
     cs.scenes.forEach(scene => {
       const loc = scene.locationId ? getLoc(scene.locationId) : undefined;
-      const locLines = loc
-        ? [loc.name, loc.streetAddress, [loc.city, loc.state, loc.postalCode].filter(Boolean).join(', ')].filter(Boolean)
+      const locAddr = loc
+        ? [loc.streetAddress, [loc.city, loc.state, loc.postalCode].filter(Boolean).join(', ')].filter(Boolean)
         : [];
-      const rowH = Math.max(24, locLines.length * 10 + 8);
+      const rowH = Math.max(26, 14 + locAddr.length * 10);
 
       y = checkPage(doc, y, rowH);
 
-      // Scene number cell (gray bg)
-      fillRect(doc, ML, y, sceneCols[0], rowH, BG_GRAY);
-      setFont(doc, 12, 'bold');
-      doc.text(scene.sceneNumber, ML + sceneCols[0] / 2, y + rowH / 2 + 4, { align: 'center' });
+      fillRect(doc, ML, y, sCols[0], rowH, BG_GRAY);
+      setFont(doc, 13, 'bold');
+      doc.text(scene.sceneNumber, ML + sCols[0] / 2, y + rowH / 2 + 4, { align: 'center' });
 
-      // Set description
-      setFont(doc, 8, 'bold');
-      doc.text(scene.setDescription, ML + sceneCols[0] + 4, y + 12);
+      setFont(doc, 9, 'bold', BLACK);
+      doc.text(scene.setDescription, ML + sCols[0] + 6, y + 14);
       if (scene.notes) {
         setFont(doc, 7, 'normal', GRAY);
-        doc.text(scene.notes, ML + sceneCols[0] + 4, y + 22);
+        doc.text(scene.notes, ML + sCols[0] + 8, y + 24);
       }
 
-      // Cast
-      setFont(doc, 8, 'normal');
-      doc.text(scene.cast || '', ML + sceneCols[0] + sceneCols[1] + 4, y + 12);
+      setFont(doc, 9, 'normal', BLACK);
+      doc.text(scene.cast || '', ML + sCols[0] + sCols[1] + 6, y + 14);
 
-      // Location
-      const locX = ML + sceneCols[0] + sceneCols[1] + sceneCols[2] + 4;
+      const locX = ML + sCols[0] + sCols[1] + sCols[2] + 6;
       if (loc) {
-        setFont(doc, 8, 'bold');
+        setFont(doc, 8, 'bold', BLACK);
         doc.text(loc.name, locX, y + 12);
         setFont(doc, 7, 'normal', LINK_BLUE);
-        const addrStr = [loc.streetAddress, [loc.city, loc.state, loc.postalCode].filter(Boolean).join(', ')].filter(Boolean);
-        addrStr.forEach((line, i) => {
-          doc.text(line, locX, y + 22 + (i * 9));
+        locAddr.forEach((line, i) => {
+          doc.text(line, locX, y + 22 + (i * 10));
         });
         const mapsUrl = generateMapsLink(loc);
         if (mapsUrl) {
-          doc.link(locX - 2, y + 13, sceneCols[3] - 8, addrStr.length * 9 + 4, { url: mapsUrl });
+          doc.link(locX - 2, y + 13, sCols[3] - 8, locAddr.length * 10 + 6, { url: mapsUrl });
         }
       }
 
@@ -303,64 +277,52 @@ export function generateCallSheetPDF(data: CallSheetPdfData): jsPDF {
     });
   }
 
-  y += 4;
+  y += 6;
 
   // ============================================================
   // TALENT
   // ============================================================
   if (cs.talentCalls.length > 0) {
     y = checkPage(doc, y, 60);
+    setFont(doc, 12, 'bold');
+    doc.text('Talent', ML + 8, y + 12);
+    y += 18;
 
-    setFont(doc, 11, 'bold');
-    doc.text('⭐  Talent', ML + 4, y + 14);
-    y += 20;
-    hLine(doc, ML, y, CW, BORDER, 0.3);
-    y += 1;
-
-    // Header
-    const tCols = [36, 0, 120, 60, 140]; // ID, NAME(flex), ROLE, CALL, CONTACT
+    const tCols = [36, 0, 110, 60, 150];
     tCols[1] = CW - tCols[0] - tCols[2] - tCols[3] - tCols[4];
 
-    fillRect(doc, ML, y, CW, 14, DARK);
-    setFont(doc, 7, 'bold', '#ffffff');
-    doc.text('ID', ML + 4, y + 10);
-    doc.text('TALENT', ML + tCols[0] + 4, y + 10);
-    doc.text('ROLE', ML + tCols[0] + tCols[1] + 4, y + 10);
-    doc.text('CALL', ML + tCols[0] + tCols[1] + tCols[2] + 4, y + 10);
-    doc.text('CONTACT', ML + tCols[0] + tCols[1] + tCols[2] + tCols[3] + 4, y + 10);
-    y += 14;
+    fillRect(doc, ML, y, CW, 15, DARK);
+    setFont(doc, 8, 'bold', '#ffffff');
+    doc.text('ID', ML + 6, y + 11);
+    doc.text('TALENT', ML + tCols[0] + 6, y + 11);
+    doc.text('ROLE', ML + tCols[0] + tCols[1] + 6, y + 11);
+    doc.text('CALL', ML + tCols[0] + tCols[1] + tCols[2] + 6, y + 11);
+    doc.text('CONTACT', ML + tCols[0] + tCols[1] + tCols[2] + tCols[3] + 6, y + 11);
+    y += 15;
 
     cs.talentCalls.forEach(tc => {
       const p = getPerson(tc.personId);
       if (!p) return;
 
-      const hasContact = p.phone || p.email;
-      const rowH = hasContact ? 28 : 18;
+      const rowH = (p.phone && p.email) ? 30 : 20;
       y = checkPage(doc, y, rowH);
 
       const talentRole = p.roles.find(r => r.group === 'Talent');
 
-      // ID
-      setFont(doc, 8, 'bold');
-      doc.text(`${p.firstName[0]}${p.lastName[0]}`, ML + 4, y + 12);
+      setFont(doc, 9, 'bold');
+      doc.text(p.firstName[0] + (p.lastName?.[0] || ''), ML + 6, y + 13);
 
-      // Name
+      setFont(doc, 9, 'normal');
+      doc.text(p.firstName + ' ' + p.lastName, ML + tCols[0] + 6, y + 13);
+      doc.text(talentRole?.characterName || talentRole?.position || 'Talent', ML + tCols[0] + tCols[1] + 6, y + 13);
+      doc.text(tc.callTime, ML + tCols[0] + tCols[1] + tCols[2] + 6, y + 13);
+
+      const contactX = ML + tCols[0] + tCols[1] + tCols[2] + tCols[3] + 6;
       setFont(doc, 8, 'normal');
-      doc.text(`${p.firstName} ${p.lastName}`, ML + tCols[0] + 4, y + 12);
-
-      // Role
-      doc.text(talentRole?.characterName || talentRole?.position || 'Talent', ML + tCols[0] + tCols[1] + 4, y + 12);
-
-      // Call
-      doc.text(tc.callTime, ML + tCols[0] + tCols[1] + tCols[2] + 4, y + 12);
-
-      // Contact
-      const contactX = ML + tCols[0] + tCols[1] + tCols[2] + tCols[3] + 4;
-      setFont(doc, 7, 'normal');
-      if (p.phone) doc.text(p.phone, contactX, y + 10);
+      if (p.phone) doc.text(p.phone, contactX, y + 11);
       if (p.email) {
         setFont(doc, 7, 'normal', LINK_BLUE);
-        doc.text(p.email, contactX, y + (p.phone ? 20 : 10));
+        doc.text(p.email, contactX, y + (p.phone ? 22 : 11));
       }
 
       hLine(doc, ML, y + rowH, CW, '#e5e7eb', 0.3);
@@ -368,7 +330,7 @@ export function generateCallSheetPDF(data: CallSheetPdfData): jsPDF {
     });
   }
 
-  y += 4;
+  y += 6;
 
   // ============================================================
   // CREW BY DEPARTMENT (2-column grid)
@@ -383,8 +345,6 @@ export function generateCallSheetPDF(data: CallSheetPdfData): jsPDF {
   const deptEntries = Object.entries(crewByDept);
   if (deptEntries.length > 0) {
     y = checkPage(doc, y, 40);
-    hLine(doc, ML, y, CW, BORDER, 0.3);
-    y += 2;
 
     const halfW = CW / 2;
     let colIdx = 0;
@@ -392,46 +352,55 @@ export function generateCallSheetPDF(data: CallSheetPdfData): jsPDF {
     let rightY = y;
 
     deptEntries.forEach(([dept, calls]) => {
-      const blockH = 16 + (calls.length * 14) + 4; // header + rows + padding
+      const blockH = 16 + (calls.length * 16) + 2;
       const isLeft = colIdx % 2 === 0;
       const startX = isLeft ? ML : ML + halfW;
       let startY = isLeft ? leftY : rightY;
 
       startY = checkPage(doc, startY, blockH);
       if (startY === MT) {
-        // Reset both columns on new page
         leftY = MT;
         rightY = MT;
         startY = MT;
       }
 
       // Department header
-      fillRect(doc, startX, startY, halfW, 14, DARK);
-      setFont(doc, 8, 'bold', '#ffffff');
-      doc.text(dept.toUpperCase(), startX + 4, startY + 10);
+      fillRect(doc, startX, startY, halfW, 15, DARK);
+      setFont(doc, 9, 'bold', '#ffffff');
+      doc.text(dept.toUpperCase(), startX + 6, startY + 11);
 
-      let rowY = startY + 14;
+      // CALL label right-aligned in header
+      setFont(doc, 7, 'normal', '#bbbbbb');
+      doc.text('CALL', startX + halfW - 6, startY + 11, { align: 'right' });
+
+      let rowY = startY + 15;
       calls.forEach(cc => {
         const p = getPerson(cc.personId);
-        setFont(doc, 7, 'bold', BLACK);
-        doc.text(cc.position, startX + 4, rowY + 10);
-        setFont(doc, 7, 'normal');
-        doc.text(p ? `${p.firstName} ${p.lastName}` : '', startX + 80, rowY + 10);
+        const posW = 76;
+        const nameW = halfW - posW - 60 - 10;
+
+        setFont(doc, 8, 'bold', BLACK);
+        const posText = doc.splitTextToSize(cc.position, posW);
+        doc.text(posText[0], startX + 6, rowY + 11);
+
+        setFont(doc, 8, 'normal');
+        doc.text(p ? (p.firstName + ' ' + p.lastName) : '', startX + posW + 6, rowY + 11);
+
         if (p?.phone) {
           setFont(doc, 7, 'normal', GRAY);
-          doc.text(p.phone, startX + halfW - 68, rowY + 10);
+          doc.text(p.phone, startX + posW + nameW + 6, rowY + 11);
         }
-        setFont(doc, 7, 'normal', BLACK);
-        doc.text(cc.callTime, startX + halfW - 4, rowY + 10, { align: 'right' });
 
-        // Dotted separator
-        doc.setDrawColor('#e5e7eb');
+        setFont(doc, 8, 'normal', BLACK);
+        doc.text(cc.callTime, startX + halfW - 6, rowY + 11, { align: 'right' });
+
+        doc.setDrawColor('#e0e0e0');
         doc.setLineWidth(0.3);
         doc.setLineDashPattern([1, 1], 0);
-        doc.line(startX + 2, rowY + 14, startX + halfW - 2, rowY + 14);
+        doc.line(startX + 4, rowY + 16, startX + halfW - 4, rowY + 16);
         doc.setLineDashPattern([], 0);
 
-        rowY += 14;
+        rowY += 16;
       });
 
       const blockEnd = rowY + 2;
@@ -445,7 +414,7 @@ export function generateCallSheetPDF(data: CallSheetPdfData): jsPDF {
       colIdx++;
     });
 
-    y = Math.max(leftY, rightY) + 4;
+    y = Math.max(leftY, rightY) + 6;
   }
 
   // ============================================================
@@ -455,11 +424,11 @@ export function generateCallSheetPDF(data: CallSheetPdfData): jsPDF {
     y = checkPage(doc, y, 30);
     hLine(doc, ML, y, CW, BORDER, 0.3);
     y += 8;
-    setFont(doc, 8, 'bold');
-    doc.text('Additional Notes:', ML + 4, y + 8);
+    setFont(doc, 9, 'bold');
+    doc.text('Additional Notes:', ML + 6, y + 10);
     setFont(doc, 8, 'normal', GRAY);
     const noteLines = doc.splitTextToSize(cs.notes, CW - 16);
-    doc.text(noteLines, ML + 4, y + 20);
+    doc.text(noteLines, ML + 6, y + 22);
   }
 
   return doc;

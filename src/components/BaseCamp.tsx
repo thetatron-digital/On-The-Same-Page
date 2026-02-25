@@ -1981,7 +1981,7 @@ const BaseCamp: React.FC = () => {
                               {[loc.streetAddress, [loc.city, loc.state, loc.postalCode].filter(Boolean).join(', ')].filter(Boolean).join('\n')}
                             </div>
                           )}
-                          {loc.phone && <div>📞 {loc.phone}</div>}
+                          {loc.phone && <div>Ph: {loc.phone}</div>}
                         </div>
                       );
                     })}
@@ -1989,16 +1989,16 @@ const BaseCamp: React.FC = () => {
 
                   <div className="cs-times-weather-col">
                     <div className="cs-times-list">
-                      <div>Crew Call ◷ {formData.crewCall}</div>
-                      <div>Shooting Call ◷ {formData.shootingCall}</div>
-                      <div>First Meal ◷ {formData.firstMeal}</div>
-                      <div><strong>Est. Wrap ◷ {formData.estimatedWrap}</strong></div>
+                      <div><span className="cs-time-label">Crew Call:</span> {formData.crewCall}</div>
+                      <div><span className="cs-time-label">Shooting Call:</span> {formData.shootingCall}</div>
+                      <div><span className="cs-time-label">First Meal:</span> {formData.firstMeal}</div>
+                      <div><strong><span className="cs-time-label">Est. Wrap:</span> {formData.estimatedWrap}</strong></div>
                     </div>
                     {weatherData && (
                       <div className="cs-weather-box">
                         <div className="cs-weather-temps">
                           <span className="cs-temp-low">{weatherData.tempLow}°F</span>
-                          <span className="cs-temp-icon">☀</span>
+                          <span className="cs-temp-divider">/</span>
                           <span className="cs-temp-high">{weatherData.tempHigh}°F</span>
                         </div>
                         <div className="cs-temp-labels">
@@ -2030,7 +2030,6 @@ const BaseCamp: React.FC = () => {
                 {formData.scenes.length > 0 && (
                   <div className="cs-section">
                     <div className="cs-section-header">
-                      <span className="cs-section-icon">📅</span>
                       Today's Schedule
                     </div>
                     <table className="cs-table">
@@ -2080,7 +2079,6 @@ const BaseCamp: React.FC = () => {
                 {formData.talentCalls.length > 0 && (
                   <div className="cs-section">
                     <div className="cs-section-header">
-                      <span className="cs-section-icon">⭐</span>
                       Talent
                     </div>
                     <table className="cs-table">
@@ -2120,7 +2118,10 @@ const BaseCamp: React.FC = () => {
                   <div className="cs-crew-grid">
                     {Object.entries(crewByDept).map(([dept, calls]) => (
                       <div key={dept} className="cs-dept-box">
-                        <div className="cs-dept-header">{dept.toUpperCase()}</div>
+                        <div className="cs-dept-header">
+                          <span>{dept.toUpperCase()}</span>
+                          <span className="cs-dept-call-label">CALL</span>
+                        </div>
                         <div className="cs-dept-body">
                           {calls.map((cc, i) => {
                             const p = people.find(pp => pp.id === cc.personId);
