@@ -2,9 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useScreenplayStore } from '../store/screenplayStore';
 import type {
   ShootDay, SceneStrip, ProductionPerson, ProductionLocation, ProductionScene,
-  Department, CallSheet, PersonRole, CallSheetScene, TalentCallEntry, CrewCallEntry,
+  CallSheet, PersonRole, CallSheetScene,
 } from '../types/screenplay';
-import { STRIP_COLOR_HEX, AVATAR_COLORS } from '../types/screenplay';
+import { STRIP_COLOR_HEX } from '../types/screenplay';
 import './BaseCamp.css';
 
 // ============================================
@@ -27,7 +27,6 @@ const BaseCamp: React.FC = () => {
     deleteShootDay,
     assignStripToDay,
     unassignStrip,
-    lockStrip,
     selectShootDay,
     selectStrip,
     updateScheduleSettings,
@@ -44,7 +43,6 @@ const BaseCamp: React.FC = () => {
     updateProductionScene,
     deleteProductionScene,
     addDepartment,
-    updateDepartment,
     deleteDepartment,
     addPosition,
     removePosition,
@@ -267,8 +265,6 @@ const BaseCamp: React.FC = () => {
     });
 
     const [formData, setFormData] = useState(emptyPerson());
-    const [addAnother, setAddAnother] = useState(false);
-
     const openCreate = () => {
       setEditingPerson(null);
       setFormData(emptyPerson());

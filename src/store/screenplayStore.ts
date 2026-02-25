@@ -14,8 +14,7 @@ import type {
   Schedule, SceneStrip, ShotPackage, ShootDay, StripColor,
   DOODEntry, DOODStatus,
   ProductionPerson, ProductionLocation, ProductionScene, Department, CallSheet,
-  PersonRole, ProductionData, ProductionSettings,
-  TalentCallEntry, CrewCallEntry, CallSheetScene,
+  ProductionData, ProductionSettings,
   OnSet, OnSetViewMode, OnSetDisplaySettings, ProductionStatus, LunchStatus, DelayEntry,
   SuperVisor, SupervisorSession, TakeEntry, ContinuityLog, DailyReport, SlateInfo,
   ThemeId
