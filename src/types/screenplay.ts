@@ -1365,6 +1365,7 @@ export interface CallSheet {
   // Info
   notes: string;
   nearestHospital: string;
+  disclaimer: string;
 
   status: 'draft' | 'published';
   createdAt: Date;
@@ -1388,7 +1389,10 @@ export interface ProductionSettings {
   director: string;
   defaultCallTime: string;
   defaultLunchDuration: number;
+  defaultDisclaimer: string;
 }
+
+export const DEFAULT_DISCLAIMER = 'NO VISITORS WITHOUT PRIOR APPROVAL OF PRODUCTION | NO PHOTOS ON SET | PUT CELLPHONES ON SILENT WHEN ON SET';
 
 // Avatar color generator
 export const AVATAR_COLORS = [

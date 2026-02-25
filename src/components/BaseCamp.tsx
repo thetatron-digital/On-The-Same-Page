@@ -6,6 +6,8 @@ import type {
 } from '../types/screenplay';
 import { STRIP_COLOR_HEX } from '../types/screenplay';
 import { fetchWeather, geocodeAddress, generateMapsLink, type WeatherData } from '../utils/weather';
+import { generateCallSheetPDF } from '../utils/callSheetPdf';
+import { DEFAULT_DISCLAIMER } from '../types/screenplay';
 import './BaseCamp.css';
 
 // ============================================
@@ -127,6 +129,7 @@ const BaseCamp: React.FC = () => {
       })),
       notes: day.notes || '',
       nearestHospital: '',
+      disclaimer: productionData.settings.defaultDisclaimer || DEFAULT_DISCLAIMER,
       status: 'draft' as const,
     };
 
@@ -1591,6 +1594,7 @@ const BaseCamp: React.FC = () => {
       })),
       notes: '',
       nearestHospital: '',
+      disclaimer: settings.defaultDisclaimer || DEFAULT_DISCLAIMER,
       status: 'draft',
     });
 
@@ -1639,6 +1643,7 @@ const BaseCamp: React.FC = () => {
         crewCalls: [...cs.crewCalls],
         notes: cs.notes,
         nearestHospital: cs.nearestHospital,
+        disclaimer: cs.disclaimer || DEFAULT_DISCLAIMER,
         status: cs.status,
       });
       setShowEditor(true);
@@ -1705,7 +1710,25 @@ const BaseCamp: React.FC = () => {
           <div className="bc-cs-toolbar">
             <button className="bc-btn bc-btn-secondary" onClick={() => setShowEditor(false)}>Back to List</button>
             <h3>{editingCS ? 'Editing Call Sheet' : 'New Call Sheet'}</h3>
-            <button className="bc-btn bc-btn-success" onClick={handleSave}>Save</button>
+            <div className="bc-cs-toolbar-actions">
+              <button
+                className="bc-btn bc-btn-outline"
+                onClick={() => {
+                  const pdf = generateCallSheetPDF({
+                    callSheet: { ...formData, id: editingCS?.id || 'preview', createdAt: new Date(), updatedAt: new Date() } as CallSheet,
+                    people,
+                    locations,
+                    weather: weatherData,
+                    disclaimer: formData.disclaimer || '',
+                  });
+                  const fileName = `Call_Sheet_Day${formData.dayNumber}_${formData.date || 'draft'}.pdf`;
+                  pdf.save(fileName);
+                }}
+              >
+                Export PDF
+              </button>
+              <button className="bc-btn bc-btn-success" onClick={handleSave}>Save</button>
+            </div>
           </div>
 
           <div className="bc-cs-layout">
@@ -1860,6 +1883,36 @@ const BaseCamp: React.FC = () => {
                   placeholder="Hospital name and address"
                 />
               </div>
+
+              <h4>Set Rules / Disclaimer</h4>
+              <div className="bc-form-group">
+                <textarea
+                  value={formData.disclaimer || ''}
+                  onChange={e => setFormData({ ...formData, disclaimer: e.target.value })}
+                  placeholder="Disclaimer text that appears on the call sheet..."
+                  rows={3}
+                />
+                <div className="bc-disclaimer-presets">
+                  <span className="bc-form-hint">Quick add:</span>
+                  {['NO VISITORS WITHOUT PRIOR APPROVAL', 'NO PHOTOS ON SET', 'CELLPHONES ON SILENT', 'CLOSED SET', 'NO DRONES', 'NO SOCIAL MEDIA POSTS FROM SET'].map(rule => (
+                    <button
+                      key={rule}
+                      className="bc-disclaimer-chip"
+                      onClick={() => {
+                        const current = formData.disclaimer || '';
+                        if (!current.includes(rule)) {
+                          setFormData({
+                            ...formData,
+                            disclaimer: current ? `${current} | ${rule}` : rule,
+                          });
+                        }
+                      }}
+                    >
+                      + {rule}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* Right: Preview */}
@@ -1967,9 +2020,11 @@ const BaseCamp: React.FC = () => {
                 </div>
 
                 {/* === DISCLAIMER BANNER === */}
-                <div className="cs-disclaimer">
-                  NO VISITORS WITHOUT PRIOR APPROVAL OF PRODUCTION | NO PHOTOS ON SET | PUT CELLPHONES ON SILENT WHEN ON SET
-                </div>
+                {formData.disclaimer && (
+                  <div className="cs-disclaimer">
+                    {formData.disclaimer}
+                  </div>
+                )}
 
                 {/* === TODAY'S SCHEDULE === */}
                 {formData.scenes.length > 0 && (
@@ -2220,6 +2275,17 @@ const BaseCamp: React.FC = () => {
                 onChange={e => updateProductionSettings({ defaultLunchDuration: Number(e.target.value) || 30 })}
               />
             </div>
+          </div>
+
+          <div className="bc-form-group" style={{ marginTop: 16 }}>
+            <label>DEFAULT CALL SHEET DISCLAIMER</label>
+            <textarea
+              value={settings.defaultDisclaimer || ''}
+              onChange={e => updateProductionSettings({ defaultDisclaimer: e.target.value })}
+              placeholder="Default disclaimer text for new call sheets..."
+              rows={3}
+            />
+            <span className="bc-form-hint">This text will pre-fill the disclaimer on new call sheets. You can customize it per sheet.</span>
           </div>
         </div>
       </div>

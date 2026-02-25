@@ -19,7 +19,7 @@ import type {
   SuperVisor, SupervisorSession, TakeEntry, ContinuityLog, DailyReport, SlateInfo,
   ThemeId
 } from '../types/screenplay';
-import { STRIP_COLOR_MAP, DEFAULT_DEPARTMENTS, AVATAR_COLORS } from '../types/screenplay';
+import { STRIP_COLOR_MAP, DEFAULT_DEPARTMENTS, AVATAR_COLORS, DEFAULT_DISCLAIMER } from '../types/screenplay';
 import { LINES_PER_PAGE, DEFAULT_BEAT_STRUCTURE } from '../types/screenplay';
 import { createNewScreenplay, generateId, parseFDX, generateFDX, getPlainText } from '../utils/fdx';
 import {
@@ -698,6 +698,7 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
       director: '',
       defaultCallTime: '7:00 AM',
       defaultLunchDuration: 30,
+      defaultDisclaimer: DEFAULT_DISCLAIMER,
     },
   },
   basecampView: 'dashboard' as const,

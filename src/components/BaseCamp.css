@@ -1026,6 +1026,10 @@
   text-align: center;
   font-size: 15px;
 }
+.bc-cs-toolbar-actions {
+  display: flex;
+  gap: 8px;
+}
 
 .bc-cs-layout {
   display: flex;
@@ -1636,7 +1640,31 @@
   border-top-color: #e5e7eb;
 }
 
-/* (old weather/location styles removed — now inline in call sheet page) */
+/* Disclaimer preset chips */
+.bc-disclaimer-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+  align-items: center;
+}
+.bc-disclaimer-chip {
+  background: rgba(52, 152, 219, 0.15);
+  color: #3498DB;
+  border: 1px solid rgba(52, 152, 219, 0.3);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.bc-disclaimer-chip:hover {
+  background: rgba(52, 152, 219, 0.25);
+}
+.basecamp-container.light .bc-disclaimer-chip {
+  background: rgba(52, 152, 219, 0.1);
+  border-color: rgba(52, 152, 219, 0.2);
+}
 
 /* Map link in location table */
 .bc-map-link {
