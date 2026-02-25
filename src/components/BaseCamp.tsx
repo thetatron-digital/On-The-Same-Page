@@ -5,6 +5,7 @@ import type {
   CallSheet, PersonRole, CallSheetScene,
 } from '../types/screenplay';
 import { STRIP_COLOR_HEX } from '../types/screenplay';
+import { fetchWeather, geocodeAddress, generateMapsLink, type WeatherData } from '../utils/weather';
 import './BaseCamp.css';
 
 // ============================================
@@ -1165,11 +1166,28 @@ const BaseCamp: React.FC = () => {
   function LocationsView() {
     const [showModal, setShowModal] = useState(false);
     const [editingLocation, setEditingLocation] = useState<ProductionLocation | null>(null);
+    const [geocoding, setGeocoding] = useState(false);
     const { locations } = productionData;
 
     const emptyLocation = (): Omit<ProductionLocation, 'id'> => ({
       name: '', streetAddress: '', city: '', state: '', postalCode: '', phone: '',
     });
+
+    const handleGeocode = async () => {
+      const query = [formData.streetAddress, formData.city, formData.state, formData.postalCode, formData.name]
+        .filter(Boolean).join(', ');
+      if (!query) return;
+      setGeocoding(true);
+      const result = await geocodeAddress(query);
+      if (result) {
+        setFormData(prev => ({
+          ...prev,
+          latitude: result.latitude,
+          longitude: result.longitude,
+        }));
+      }
+      setGeocoding(false);
+    };
 
     const [formData, setFormData] = useState(emptyLocation());
 
@@ -1226,24 +1244,34 @@ const BaseCamp: React.FC = () => {
               <th>City</th>
               <th>State</th>
               <th>Phone</th>
+              <th>Map</th>
               <th style={{ width: 80 }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {locations.length === 0 ? (
               <tr>
-                <td colSpan={6} className="bc-empty-row">
+                <td colSpan={7} className="bc-empty-row">
                   No locations added yet. Click "+ Add Location" to get started.
                 </td>
               </tr>
             ) : (
-              locations.map(loc => (
+              locations.map(loc => {
+                const mapsUrl = generateMapsLink(loc);
+                return (
                 <tr key={loc.id} className="bc-table-row">
                   <td className="bc-bold">{loc.name}</td>
                   <td>{loc.streetAddress}</td>
                   <td>{loc.city}</td>
                   <td>{loc.state}</td>
                   <td>{loc.phone}</td>
+                  <td>
+                    {mapsUrl && (
+                      <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="bc-map-link" title="Open in Google Maps">
+                        📍
+                      </a>
+                    )}
+                  </td>
                   <td>
                     <div className="bc-row-actions">
                       <button className="bc-icon-btn" onClick={() => openEdit(loc)} title="Edit">✎</button>
@@ -1259,7 +1287,8 @@ const BaseCamp: React.FC = () => {
                     </div>
                   </td>
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
         </table>
@@ -1339,16 +1368,16 @@ const BaseCamp: React.FC = () => {
                   </div>
                 </div>
 
-                <h4 className="bc-form-section-title">Precision Details (optional)</h4>
+                <h4 className="bc-form-section-title">Coordinates & Map</h4>
 
-                <div className="bc-form-row">
+                <div className="bc-form-row" style={{ alignItems: 'flex-end' }}>
                   <div className="bc-form-group">
                     <label>LATITUDE</label>
                     <input
                       type="number"
                       value={formData.latitude || ''}
                       onChange={e => setFormData({ ...formData, latitude: Number(e.target.value) || undefined })}
-                      placeholder="Latitude coordinates"
+                      placeholder="Latitude"
                       step="any"
                     />
                   </div>
@@ -1358,19 +1387,39 @@ const BaseCamp: React.FC = () => {
                       type="number"
                       value={formData.longitude || ''}
                       onChange={e => setFormData({ ...formData, longitude: Number(e.target.value) || undefined })}
-                      placeholder="Longitude coordinates"
+                      placeholder="Longitude"
                       step="any"
                     />
                   </div>
+                  <button
+                    className="bc-btn bc-btn-outline"
+                    onClick={handleGeocode}
+                    disabled={geocoding}
+                    style={{ marginBottom: 0, whiteSpace: 'nowrap' }}
+                  >
+                    {geocoding ? 'Looking up...' : 'Auto-fill from address'}
+                  </button>
                 </div>
+                {formData.latitude && formData.longitude && (
+                  <div style={{ marginTop: 8 }}>
+                    <a
+                      href={generateMapsLink(formData)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bc-link-btn"
+                    >
+                      View on Google Maps ↗
+                    </a>
+                  </div>
+                )}
 
-                <div className="bc-form-group">
+                <div className="bc-form-group" style={{ marginTop: 12 }}>
                   <label>MAP LINK OVERRIDE</label>
                   <input
                     type="text"
                     value={formData.mapLink || ''}
                     onChange={e => setFormData({ ...formData, mapLink: e.target.value })}
-                    placeholder="Custom map link (defaults to Google Maps)"
+                    placeholder="Custom map link (overrides auto-generated Google Maps link)"
                   />
                 </div>
               </div>
@@ -1506,6 +1555,9 @@ const BaseCamp: React.FC = () => {
     const talent = people.filter(p => p.group === 'Talent' || p.roles.some(r => r.group === 'Talent'));
     const crew = people.filter(p => p.group === 'Crew');
 
+    const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
+    const [weatherLoading, setWeatherLoading] = useState(false);
+
     // Auto-open editor when a call sheet was generated from strip board
     useEffect(() => {
       if (autoEditCallSheetId) {
@@ -1544,9 +1596,27 @@ const BaseCamp: React.FC = () => {
 
     const [formData, setFormData] = useState(emptyCallSheet());
 
+    // Fetch weather when editor is open and we have a date + location with coords
+    const fetchWeatherForCallSheet = async (date: string, locIds: string[]) => {
+      if (!date) { setWeatherData(null); return; }
+      // Find first location with coordinates
+      const locWithCoords = locIds
+        .map(lid => locations.find(l => l.id === lid))
+        .find(l => l?.latitude && l?.longitude);
+      if (!locWithCoords?.latitude || !locWithCoords?.longitude) {
+        setWeatherData(null);
+        return;
+      }
+      setWeatherLoading(true);
+      const weather = await fetchWeather(locWithCoords.latitude, locWithCoords.longitude, date);
+      setWeatherData(weather);
+      setWeatherLoading(false);
+    };
+
     const openCreate = () => {
       setEditingCS(null);
       setFormData(emptyCallSheet());
+      setWeatherData(null);
       setShowEditor(true);
     };
 
@@ -1573,6 +1643,13 @@ const BaseCamp: React.FC = () => {
       });
       setShowEditor(true);
     };
+
+    // Auto-fetch weather when date or locations change in the editor
+    useEffect(() => {
+      if (showEditor && formData.date && formData.locationIds.length > 0) {
+        fetchWeatherForCallSheet(formData.date, formData.locationIds);
+      }
+    }, [showEditor, formData.date, formData.locationIds.length]);
 
     const handleSave = () => {
       if (editingCS) {
@@ -1814,18 +1891,68 @@ const BaseCamp: React.FC = () => {
                   <div><strong>Director:</strong> {formData.director}</div>
                 </div>
 
+                {/* Weather & Sunrise/Sunset */}
+                {(weatherData || weatherLoading) && (
+                  <div className="bc-cs-weather-section">
+                    {weatherLoading ? (
+                      <div className="bc-cs-weather-loading">Loading weather...</div>
+                    ) : weatherData && (
+                      <div className="bc-cs-weather-grid">
+                        <div className="bc-cs-weather-item">
+                          <span className="bc-cs-weather-icon">🌡</span>
+                          <span className="bc-cs-weather-label">High / Low</span>
+                          <span className="bc-cs-weather-value">{weatherData.tempHigh}°F / {weatherData.tempLow}°F</span>
+                        </div>
+                        <div className="bc-cs-weather-item">
+                          <span className="bc-cs-weather-icon">☁</span>
+                          <span className="bc-cs-weather-label">Conditions</span>
+                          <span className="bc-cs-weather-value">{weatherData.description}</span>
+                        </div>
+                        <div className="bc-cs-weather-item">
+                          <span className="bc-cs-weather-icon">🌧</span>
+                          <span className="bc-cs-weather-label">Precip.</span>
+                          <span className="bc-cs-weather-value">{weatherData.precipChance}%</span>
+                        </div>
+                        <div className="bc-cs-weather-item">
+                          <span className="bc-cs-weather-icon">💨</span>
+                          <span className="bc-cs-weather-label">Wind</span>
+                          <span className="bc-cs-weather-value">{weatherData.windSpeed} mph (gusts {weatherData.windGusts})</span>
+                        </div>
+                        <div className="bc-cs-weather-item sunrise">
+                          <span className="bc-cs-weather-icon">🌅</span>
+                          <span className="bc-cs-weather-label">Sunrise</span>
+                          <span className="bc-cs-weather-value">{weatherData.sunrise}</span>
+                        </div>
+                        <div className="bc-cs-weather-item sunset">
+                          <span className="bc-cs-weather-icon">🌇</span>
+                          <span className="bc-cs-weather-label">Sunset</span>
+                          <span className="bc-cs-weather-value">{weatherData.sunset}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Locations */}
                 {formData.locationIds.length > 0 && (
                   <div className="bc-cs-locations-section">
                     {formData.locationIds.map(lid => {
                       const loc = getLocationById(lid);
                       if (!loc) return null;
+                      const mapsUrl = generateMapsLink(loc);
                       return (
                         <div key={lid} className="bc-cs-location-card">
-                          <strong>{loc.name}</strong>
-                          {loc.streetAddress && <div>{loc.streetAddress}</div>}
-                          {(loc.city || loc.state) && <div>{[loc.city, loc.state, loc.postalCode].filter(Boolean).join(', ')}</div>}
-                          {loc.phone && <div>{loc.phone}</div>}
+                          <div className="bc-cs-loc-info">
+                            <strong>{loc.name}</strong>
+                            {loc.streetAddress && <div>{loc.streetAddress}</div>}
+                            {(loc.city || loc.state) && <div>{[loc.city, loc.state, loc.postalCode].filter(Boolean).join(', ')}</div>}
+                            {loc.phone && <div>{loc.phone}</div>}
+                          </div>
+                          {mapsUrl && (
+                            <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="bc-cs-map-btn">
+                              📍 Google Maps
+                            </a>
+                          )}
                         </div>
                       );
                     })}
