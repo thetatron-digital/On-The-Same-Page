@@ -1246,6 +1246,7 @@ export interface ProductionPerson {
   tags: string[];
   notes: string;
   avatarColor: string;
+  castNumber?: number;  // For Talent: numeric Cast ID (industry standard, e.g. 1, 2, 3)
   // Availability for scheduling
   availability?: {
     startDate?: string;      // Available from (ISO date)

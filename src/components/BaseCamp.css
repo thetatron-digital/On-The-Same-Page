@@ -650,6 +650,20 @@
   margin-top: 4px;
   display: block;
 }
+.bc-hospital-preview {
+  margin-top: 6px;
+  padding: 8px 10px;
+  background: rgba(39, 174, 96, 0.08);
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: pre-line;
+  color: #2c3e50;
+  line-height: 1.4;
+}
+.basecamp-container.dark .bc-hospital-preview {
+  background: rgba(39, 174, 96, 0.15);
+  color: #e0e0e0;
+}
 .bc-auto-tag {
   display: inline-block;
   font-size: 9px;
@@ -1628,6 +1642,10 @@
 .basecamp-container.light .bc-role-input {
   border-color: #d1d5db;
   background: white;
+}
+.bc-cast-number-input {
+  flex: 0 0 80px !important;
+  text-align: center;
 }
 
 /* Blocked dates / availability */

@@ -176,71 +176,108 @@ export interface NearestHospitalResult {
 }
 
 /**
- * Find the nearest hospital/emergency room to the given coordinates.
+ * Find nearby hospitals/ERs near the given coordinates.
  * Uses Overpass API (OpenStreetMap) to find hospitals within ~15km radius.
+ * Filters out children's hospitals and returns up to 5 options sorted by distance.
  */
-export async function findNearestHospital(lat: number, lng: number): Promise<NearestHospitalResult | null> {
+export async function findNearbyHospitals(lat: number, lng: number): Promise<NearestHospitalResult[]> {
+  // Keywords indicating a children's/pediatric hospital (not ideal for general production ER)
+  const childrenKeywords = ['children', 'pediatric', 'paediatric', 'kids', "children's"];
+
+  const isChildrensHospital = (name: string): boolean => {
+    const lower = name.toLowerCase();
+    return childrenKeywords.some(kw => lower.includes(kw));
+  };
+
+  const haversineDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371; // km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
+
   try {
-    // Overpass API query for hospitals within ~15km
-    const query = `[out:json][timeout:10];(node["amenity"="hospital"](around:15000,${lat},${lng});way["amenity"="hospital"](around:15000,${lat},${lng}););out center 1;`;
+    // Overpass API query for hospitals within ~15km, get up to 10
+    const query = `[out:json][timeout:10];(node["amenity"="hospital"](around:15000,${lat},${lng});way["amenity"="hospital"](around:15000,${lat},${lng}););out center 10;`;
     const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
 
     const response = await fetch(url);
     if (!response.ok) {
-      // Fallback to Nominatim search
-      return findNearestHospitalFallback(lat, lng);
+      return findNearbyHospitalsFallback(lat, lng);
     }
 
     const data = await response.json();
     if (!data.elements || data.elements.length === 0) {
-      return findNearestHospitalFallback(lat, lng);
+      return findNearbyHospitalsFallback(lat, lng);
     }
 
-    const el = data.elements[0];
-    const hLat = el.center?.lat || el.lat;
-    const hLng = el.center?.lon || el.lon;
-    const tags = el.tags || {};
+    const results: NearestHospitalResult[] = data.elements
+      .map((el: { center?: { lat: number; lon: number }; lat?: number; lon?: number; tags?: Record<string, string> }) => {
+        const hLat = el.center?.lat || el.lat || 0;
+        const hLng = el.center?.lon || el.lon || 0;
+        const tags = el.tags || {};
+        const name = tags.name || 'Hospital';
 
-    // Build address from tags
-    const addrParts = [
-      tags['addr:housenumber'] && tags['addr:street'] ? `${tags['addr:housenumber']} ${tags['addr:street']}` : tags['addr:street'],
-      tags['addr:city'],
-      tags['addr:state'],
-      tags['addr:postcode'],
-    ].filter(Boolean);
+        const addrParts = [
+          tags['addr:housenumber'] && tags['addr:street'] ? `${tags['addr:housenumber']} ${tags['addr:street']}` : tags['addr:street'],
+          tags['addr:city'],
+          tags['addr:state'],
+          tags['addr:postcode'],
+        ].filter(Boolean);
 
-    return {
-      name: tags.name || 'Hospital',
-      address: addrParts.join(', ') || `${hLat.toFixed(4)}, ${hLng.toFixed(4)}`,
-      phone: tags.phone || tags['contact:phone'] || undefined,
-      latitude: hLat,
-      longitude: hLng,
-    };
+        const dist = haversineDistance(lat, lng, hLat, hLng);
+
+        return {
+          name,
+          address: addrParts.join(', ') || `${hLat.toFixed(4)}, ${hLng.toFixed(4)}`,
+          phone: tags.phone || tags['contact:phone'] || undefined,
+          latitude: hLat,
+          longitude: hLng,
+          distance: `${dist.toFixed(1)} km`,
+          _distKm: dist,
+          _isChildrens: isChildrensHospital(name),
+        };
+      })
+      // Sort: non-children's first, then by distance
+      .sort((a: { _isChildrens: boolean; _distKm: number }, b: { _isChildrens: boolean; _distKm: number }) => {
+        if (a._isChildrens !== b._isChildrens) return a._isChildrens ? 1 : -1;
+        return a._distKm - b._distKm;
+      })
+      .slice(0, 5)
+      .map(({ _distKm, _isChildrens, ...rest }: { _distKm: number; _isChildrens: boolean; name: string; address: string; phone?: string; latitude: number; longitude: number; distance?: string }) => rest);
+
+    return results;
   } catch {
-    return findNearestHospitalFallback(lat, lng);
+    return findNearbyHospitalsFallback(lat, lng);
   }
 }
 
-async function findNearestHospitalFallback(lat: number, lng: number): Promise<NearestHospitalResult | null> {
+/** Backwards-compatible wrapper that returns just the first (best) result */
+export async function findNearestHospital(lat: number, lng: number): Promise<NearestHospitalResult | null> {
+  const results = await findNearbyHospitals(lat, lng);
+  return results[0] || null;
+}
+
+async function findNearbyHospitalsFallback(lat: number, lng: number): Promise<NearestHospitalResult[]> {
   try {
-    const url = `https://nominatim.openstreetmap.org/search?q=hospital+near+${lat},${lng}&format=json&limit=1&addressdetails=1`;
+    const url = `https://nominatim.openstreetmap.org/search?q=hospital+near+${lat},${lng}&format=json&limit=5&addressdetails=1`;
     const response = await fetch(url, {
       headers: { 'User-Agent': 'OTSP-BaseCamp/1.0 (production-scheduling-app)' },
     });
-    if (!response.ok) return null;
+    if (!response.ok) return [];
 
     const data = await response.json();
-    if (!data || data.length === 0) return null;
+    if (!data || data.length === 0) return [];
 
-    const result = data[0];
-    return {
+    return data.map((result: { display_name?: string; lat: string; lon: string }) => ({
       name: result.display_name?.split(',')[0] || 'Hospital',
       address: result.display_name?.split(',').slice(0, 4).join(',').trim() || '',
       latitude: parseFloat(result.lat),
       longitude: parseFloat(result.lon),
-    };
+    }));
   } catch {
-    return null;
+    return [];
   }
 }
 

@@ -310,7 +310,8 @@ export function generateCallSheetPDF(data: CallSheetPdfData): jsPDF {
       const talentRole = p.roles.find(r => r.group === 'Talent');
 
       setFont(doc, 9, 'bold');
-      doc.text(p.firstName[0] + (p.lastName?.[0] || ''), ML + 6, y + 13);
+      const castId = p.castNumber ? String(p.castNumber) : p.firstName[0] + (p.lastName?.[0] || '');
+      doc.text(castId, ML + 6, y + 13);
 
       setFont(doc, 9, 'normal');
       doc.text(p.firstName + ' ' + p.lastName, ML + tCols[0] + 6, y + 13);

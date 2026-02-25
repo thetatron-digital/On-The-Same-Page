@@ -5,7 +5,7 @@ import type {
   CallSheet, PersonRole, CallSheetScene,
 } from '../types/screenplay';
 import { STRIP_COLOR_HEX } from '../types/screenplay';
-import { fetchWeather, geocodeAddress, generateMapsLink, findNearestHospital, lookupTimezone, type WeatherData } from '../utils/weather';
+import { fetchWeather, geocodeAddress, generateMapsLink, findNearbyHospitals, lookupTimezone, type WeatherData, type NearestHospitalResult } from '../utils/weather';
 import { generateCallSheetPDF } from '../utils/callSheetPdf';
 import { DEFAULT_DISCLAIMER } from '../types/screenplay';
 import './BaseCamp.css';
@@ -107,9 +107,10 @@ const BaseCamp: React.FC = () => {
       if (!strip) return null;
       // Try to find the production scene for cast info
       const prodScene = scenes.find(s => s.id === strip.sceneId);
-      const castInitials = (prodScene?.castIds || strip.castIds).map(cid => {
+      const castDisplay = (prodScene?.castIds || strip.castIds).map(cid => {
         const p = people.find(pp => pp.id === cid);
-        return p ? `${p.firstName[0]}${p.lastName[0]}` : '';
+        if (!p) return '';
+        return p.castNumber ? String(p.castNumber) : `${p.firstName[0]}${p.lastName[0]}`;
       }).filter(Boolean).join(', ');
 
       // Try to resolve location: first from production scene, then by name match
@@ -127,7 +128,7 @@ const BaseCamp: React.FC = () => {
         sceneId: strip.sceneId,
         sceneNumber: strip.sceneNumber,
         setDescription: `${strip.intExt} - ${strip.location}`,
-        cast: castInitials,
+        cast: castDisplay,
         locationId: locId,
         notes: '',
       };
@@ -383,6 +384,13 @@ const BaseCamp: React.FC = () => {
       return `${p.firstName[0] || ''}${p.lastName[0] || ''}`.toUpperCase();
     };
 
+    const getNextCastNumber = (): number => {
+      const usedNumbers = people.filter(p => p.castNumber).map(p => p.castNumber!);
+      let n = 1;
+      while (usedNumbers.includes(n)) n++;
+      return n;
+    };
+
     const emptyPerson = (): Omit<ProductionPerson, 'id' | 'avatarColor'> => ({
       firstName: '', lastName: '', email: '', phone: '',
       group: 'Crew', roles: [], tags: [], notes: '', location: '',
@@ -418,6 +426,7 @@ const BaseCamp: React.FC = () => {
         tags: [...person.tags],
         notes: person.notes,
         location: person.location,
+        castNumber: person.castNumber,
         payRate: person.payRate ? { ...person.payRate } : undefined,
         availability: person.availability ? {
           ...person.availability,
@@ -432,6 +441,14 @@ const BaseCamp: React.FC = () => {
       // Auto-derive group from roles
       const derivedGroup = deriveGroup(formData.roles);
       const dataToSave = { ...formData, group: derivedGroup };
+      // Auto-assign cast number for Talent if not set
+      if (derivedGroup === 'Talent' && !dataToSave.castNumber) {
+        dataToSave.castNumber = getNextCastNumber();
+      }
+      // Clear cast number if not Talent
+      if (derivedGroup !== 'Talent') {
+        delete dataToSave.castNumber;
+      }
       if (editingPerson) {
         updatePerson(editingPerson.id, dataToSave);
       } else {
@@ -553,7 +570,7 @@ const BaseCamp: React.FC = () => {
                           <span key={i} className={`bc-role-badge ${role.group.toLowerCase()}`}>
                             {role.group === 'Crew' ? '🔧' : role.group === 'Talent' ? '⭐' : '📋'}
                             {role.group === 'Talent'
-                              ? (role.characterName || 'Talent')
+                              ? `${person.castNumber ? `#${person.castNumber} ` : ''}${role.characterName || 'Talent'}`
                               : (role.position || role.department || role.group)}
                           </span>
                         ))}
@@ -705,6 +722,7 @@ const BaseCamp: React.FC = () => {
                             </>
                           )}
                           {role.group === 'Talent' && (
+                            <>
                             <input
                               type="text"
                               value={role.characterName || ''}
@@ -712,6 +730,15 @@ const BaseCamp: React.FC = () => {
                               placeholder="Character name (e.g., Ted)"
                               className="bc-role-input"
                             />
+                            <input
+                              type="number"
+                              value={formData.castNumber || ''}
+                              onChange={e => setFormData({ ...formData, castNumber: parseInt(e.target.value) || undefined })}
+                              placeholder={`Cast # (${getNextCastNumber()})`}
+                              className="bc-role-input bc-cast-number-input"
+                              min="1"
+                            />
+                            </>
                           )}
                           {role.group === 'Client' && (
                             <input
@@ -1008,6 +1035,7 @@ const BaseCamp: React.FC = () => {
               <th>Description</th>
               <th>Story Day</th>
               <th>Page Count</th>
+              <th>Cast</th>
               <th>Location</th>
               <th style={{ width: 80 }}>Actions</th>
             </tr>
@@ -1015,7 +1043,7 @@ const BaseCamp: React.FC = () => {
           <tbody>
             {scenes.length === 0 ? (
               <tr>
-                <td colSpan={8} className="bc-empty-row">
+                <td colSpan={9} className="bc-empty-row">
                   No scenes added yet. Click "+ Add Scene" to get started.
                 </td>
               </tr>
@@ -1028,6 +1056,11 @@ const BaseCamp: React.FC = () => {
                   <td className="bc-desc-cell">{scene.description}</td>
                   <td>{scene.storyDay}</td>
                   <td>{scene.pageCount}</td>
+                  <td className="bc-cast-cell">{scene.castIds.map(cid => {
+                    const p = people.find(pp => pp.id === cid);
+                    if (!p) return '';
+                    return p.castNumber ? String(p.castNumber) : `${p.firstName[0]}${p.lastName[0]}`;
+                  }).filter(Boolean).join(', ')}</td>
                   <td>{getLocationName(scene.locationId)}</td>
                   <td>
                     <div className="bc-row-actions">
@@ -1126,7 +1159,7 @@ const BaseCamp: React.FC = () => {
                           className={`bc-cast-tag ${formData.castIds.includes(t.id) ? 'selected' : ''}`}
                           onClick={() => toggleCast(t.id)}
                         >
-                          {t.firstName} {t.lastName}{charName ? ` (${charName})` : ''}
+                          {t.castNumber ? `#${t.castNumber} ` : ''}{t.firstName} {t.lastName}{charName ? ` (${charName})` : ''}
                         </button>
                       );
                     })}
@@ -1216,11 +1249,18 @@ const BaseCamp: React.FC = () => {
     const [showModal, setShowModal] = useState(false);
     const [editingLocation, setEditingLocation] = useState<ProductionLocation | null>(null);
     const [geocoding, setGeocoding] = useState(false);
+    const [nearbyHospitals, setNearbyHospitals] = useState<NearestHospitalResult[]>([]);
     const { locations } = productionData;
 
     const emptyLocation = (): Omit<ProductionLocation, 'id'> => ({
       name: '', streetAddress: '', city: '', state: '', postalCode: '', phone: '', nearestHospital: '',
     });
+
+    const formatHospitalStr = (h: NearestHospitalResult) => [
+      h.name,
+      h.address,
+      h.phone ? `Ph: ${h.phone}` : '',
+    ].filter(Boolean).join('\n');
 
     const handleGeocode = async () => {
       // Build geocoding query from address fields only (not the custom location name)
@@ -1230,20 +1270,15 @@ const BaseCamp: React.FC = () => {
       setGeocoding(true);
       const result = await geocodeAddress(query);
       if (result) {
-        let updates: Partial<typeof formData> = {
+        const updates: Partial<typeof formData> = {
           latitude: result.latitude,
           longitude: result.longitude,
         };
-        // Also auto-find nearest hospital and timezone
-        if (!formData.nearestHospital) {
-          const hospital = await findNearestHospital(result.latitude, result.longitude);
-          if (hospital) {
-            updates.nearestHospital = [
-              hospital.name,
-              hospital.address,
-              hospital.phone ? `Ph: ${hospital.phone}` : '',
-            ].filter(Boolean).join('\n');
-          }
+        // Fetch nearby hospitals for dropdown
+        const hospitals = await findNearbyHospitals(result.latitude, result.longitude);
+        setNearbyHospitals(hospitals);
+        if (!formData.nearestHospital && hospitals.length > 0) {
+          updates.nearestHospital = formatHospitalStr(hospitals[0]);
         }
         if (!formData.timezone) {
           const tz = await lookupTimezone(result.latitude, result.longitude);
@@ -1297,14 +1332,10 @@ const BaseCamp: React.FC = () => {
       const saveLng = dataToSave.longitude;
       if (saveLat && saveLng) {
         if (!dataToSave.nearestHospital) {
-          const hospital = await findNearestHospital(saveLat, saveLng);
-          if (hospital) {
-            const hospitalStr = [
-              hospital.name,
-              hospital.address,
-              hospital.phone ? `Ph: ${hospital.phone}` : '',
-            ].filter(Boolean).join('\n');
-            dataToSave = { ...dataToSave, nearestHospital: hospitalStr };
+          const hospitals = await findNearbyHospitals(saveLat, saveLng);
+          setNearbyHospitals(hospitals);
+          if (hospitals.length > 0) {
+            dataToSave = { ...dataToSave, nearestHospital: formatHospitalStr(hospitals[0]) };
           }
         }
         if (!dataToSave.timezone) {
@@ -1524,13 +1555,32 @@ const BaseCamp: React.FC = () => {
 
                 <h4 className="bc-form-section-title">Safety</h4>
                 <div className="bc-form-group">
-                  <label>NEAREST HOSPITAL</label>
-                  <input
-                    type="text"
-                    value={formData.nearestHospital || ''}
-                    onChange={e => setFormData({ ...formData, nearestHospital: e.target.value })}
-                    placeholder="Hospital name and address"
-                  />
+                  <label>NEAREST HOSPITAL / ER</label>
+                  {nearbyHospitals.length > 0 ? (
+                    <>
+                      <select
+                        value={formData.nearestHospital || ''}
+                        onChange={e => setFormData({ ...formData, nearestHospital: e.target.value })}
+                      >
+                        <option value="">-- Select Hospital --</option>
+                        {nearbyHospitals.map((h, i) => (
+                          <option key={i} value={formatHospitalStr(h)}>
+                            {h.name}{h.distance ? ` (${h.distance})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                      {formData.nearestHospital && (
+                        <div className="bc-hospital-preview">{formData.nearestHospital}</div>
+                      )}
+                    </>
+                  ) : (
+                    <input
+                      type="text"
+                      value={formData.nearestHospital || ''}
+                      onChange={e => setFormData({ ...formData, nearestHospital: e.target.value })}
+                      placeholder="Auto-populates when address is geocoded, or enter manually"
+                    />
+                  )}
                 </div>
               </div>
 
@@ -1690,7 +1740,8 @@ const BaseCamp: React.FC = () => {
         setDescription: `${scene.intExt} - ${scene.set}`,
         cast: scene.castIds.map(cid => {
           const p = people.find(pp => pp.id === cid);
-          return p ? `${p.firstName[0]}${p.lastName[0]}` : '';
+          if (!p) return '';
+          return p.castNumber ? String(p.castNumber) : `${p.firstName[0]}${p.lastName[0]}`;
         }).filter(Boolean).join(', '),
         locationId: locId,
         notes: '',
@@ -2141,7 +2192,7 @@ const BaseCamp: React.FC = () => {
                           const talentRole = p?.roles.find(r => r.group === 'Talent');
                           return (
                             <tr key={i}>
-                              <td className="cs-talent-id">{p ? `${p.firstName[0]}${p.lastName[0]}` : ''}</td>
+                              <td className="cs-talent-id">{p ? (p.castNumber ? String(p.castNumber) : `${p.firstName[0]}${p.lastName[0]}`) : ''}</td>
                               <td>{getPersonName(tc.personId)}</td>
                               <td>{talentRole?.characterName || talentRole?.position || 'Talent'}</td>
                               <td>{tc.callTime}</td>
