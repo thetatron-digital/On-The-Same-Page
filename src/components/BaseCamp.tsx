@@ -53,12 +53,86 @@ const BaseCamp: React.FC = () => {
     updateProductionSettings,
   } = useScreenplayStore();
 
+  // State: when a call sheet is generated from strip board, auto-open it for editing
+  const [autoEditCallSheetId, setAutoEditCallSheetId] = useState<string | null>(null);
+
   // Initialize schedule on mount
   useEffect(() => {
     if (!schedule) {
       initializeSchedule();
     }
   }, [schedule, initializeSchedule]);
+
+  // Generate a call sheet from a shoot day's data
+  const generateCallSheetFromDay = (day: ShootDay) => {
+    const { people, scenes, settings } = productionData;
+    const talent = people.filter(p => p.group === 'Talent' || p.roles.some(r => r.group === 'Talent'));
+    const crew = people.filter(p => p.group === 'Crew');
+
+    // Get the strips assigned to this day and find matching production scenes
+    const dayStrips = day.strips.map(sid => schedule?.strips.find(s => s.id === sid)).filter(Boolean);
+    const csScenes: CallSheetScene[] = dayStrips.map(strip => {
+      if (!strip) return null;
+      // Try to find the production scene for cast info
+      const prodScene = scenes.find(s => s.id === strip.sceneId);
+      const castInitials = (prodScene?.castIds || strip.castIds).map(cid => {
+        const p = people.find(pp => pp.id === cid);
+        return p ? `${p.firstName[0]}${p.lastName[0]}` : '';
+      }).filter(Boolean).join(', ');
+
+      return {
+        sceneId: strip.sceneId,
+        sceneNumber: strip.sceneNumber,
+        setDescription: `${strip.intExt} - ${strip.location}`,
+        cast: castInitials,
+        locationId: prodScene?.locationId,
+        notes: '',
+      };
+    }).filter(Boolean) as CallSheetScene[];
+
+    // Collect unique location IDs from scenes
+    const locationIds = [...new Set(csScenes.map(s => s.locationId).filter(Boolean))] as string[];
+
+    // Get talent that appears in this day's scenes
+    const sceneCastIds = new Set(dayStrips.flatMap(strip => {
+      if (!strip) return [];
+      const prodScene = scenes.find(s => s.id === strip.sceneId);
+      return prodScene?.castIds || strip.castIds;
+    }));
+    const dayTalent = talent.filter(t => sceneCastIds.has(t.id));
+
+    const csData = {
+      title: settings.projectName || 'Untitled Production',
+      date: day.date ? new Date(day.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      dayNumber: day.dayNumber,
+      totalDays: schedule?.shootDays.length || 1,
+      crewCall: day.callTime || settings.defaultCallTime || '7:00 AM',
+      shootingCall: day.callTime || '7:15 AM',
+      firstMeal: day.lunchTime || '12:30 PM',
+      estimatedWrap: day.estimatedWrap || '7:00 PM',
+      producer: settings.producer || '',
+      director: settings.director || '',
+      locationIds,
+      scenes: csScenes,
+      talentCalls: dayTalent.map(t => ({
+        personId: t.id,
+        callTime: day.callTime || settings.defaultCallTime || '7:00 AM',
+      })),
+      crewCalls: crew.map(c => ({
+        personId: c.id,
+        department: c.roles[0]?.department || '',
+        position: c.roles[0]?.position || c.group,
+        callTime: day.callTime || settings.defaultCallTime || '7:00 AM',
+      })),
+      notes: day.notes || '',
+      nearestHospital: '',
+      status: 'draft' as const,
+    };
+
+    const newId = addCallSheet(csData);
+    setAutoEditCallSheetId(newId);
+    setBasecampView('callsheets');
+  };
 
   const renderContent = () => {
     switch (basecampView) {
@@ -1429,8 +1503,19 @@ const BaseCamp: React.FC = () => {
     const [showEditor, setShowEditor] = useState(false);
     const [editingCS, setEditingCS] = useState<CallSheet | null>(null);
     const { callSheets, people, scenes, locations, settings } = productionData;
-    const talent = people.filter(p => p.group === 'Talent');
+    const talent = people.filter(p => p.group === 'Talent' || p.roles.some(r => r.group === 'Talent'));
     const crew = people.filter(p => p.group === 'Crew');
+
+    // Auto-open editor when a call sheet was generated from strip board
+    useEffect(() => {
+      if (autoEditCallSheetId) {
+        const cs = callSheets.find(c => c.id === autoEditCallSheetId);
+        if (cs) {
+          openEdit(cs);
+        }
+        setAutoEditCallSheetId(null);
+      }
+    }, [autoEditCallSheetId, callSheets]);
 
     const emptyCallSheet = (): Omit<CallSheet, 'id' | 'createdAt' | 'updatedAt'> => ({
       title: settings.projectName || 'Untitled Production',
@@ -2190,6 +2275,15 @@ const BaseCamp: React.FC = () => {
                         {day.lunchTime && <span>Lunch: {day.lunchTime} ({day.lunchDuration || 30}m)</span>}
                       </div>
                       <div className="day-actions">
+                        {day.strips.length > 0 && (
+                          <button
+                            className="callsheet-btn"
+                            onClick={e => { e.stopPropagation(); generateCallSheetFromDay(day); }}
+                            title="Generate Call Sheet from this day"
+                          >
+                            📋 Call Sheet
+                          </button>
+                        )}
                         <button className="edit-btn" onClick={e => { e.stopPropagation(); setEditingDay(day); setShowDayModal(true); }}>Edit</button>
                         <button className="delete-btn" onClick={e => { e.stopPropagation(); if (confirm(`Delete Day ${day.dayNumber}?`)) deleteShootDay(day.id); }}>×</button>
                       </div>

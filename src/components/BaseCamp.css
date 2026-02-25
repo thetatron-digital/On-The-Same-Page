@@ -1454,6 +1454,19 @@
 }
 .bc-btn-warning:hover { background: #D35400; }
 
+/* Generate Call Sheet button in strip board day header */
+.callsheet-btn {
+  background: #17A2B8;
+  color: white;
+  border: none;
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.callsheet-btn:hover { background: #1ABC9C; }
+
 /* Day times in strip board */
 .day-times {
   display: flex;
