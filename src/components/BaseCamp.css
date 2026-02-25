@@ -650,6 +650,51 @@
   margin-top: 4px;
   display: block;
 }
+.bc-auto-tag {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 500;
+  color: #27AE60;
+  background: rgba(39, 174, 96, 0.12);
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-left: 6px;
+  vertical-align: middle;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.bc-derived-crew-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.bc-derived-crew-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+}
+.bc-derived-label {
+  font-weight: 700;
+  font-size: 12px;
+  min-width: 80px;
+  color: #7F8C8D;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.bc-derived-value {
+  font-size: 13px;
+  color: #ECF0F1;
+}
+.bc-derived-empty {
+  font-size: 12px;
+  color: #7F8C8D;
+  font-style: italic;
+}
 
 .bc-form-section-title {
   font-size: 14px;

@@ -694,8 +694,6 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
     callSheets: [],
     settings: {
       projectName: '',
-      producer: '',
-      director: '',
       defaultCallTime: '7:00 AM',
       defaultLunchDuration: 30,
       defaultDisclaimer: DEFAULT_DISCLAIMER,

@@ -1386,8 +1386,6 @@ export interface ProductionData {
 // Production settings
 export interface ProductionSettings {
   projectName: string;
-  producer: string;
-  director: string;
   defaultCallTime: string;
   defaultLunchDuration: number;
   defaultDisclaimer: string;

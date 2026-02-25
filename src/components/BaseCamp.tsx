@@ -55,6 +55,28 @@ const BaseCamp: React.FC = () => {
   // State: when a call sheet is generated from strip board, auto-open it for editing
   const [autoEditCallSheetId, setAutoEditCallSheetId] = useState<string | null>(null);
 
+  // Helper: derive key crew roles from People data
+  const findPersonByRole = (dept: string, position: string) => {
+    return productionData.people.find(p =>
+      p.roles.some(r =>
+        r.group === 'Crew' &&
+        r.department.toLowerCase() === dept.toLowerCase() &&
+        r.position.toLowerCase() === position.toLowerCase()
+      )
+    );
+  };
+  const getPersonFullName = (p: { firstName: string; lastName: string } | undefined) =>
+    p ? `${p.firstName} ${p.lastName}`.trim() : '';
+
+  // Auto-derived key crew — these come from People data, not manual Settings entry
+  const derivedProducer = findPersonByRole('Production', 'Producer')
+    || findPersonByRole('Production', 'Executive Producer')
+    || findPersonByRole('Production', 'Line Producer');
+  const derivedDirector = findPersonByRole('Direction', 'Director');
+  const derivedFirstAD = findPersonByRole('Direction', '1st Assistant Director');
+  const derivedUPM = findPersonByRole('Production', 'Production Manager')
+    || findPersonByRole('Production', 'Production Coordinator');
+
   // Initialize schedule on mount
   useEffect(() => {
     if (!schedule) {
@@ -64,7 +86,7 @@ const BaseCamp: React.FC = () => {
 
   // Generate a call sheet from a shoot day's data
   const generateCallSheetFromDay = (day: ShootDay) => {
-    const { people, scenes, locations, settings } = productionData;
+    const { people, scenes, locations } = productionData;
     const talent = people.filter(p => p.group === 'Talent' || p.roles.some(r => r.group === 'Talent'));
     const crew = people.filter(p => p.group === 'Crew');
 
@@ -116,28 +138,31 @@ const BaseCamp: React.FC = () => {
       .map(lid => locations.find(l => l.id === lid))
       .find(l => l?.nearestHospital)?.nearestHospital || '';
 
+    const defaultCallTime = productionData.settings.defaultCallTime || '7:00 AM';
+    const crewCall = day.callTime || defaultCallTime;
+
     const csData = {
-      title: settings.projectName || 'Untitled Production',
+      title: productionData.settings.projectName || 'Untitled Production',
       date: day.date ? new Date(day.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       dayNumber: day.dayNumber,
       totalDays: schedule?.shootDays.length || 1,
-      crewCall: day.callTime || settings.defaultCallTime || '7:00 AM',
-      shootingCall: day.callTime || '7:15 AM',
+      crewCall,
+      shootingCall: crewCall,
       firstMeal: day.lunchTime || '12:30 PM',
       estimatedWrap: day.estimatedWrap || '7:00 PM',
-      producer: settings.producer || '',
-      director: settings.director || '',
+      producer: getPersonFullName(derivedProducer),
+      director: getPersonFullName(derivedDirector),
       locationIds,
       scenes: csScenes,
       talentCalls: dayTalent.map(t => ({
         personId: t.id,
-        callTime: day.callTime || settings.defaultCallTime || '7:00 AM',
+        callTime: crewCall,
       })),
       crewCalls: crew.map(c => ({
         personId: c.id,
         department: c.roles[0]?.department || '',
         position: c.roles[0]?.position || c.group,
-        callTime: day.callTime || settings.defaultCallTime || '7:00 AM',
+        callTime: crewCall,
       })),
       notes: day.notes || '',
       nearestHospital,
@@ -1489,27 +1514,27 @@ const BaseCamp: React.FC = () => {
     }, [autoEditCallSheetId, callSheets]);
 
     const emptyCallSheet = (): Omit<CallSheet, 'id' | 'createdAt' | 'updatedAt'> => {
-      // Auto-populate nearest hospital from any location that has one
       const defaultHospital = locations.find(l => l.nearestHospital)?.nearestHospital || '';
+      const defaultCallTime = settings.defaultCallTime || '7:00 AM';
       return {
         title: settings.projectName || 'Untitled Production',
         date: new Date().toISOString().split('T')[0],
         dayNumber: callSheets.length + 1,
         totalDays: callSheets.length + 1,
-        crewCall: settings.defaultCallTime || '8:00 AM',
-        shootingCall: '8:15 AM',
-        firstMeal: '2:00 PM',
+        crewCall: defaultCallTime,
+        shootingCall: defaultCallTime,
+        firstMeal: '12:30 PM',
         estimatedWrap: '7:00 PM',
-        producer: settings.producer || '',
-        director: settings.director || '',
+        producer: getPersonFullName(derivedProducer),
+        director: getPersonFullName(derivedDirector),
         locationIds: [],
         scenes: [],
-        talentCalls: talent.map(t => ({ personId: t.id, callTime: settings.defaultCallTime || '8:00 AM' })),
+        talentCalls: talent.map(t => ({ personId: t.id, callTime: defaultCallTime })),
         crewCalls: crew.map(c => ({
           personId: c.id,
           department: c.roles[0]?.department || '',
           position: c.roles[0]?.position || c.group,
-          callTime: settings.defaultCallTime || '8:00 AM',
+          callTime: defaultCallTime,
         })),
         notes: '',
         nearestHospital: defaultHospital,
@@ -1709,16 +1734,16 @@ const BaseCamp: React.FC = () => {
               </div>
               <div className="bc-form-row">
                 <div className="bc-form-group">
-                  <label>PRODUCER</label>
-                  <input type="text" value={formData.producer} onChange={e => setFormData({ ...formData, producer: e.target.value })} />
+                  <label>PRODUCER {derivedProducer && <span className="bc-auto-tag">from People</span>}</label>
+                  <input type="text" value={formData.producer} onChange={e => setFormData({ ...formData, producer: e.target.value })} placeholder={getPersonFullName(derivedProducer) || 'Add a Producer in People'} />
                 </div>
                 <div className="bc-form-group">
-                  <label>DIRECTOR</label>
-                  <input type="text" value={formData.director} onChange={e => setFormData({ ...formData, director: e.target.value })} />
+                  <label>DIRECTOR {derivedDirector && <span className="bc-auto-tag">from People</span>}</label>
+                  <input type="text" value={formData.director} onChange={e => setFormData({ ...formData, director: e.target.value })} placeholder={getPersonFullName(derivedDirector) || 'Add a Director in People'} />
                 </div>
               </div>
 
-              <h4>Locations</h4>
+              <h4>Locations {formData.locationIds.length > 0 && <span className="bc-auto-tag">from Scenes</span>}</h4>
               <div className="bc-form-group">
                 <select onChange={e => {
                   if (e.target.value && !formData.locationIds.includes(e.target.value)) {
@@ -1809,12 +1834,12 @@ const BaseCamp: React.FC = () => {
               </div>
 
               <div className="bc-form-group">
-                <label>NEAREST HOSPITAL</label>
+                <label>NEAREST HOSPITAL {formData.nearestHospital && formData.locationIds.length > 0 && <span className="bc-auto-tag">from Location</span>}</label>
                 <input
                   type="text"
                   value={formData.nearestHospital}
                   onChange={e => setFormData({ ...formData, nearestHospital: e.target.value })}
-                  placeholder="Hospital name and address"
+                  placeholder="Auto-fills from Location data"
                 />
               </div>
 
@@ -2156,6 +2181,14 @@ const BaseCamp: React.FC = () => {
   function SettingsView() {
     const { settings } = productionData;
 
+    // Show auto-detected key crew from People data
+    const keyRoles = [
+      { label: 'Producer', person: derivedProducer },
+      { label: 'Director', person: derivedDirector },
+      { label: '1st AD', person: derivedFirstAD },
+      { label: 'UPM / PC', person: derivedUPM },
+    ];
+
     return (
       <div className="bc-content-area">
         <div className="bc-page-header">
@@ -2173,27 +2206,22 @@ const BaseCamp: React.FC = () => {
             />
           </div>
 
-          <div className="bc-form-row">
-            <div className="bc-form-group">
-              <label>PRODUCER</label>
-              <input
-                type="text"
-                value={settings.producer}
-                onChange={e => updateProductionSettings({ producer: e.target.value })}
-                placeholder="Producer name"
-              />
-            </div>
-            <div className="bc-form-group">
-              <label>DIRECTOR</label>
-              <input
-                type="text"
-                value={settings.director}
-                onChange={e => updateProductionSettings({ director: e.target.value })}
-                placeholder="Director name"
-              />
-            </div>
+          <h4 className="bc-form-section-title">Key Crew (auto-detected from People)</h4>
+          <div className="bc-derived-crew-list">
+            {keyRoles.map(({ label, person }) => (
+              <div key={label} className="bc-derived-crew-row">
+                <span className="bc-derived-label">{label}</span>
+                {person ? (
+                  <span className="bc-derived-value">{person.firstName} {person.lastName}{person.phone ? ` - ${person.phone}` : ''}</span>
+                ) : (
+                  <span className="bc-derived-empty">Not assigned — add a person with this role in All People</span>
+                )}
+              </div>
+            ))}
           </div>
+          <span className="bc-form-hint">These roles are pulled from your People list and auto-populate call sheets. To change them, edit the person's role in All People.</span>
 
+          <h4 className="bc-form-section-title" style={{ marginTop: 20 }}>Defaults</h4>
           <div className="bc-form-row">
             <div className="bc-form-group">
               <label>DEFAULT CALL TIME</label>
