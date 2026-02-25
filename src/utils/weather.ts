@@ -115,27 +115,51 @@ export async function fetchWeather(
 
 /**
  * Geocode a location name/address to lat/long.
- * Uses Nominatim (OpenStreetMap) geocoding API — free, no key needed,
- * and supports full street addresses unlike Open-Meteo which only handles place names.
+ * Tries Nominatim (OpenStreetMap) first for full address support,
+ * falls back to Open-Meteo geocoding for city-level results.
  */
 export async function geocodeAddress(query: string): Promise<GeocodingResult | null> {
+  // Try Nominatim first (supports full street addresses)
   try {
     const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&addressdetails=1`;
     const response = await fetch(url, {
-      headers: { 'User-Agent': 'OTSP-BaseCamp/1.0' },
+      headers: { 'User-Agent': 'OTSP-BaseCamp/1.0 (production-scheduling-app)' },
     });
+    if (response.ok) {
+      const data = await response.json();
+      if (data && data.length > 0) {
+        const result = data[0];
+        return {
+          latitude: parseFloat(result.lat),
+          longitude: parseFloat(result.lon),
+          name: result.display_name?.split(',')[0] || query,
+          country: result.address?.country || '',
+          state: result.address?.state || undefined,
+        };
+      }
+    }
+  } catch {
+    // Nominatim failed, try fallback
+  }
+
+  // Fallback: Open-Meteo geocoding (city/place names only, but very reliable)
+  try {
+    // Extract city-like terms from the query for Open-Meteo
+    const cityQuery = query.split(',').slice(1).join(',').trim() || query;
+    const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityQuery)}&count=1&language=en&format=json`;
+    const response = await fetch(url);
     if (!response.ok) return null;
 
     const data = await response.json();
-    if (!data || data.length === 0) return null;
+    if (!data.results || data.results.length === 0) return null;
 
-    const result = data[0];
+    const result = data.results[0];
     return {
-      latitude: parseFloat(result.lat),
-      longitude: parseFloat(result.lon),
-      name: result.display_name?.split(',')[0] || query,
-      country: result.address?.country || '',
-      state: result.address?.state || undefined,
+      latitude: result.latitude,
+      longitude: result.longitude,
+      name: result.name,
+      country: result.country || '',
+      state: result.admin1 || undefined,
     };
   } catch {
     return null;

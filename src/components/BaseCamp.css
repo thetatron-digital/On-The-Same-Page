@@ -767,7 +767,8 @@
   color: #e0e0e0;
 }
 
-.bc-cast-tag.selected {
+.bc-cast-tag.selected,
+.basecamp-container.dark .bc-cast-tag.selected {
   background: #3498DB;
   color: white;
   border-color: #3498DB;

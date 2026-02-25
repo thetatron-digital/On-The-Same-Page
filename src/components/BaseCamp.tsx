@@ -1211,7 +1211,8 @@ const BaseCamp: React.FC = () => {
     });
 
     const handleGeocode = async () => {
-      const query = [formData.streetAddress, formData.city, formData.state, formData.postalCode, formData.name]
+      // Build geocoding query from address fields only (not the custom location name)
+      const query = [formData.streetAddress, formData.city, formData.state, formData.postalCode]
         .filter(Boolean).join(', ');
       if (!query) return;
       setGeocoding(true);
@@ -1251,11 +1252,23 @@ const BaseCamp: React.FC = () => {
       setShowModal(true);
     };
 
-    const handleSave = (andAddAnother: boolean) => {
+    const handleSave = async (andAddAnother: boolean) => {
+      let dataToSave = { ...formData };
+      // Auto-geocode on save if address exists but no coordinates yet
+      if (!dataToSave.latitude && !dataToSave.longitude) {
+        const addrQuery = [dataToSave.streetAddress, dataToSave.city, dataToSave.state, dataToSave.postalCode]
+          .filter(Boolean).join(', ');
+        if (addrQuery) {
+          const result = await geocodeAddress(addrQuery);
+          if (result) {
+            dataToSave = { ...dataToSave, latitude: result.latitude, longitude: result.longitude };
+          }
+        }
+      }
       if (editingLocation) {
-        updateLocation(editingLocation.id, formData);
+        updateLocation(editingLocation.id, dataToSave);
       } else {
-        addLocation(formData);
+        addLocation(dataToSave);
       }
       if (andAddAnother) {
         setEditingLocation(null);
@@ -1638,7 +1651,29 @@ const BaseCamp: React.FC = () => {
       const newLocationIds = locId && !formData.locationIds.includes(locId)
         ? [...formData.locationIds, locId]
         : formData.locationIds;
-      setFormData({ ...formData, scenes: [...formData.scenes, csScene], locationIds: newLocationIds });
+      // Auto-add talent from this scene to talent calls (skip duplicates)
+      const existingTalentIds = new Set(formData.talentCalls.map(tc => tc.personId));
+      const newTalentCalls = [...formData.talentCalls];
+      scene.castIds.forEach(cid => {
+        const person = people.find(pp => pp.id === cid);
+        if (person && !existingTalentIds.has(cid) &&
+            (person.group === 'Talent' || person.roles.some(r => r.group === 'Talent'))) {
+          newTalentCalls.push({ personId: cid, callTime: formData.crewCall || '7:00 AM' });
+        }
+      });
+      // Also update nearest hospital from the new location
+      let newHospital = formData.nearestHospital;
+      if (!newHospital && locId) {
+        const loc = locations.find(l => l.id === locId);
+        if (loc?.nearestHospital) newHospital = loc.nearestHospital;
+      }
+      setFormData({
+        ...formData,
+        scenes: [...formData.scenes, csScene],
+        locationIds: newLocationIds,
+        talentCalls: newTalentCalls,
+        nearestHospital: newHospital,
+      });
     };
 
     const removeSceneFromCS = (index: number) => {
