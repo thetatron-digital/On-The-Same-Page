@@ -1218,6 +1218,178 @@ export interface Schedule {
 }
 
 // ============================================
+// PRODUCTION MANAGEMENT TYPES (Shared across apps)
+// ============================================
+
+// Person role assignment
+export interface PersonRole {
+  group: 'Crew' | 'Talent' | 'Client';
+  department: string;    // e.g., "Camera", "Wardrobe"
+  position: string;      // e.g., "Director of Photography"
+}
+
+// Person in the production
+export interface ProductionPerson {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  group: 'Crew' | 'Talent' | 'Client';
+  roles: PersonRole[];
+  location?: string;
+  payRate?: { amount: number; currency: string; period: 'Per Day' | 'Per Hour' | 'Per Week' | 'Flat' };
+  tags: string[];
+  notes: string;
+  avatarColor: string;
+}
+
+// Production location
+export interface ProductionLocation {
+  id: string;
+  name: string;
+  streetAddress: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  phone: string;
+  latitude?: number;
+  longitude?: number;
+  mapLink?: string;
+}
+
+// Production scene (standalone, not from script)
+export interface ProductionScene {
+  id: string;
+  sceneNumber: string;
+  intExt: 'INT' | 'EXT' | 'INT/EXT';
+  dayNight: 'Day' | 'Night' | 'Dawn' | 'Dusk';
+  set: string;
+  description: string;
+  castIds: string[];
+  locationId?: string;
+  pageCount: number;
+  storyDay: string;
+  extrasCount: number;
+  notes: string;
+}
+
+// Department with positions
+export interface Department {
+  id: string;
+  name: string;
+  positions: string[];
+  isDefault?: boolean;
+}
+
+// Default departments for film production
+export const DEFAULT_DEPARTMENTS: Omit<Department, 'id'>[] = [
+  { name: 'Production', positions: ['Producer', 'Executive Producer', 'Line Producer', 'Associate Producer', 'Production Manager', 'Production Coordinator', 'Production Assistant'], isDefault: true },
+  { name: 'Direction', positions: ['Director', '1st Assistant Director', '2nd Assistant Director', '2nd 2nd Assistant Director', 'Set PA'], isDefault: true },
+  { name: 'Camera', positions: ['Director of Photography', 'Camera Operator', 'B Camera Operator', '1st AC', '2nd AC', 'Digital Imaging Technician', 'Steadicam Operator', 'Camera PA'], isDefault: true },
+  { name: 'Sound', positions: ['Sound Mixer', 'Boom Operator', 'Sound Utility'], isDefault: true },
+  { name: 'Art', positions: ['Production Designer', 'Art Director', 'Set Decorator', 'Props Master', 'Set Dresser', 'Art PA'], isDefault: true },
+  { name: 'Wardrobe', positions: ['Costume Designer', 'Wardrobe Supervisor', 'Set Costumer', 'Wardrobe PA'], isDefault: true },
+  { name: 'Hair & Makeup', positions: ['Hair Department Head', 'Makeup Department Head', 'Hair Stylist', 'Makeup Artist', 'SFX Makeup'], isDefault: true },
+  { name: 'Grip', positions: ['Key Grip', 'Best Boy Grip', 'Dolly Grip', 'Grip'], isDefault: true },
+  { name: 'Electric', positions: ['Gaffer', 'Best Boy Electric', 'Electrician', 'Board Operator'], isDefault: true },
+  { name: 'Locations', positions: ['Location Manager', 'Location Scout', 'Location PA'], isDefault: true },
+  { name: 'Post-Production', positions: ['Editor', 'Assistant Editor', 'Colorist', 'VFX Supervisor', 'Sound Designer'], isDefault: true },
+  { name: 'Catering & Craft Services', positions: ['Caterer', 'Craft Services'], isDefault: true },
+  { name: 'Transportation', positions: ['Transportation Captain', 'Driver'], isDefault: true },
+  { name: 'Aerial', positions: ['Drone Pilot', 'Drone Operator'], isDefault: true },
+  { name: 'Additional Crew', positions: ['Intern', 'Volunteer', 'Day Player'], isDefault: true },
+];
+
+// Call sheet scene entry
+export interface CallSheetScene {
+  sceneId: string;
+  sceneNumber: string;
+  setDescription: string;
+  cast: string;
+  locationId?: string;
+  notes: string;
+}
+
+// Talent call entry
+export interface TalentCallEntry {
+  personId: string;
+  callTime: string;
+}
+
+// Crew call entry
+export interface CrewCallEntry {
+  personId: string;
+  department: string;
+  position: string;
+  callTime: string;
+}
+
+// Full call sheet
+export interface CallSheet {
+  id: string;
+  shootDayId?: string;
+  title: string;
+  date: string;
+  dayNumber: number;
+  totalDays: number;
+
+  // Header
+  crewCall: string;
+  shootingCall: string;
+  firstMeal: string;
+  estimatedWrap: string;
+  producer: string;
+  director: string;
+
+  // Locations
+  locationIds: string[];
+
+  // Schedule
+  scenes: CallSheetScene[];
+
+  // Talent
+  talentCalls: TalentCallEntry[];
+
+  // Crew
+  crewCalls: CrewCallEntry[];
+
+  // Info
+  notes: string;
+  nearestHospital: string;
+
+  status: 'draft' | 'published';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Production data (shared across apps)
+export interface ProductionData {
+  people: ProductionPerson[];
+  locations: ProductionLocation[];
+  scenes: ProductionScene[];
+  departments: Department[];
+  callSheets: CallSheet[];
+  settings: ProductionSettings;
+}
+
+// Production settings
+export interface ProductionSettings {
+  projectName: string;
+  producer: string;
+  director: string;
+  defaultCallTime: string;
+  defaultLunchDuration: number;
+}
+
+// Avatar color generator
+export const AVATAR_COLORS = [
+  '#3498DB', '#2ECC71', '#E74C3C', '#9B59B6', '#F39C12',
+  '#1ABC9C', '#E67E22', '#2C3E50', '#16A085', '#C0392B',
+  '#8E44AD', '#27AE60', '#D35400', '#2980B9', '#7F8C8D',
+];
+
+// ============================================
 // ONSET APP TYPES (Live Production Board)
 // ============================================
 

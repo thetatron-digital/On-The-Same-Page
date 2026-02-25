@@ -13,11 +13,14 @@ import type {
   Storyboard, StoryboardFrame, CameraPackage, SceneCoverage,
   Schedule, SceneStrip, ShotPackage, ShootDay, StripColor,
   DOODEntry, DOODStatus,
+  ProductionPerson, ProductionLocation, ProductionScene, Department, CallSheet,
+  PersonRole, ProductionData, ProductionSettings,
+  TalentCallEntry, CrewCallEntry, CallSheetScene,
   OnSet, OnSetViewMode, OnSetDisplaySettings, ProductionStatus, LunchStatus, DelayEntry,
   SuperVisor, SupervisorSession, TakeEntry, ContinuityLog, DailyReport, SlateInfo,
   ThemeId
 } from '../types/screenplay';
-import { STRIP_COLOR_MAP } from '../types/screenplay';
+import { STRIP_COLOR_MAP, DEFAULT_DEPARTMENTS, AVATAR_COLORS } from '../types/screenplay';
 import { LINES_PER_PAGE, DEFAULT_BEAT_STRUCTURE } from '../types/screenplay';
 import { createNewScreenplay, generateId, parseFDX, generateFDX, getPlainText } from '../utils/fdx';
 import {
@@ -163,6 +166,10 @@ interface ScreenplayState {
   schedule: Schedule | null;
   selectedShootDayId: string | null;
   selectedStripId: string | null;
+
+  // Production Management State (shared)
+  productionData: ProductionData;
+  basecampView: 'dashboard' | 'callsheets' | 'people' | 'scenes' | 'locations' | 'departments' | 'settings' | 'stripboard';
 
   // OnSet State (Live Production)
   onSet: OnSet | null;
@@ -405,6 +412,40 @@ interface ScreenplayState {
   selectShootDay: (dayId: string | null) => void;
   selectStrip: (stripId: string | null) => void;
 
+  // Production Management actions
+  setBasecampView: (view: ScreenplayState['basecampView']) => void;
+  initializeProductionData: () => void;
+
+  // People CRUD
+  addPerson: (person: Omit<ProductionPerson, 'id' | 'avatarColor'>) => string;
+  updatePerson: (id: string, updates: Partial<ProductionPerson>) => void;
+  deletePerson: (id: string) => void;
+
+  // Location CRUD
+  addLocation: (location: Omit<ProductionLocation, 'id'>) => string;
+  updateLocation: (id: string, updates: Partial<ProductionLocation>) => void;
+  deleteLocation: (id: string) => void;
+
+  // Production Scene CRUD
+  addProductionScene: (scene: Omit<ProductionScene, 'id'>) => string;
+  updateProductionScene: (id: string, updates: Partial<ProductionScene>) => void;
+  deleteProductionScene: (id: string) => void;
+
+  // Department CRUD
+  addDepartment: (name: string) => string;
+  updateDepartment: (id: string, updates: Partial<Department>) => void;
+  deleteDepartment: (id: string) => void;
+  addPosition: (departmentId: string, position: string) => void;
+  removePosition: (departmentId: string, position: string) => void;
+
+  // Call Sheet CRUD
+  addCallSheet: (callSheet: Omit<CallSheet, 'id' | 'createdAt' | 'updatedAt'>) => string;
+  updateCallSheet: (id: string, updates: Partial<CallSheet>) => void;
+  deleteCallSheet: (id: string) => void;
+
+  // Production Settings
+  updateProductionSettings: (settings: Partial<ProductionSettings>) => void;
+
   // OnSet actions (Live Production)
   initializeOnSet: () => void;
   setOnSetViewMode: (mode: OnSetViewMode) => void;
@@ -643,6 +684,23 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
   schedule: null,
   selectedShootDayId: null,
   selectedStripId: null,
+
+  // Production Management state
+  productionData: {
+    people: [],
+    locations: [],
+    scenes: [],
+    departments: DEFAULT_DEPARTMENTS.map((d, i) => ({ ...d, id: `dept-default-${i}` })),
+    callSheets: [],
+    settings: {
+      projectName: '',
+      producer: '',
+      director: '',
+      defaultCallTime: '7:00 AM',
+      defaultLunchDuration: 30,
+    },
+  },
+  basecampView: 'dashboard' as const,
 
   // OnSet state
   onSet: null,
@@ -3607,6 +3665,244 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
 
   selectShootDay: (dayId) => set({ selectedShootDayId: dayId }),
   selectStrip: (stripId) => set({ selectedStripId: stripId }),
+
+  // PRODUCTION MANAGEMENT ACTIONS
+  setBasecampView: (view) => set({ basecampView: view }),
+
+  initializeProductionData: () => {
+    const state = get();
+    if (state.productionData.departments.length > 0) return;
+    set({
+      productionData: {
+        ...state.productionData,
+        departments: DEFAULT_DEPARTMENTS.map((d, i) => ({ ...d, id: `dept-default-${i}` })),
+      },
+    });
+  },
+
+  addPerson: (person) => {
+    const state = get();
+    const id = generateId();
+    const colorIndex = state.productionData.people.length % AVATAR_COLORS.length;
+    const newPerson: ProductionPerson = { ...person, id, avatarColor: AVATAR_COLORS[colorIndex] };
+    set({
+      productionData: {
+        ...state.productionData,
+        people: [...state.productionData.people, newPerson],
+      },
+      isDirty: true,
+    });
+    return id;
+  },
+
+  updatePerson: (id, updates) => {
+    const state = get();
+    set({
+      productionData: {
+        ...state.productionData,
+        people: state.productionData.people.map(p => p.id === id ? { ...p, ...updates } : p),
+      },
+      isDirty: true,
+    });
+  },
+
+  deletePerson: (id) => {
+    const state = get();
+    set({
+      productionData: {
+        ...state.productionData,
+        people: state.productionData.people.filter(p => p.id !== id),
+      },
+      isDirty: true,
+    });
+  },
+
+  addLocation: (location) => {
+    const state = get();
+    const id = generateId();
+    const newLocation: ProductionLocation = { ...location, id };
+    set({
+      productionData: {
+        ...state.productionData,
+        locations: [...state.productionData.locations, newLocation],
+      },
+      isDirty: true,
+    });
+    return id;
+  },
+
+  updateLocation: (id, updates) => {
+    const state = get();
+    set({
+      productionData: {
+        ...state.productionData,
+        locations: state.productionData.locations.map(l => l.id === id ? { ...l, ...updates } : l),
+      },
+      isDirty: true,
+    });
+  },
+
+  deleteLocation: (id) => {
+    const state = get();
+    set({
+      productionData: {
+        ...state.productionData,
+        locations: state.productionData.locations.filter(l => l.id !== id),
+      },
+      isDirty: true,
+    });
+  },
+
+  addProductionScene: (scene) => {
+    const state = get();
+    const id = generateId();
+    const newScene: ProductionScene = { ...scene, id };
+    set({
+      productionData: {
+        ...state.productionData,
+        scenes: [...state.productionData.scenes, newScene],
+      },
+      isDirty: true,
+    });
+    return id;
+  },
+
+  updateProductionScene: (id, updates) => {
+    const state = get();
+    set({
+      productionData: {
+        ...state.productionData,
+        scenes: state.productionData.scenes.map(s => s.id === id ? { ...s, ...updates } : s),
+      },
+      isDirty: true,
+    });
+  },
+
+  deleteProductionScene: (id) => {
+    const state = get();
+    set({
+      productionData: {
+        ...state.productionData,
+        scenes: state.productionData.scenes.filter(s => s.id !== id),
+      },
+      isDirty: true,
+    });
+  },
+
+  addDepartment: (name) => {
+    const state = get();
+    const id = generateId();
+    const newDept: Department = { id, name, positions: [] };
+    set({
+      productionData: {
+        ...state.productionData,
+        departments: [...state.productionData.departments, newDept],
+      },
+      isDirty: true,
+    });
+    return id;
+  },
+
+  updateDepartment: (id, updates) => {
+    const state = get();
+    set({
+      productionData: {
+        ...state.productionData,
+        departments: state.productionData.departments.map(d => d.id === id ? { ...d, ...updates } : d),
+      },
+      isDirty: true,
+    });
+  },
+
+  deleteDepartment: (id) => {
+    const state = get();
+    set({
+      productionData: {
+        ...state.productionData,
+        departments: state.productionData.departments.filter(d => d.id !== id),
+      },
+      isDirty: true,
+    });
+  },
+
+  addPosition: (departmentId, position) => {
+    const state = get();
+    set({
+      productionData: {
+        ...state.productionData,
+        departments: state.productionData.departments.map(d =>
+          d.id === departmentId
+            ? { ...d, positions: [...d.positions, position] }
+            : d
+        ),
+      },
+      isDirty: true,
+    });
+  },
+
+  removePosition: (departmentId, position) => {
+    const state = get();
+    set({
+      productionData: {
+        ...state.productionData,
+        departments: state.productionData.departments.map(d =>
+          d.id === departmentId
+            ? { ...d, positions: d.positions.filter(p => p !== position) }
+            : d
+        ),
+      },
+      isDirty: true,
+    });
+  },
+
+  addCallSheet: (callSheet) => {
+    const state = get();
+    const id = generateId();
+    const newCS: CallSheet = { ...callSheet, id, createdAt: new Date(), updatedAt: new Date() };
+    set({
+      productionData: {
+        ...state.productionData,
+        callSheets: [...state.productionData.callSheets, newCS],
+      },
+      isDirty: true,
+    });
+    return id;
+  },
+
+  updateCallSheet: (id, updates) => {
+    const state = get();
+    set({
+      productionData: {
+        ...state.productionData,
+        callSheets: state.productionData.callSheets.map(cs =>
+          cs.id === id ? { ...cs, ...updates, updatedAt: new Date() } : cs
+        ),
+      },
+      isDirty: true,
+    });
+  },
+
+  deleteCallSheet: (id) => {
+    const state = get();
+    set({
+      productionData: {
+        ...state.productionData,
+        callSheets: state.productionData.callSheets.filter(cs => cs.id !== id),
+      },
+      isDirty: true,
+    });
+  },
+
+  updateProductionSettings: (settings) => {
+    const state = get();
+    set({
+      productionData: {
+        ...state.productionData,
+        settings: { ...state.productionData.settings, ...settings },
+      },
+      isDirty: true,
+    });
+  },
 
   // ONSET ACTIONS
   initializeOnSet: () => {
