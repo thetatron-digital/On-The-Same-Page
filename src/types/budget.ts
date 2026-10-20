@@ -72,6 +72,18 @@ export interface BudgetContractual {
   excludeGroupIds: string[];  // groups not included in the base
 }
 
+/** A saved copy of the totals, to compare the budget against later */
+export interface BudgetSnapshot {
+  id: string;
+  name: string;               // e.g. "Locked 10/20", "Studio draft"
+  createdAt: Date;
+  categories: Record<string, number>; // category id -> cents
+  accounts: Record<string, number>;   // account id -> cents
+  sections: Record<BudgetSection, number>;
+  contractuals: number;
+  grandTotal: number;
+}
+
 export interface Budget {
   id: string;
   name: string;
@@ -81,6 +93,11 @@ export interface Budget {
   groups: BudgetGroup[];
   categories: BudgetCategory[];
   contractuals: BudgetContractual[];
+  /** Money spent so far, entered per account (cents) */
+  actuals?: Record<string, number>;
+  /** Count ArtCart purchases and rentals as actuals */
+  artCartActuals?: boolean;
+  snapshots?: BudgetSnapshot[];
   createdAt: Date;
   updatedAt: Date;
 }
