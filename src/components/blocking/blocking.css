@@ -1,0 +1,53 @@
+/* Blocking diagrams (bk- prefix). SVG units are metres. */
+.bk-editor { display: flex; flex-direction: column; flex: 1; min-height: 0; height: 100%; background: var(--bg-primary); color: var(--text-primary); font-size: 13px; }
+.bk-header { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; }
+.bk-header select, .bk-panel input, .bk-panel select { padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--input-bg, transparent); color: var(--text-primary); font: inherit; font-size: 13px; }
+.bk-header-end { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.bk-btn { padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: inherit; cursor: pointer; font-size: 13px; }
+.bk-btn.primary { background: #8B5CF6; border-color: #8B5CF6; color: #fff; }
+.bk-btn.danger { color: #ef4444; }
+.bk-btn:disabled { opacity: 0.45; }
+.bk-check { display: inline-flex; gap: 6px; align-items: center; font-size: 12px; }
+.bk-muted { color: var(--text-secondary); font-size: 12px; }
+.bk-empty { margin: 80px auto; text-align: center; display: flex; flex-direction: column; gap: 12px; align-items: center; }
+.bk-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 260px; grid-template-rows: auto 1fr; }
+.bk-tools { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 14px; border-bottom: 1px solid var(--border-color); align-items: center; }
+.bk-tool { padding: 4px 10px; border-radius: 6px; border: 1px solid transparent; background: none; color: inherit; cursor: pointer; font-size: 12px; }
+.bk-tool.active { background: rgba(139, 92, 246, 0.2); border-color: #8B5CF6; }
+.bk-tool:disabled { opacity: 0.4; }
+.bk-tools .bk-muted { margin-left: 8px; }
+.bk-canvas { width: 100%; height: 100%; min-height: 360px; touch-action: none; background: #fff; cursor: grab; }
+.bk-canvas:active { cursor: grabbing; }
+.bk-canvas.tool-actor, .bk-canvas.tool-camera, .bk-canvas.tool-light, .bk-canvas.tool-prop, .bk-canvas.tool-wall, .bk-canvas.tool-door, .bk-canvas.tool-window, .bk-canvas.tool-mark { cursor: crosshair; }
+.bk-panel { border-left: 1px solid var(--border-color); padding: 12px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
+.bk-panel label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-secondary); }
+.bk-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.bk-marks { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-size: 12px; }
+.bk-chip { display: inline-flex; gap: 2px; align-items: center; padding: 1px 4px 1px 8px; border-radius: 10px; background: var(--bg-secondary); }
+.bk-chip button { background: none; border: none; color: var(--text-secondary); cursor: pointer; }
+/* drawing */
+.bk-grid { stroke: #eceef2; stroke-width: 0.01; }
+.bk-grid.major { stroke: #d7dae0; stroke-width: 0.02; }
+.bk-wall { stroke: #333; stroke-width: 0.15; stroke-linecap: square; }
+.bk-window { stroke: #333; stroke-width: 0.15; }
+.bk-window-inner { stroke: #bfe3ff; stroke-width: 0.07; }
+.bk-door { stroke: #8a6a4a; stroke-width: 0.06; }
+.bk-door-swing { fill: none; stroke: #8a6a4a; stroke-width: 0.02; stroke-dasharray: 0.08 0.06; }
+.bk-prop { fill: #efe7da; stroke: #8a7a64; stroke-width: 0.03; }
+.bk-prop.sel, .bk-actor.sel, .bk-camera.sel, .bk-light.sel { stroke: #8B5CF6; stroke-width: 0.07; }
+.bk-select-ring.line { stroke: #8B5CF6; stroke-width: 0.3; opacity: 0.35; }
+.bk-fov { fill: rgba(139, 92, 246, 0.12); stroke: rgba(139, 92, 246, 0.6); stroke-width: 0.02; }
+.bk-camera { fill: #2b2b33; stroke: #111; stroke-width: 0.02; }
+.bk-beam { opacity: 0.18; }
+.bk-light { stroke: #a16207; stroke-width: 0.03; }
+.bk-actor { stroke: #fff; stroke-width: 0.04; }
+.bk-nose { stroke: #fff; stroke-width: 0.06; }
+.bk-move { stroke-width: 0.04; stroke-dasharray: 0.12 0.08; }
+.bk-mark { fill: #fff; stroke-width: 0.05; }
+.bk-label { font: 600 0.2px -apple-system, Helvetica, sans-serif; fill: #222; text-anchor: middle; pointer-events: none; }
+.bk-label.small { font-size: 0.17px; font-weight: 500; }
+.bk-label.tiny { font-size: 0.16px; }
+.bk-label.light { fill: #fff; }
+.bk-handle { fill: #8B5CF6; stroke: #fff; stroke-width: 0.03; cursor: grab; }
+.bk-handle-line { stroke: #8B5CF6; stroke-width: 0.02; stroke-dasharray: 0.05 0.05; }
+@media (max-width: 800px) { .bk-body { grid-template-columns: 1fr; } .bk-panel { border-left: none; border-top: 1px solid var(--border-color); } }
