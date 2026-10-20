@@ -49,6 +49,19 @@ function formatPhone(raw: string): string {
   return raw; // Return as-is if not a standard 10-digit number
 }
 
+/**
+ * BaseCamp's pages are defined inside BaseCamp (they use its state), so
+ * rendering them as <PeopleView /> gave them a new component type on every
+ * BaseCamp render: any store change (auto-save, a collaborator's sync)
+ * remounted the page and dropped open dialogs and half-typed forms. A
+ * stable host keyed by page calls the page's render function instead, so
+ * its hooks live in the host and survive re-renders; changing pages still
+ * starts fresh.
+ */
+function ViewHost({ render }: { render: () => React.ReactNode }) {
+  return <>{render()}</>;
+}
+
 const BaseCamp: React.FC = () => {
   const {
     darkMode,
@@ -255,19 +268,19 @@ const BaseCamp: React.FC = () => {
   const renderContent = () => {
     switch (basecampView) {
       case 'dashboard':
-        return <DashboardView />;
+        return <ViewHost key="dashboard" render={DashboardView} />;
       case 'people':
-        return <PeopleView />;
+        return <ViewHost key="people" render={PeopleView} />;
       case 'scenes':
-        return <ScenesView />;
+        return <ViewHost key="scenes" render={ScenesView} />;
       case 'locations':
-        return <LocationsView />;
+        return <ViewHost key="locations" render={LocationsView} />;
       case 'callsheets':
-        return <CallSheetsView />;
+        return <ViewHost key="callsheets" render={CallSheetsView} />;
       case 'settings':
-        return <SettingsView />;
+        return <ViewHost key="settings" render={SettingsView} />;
       case 'stripboard':
-        return <StripBoardView />;
+        return <ViewHost key="stripboard" render={StripBoardView} />;
       case 'calendar':
         return <ProductionCalendar />;
       case 'dood':
@@ -281,7 +294,7 @@ const BaseCamp: React.FC = () => {
       case 'productioninfo':
         return <ProductionInfoView />;
       default:
-        return <DashboardView />;
+        return <ViewHost key="dashboard" render={DashboardView} />;
     }
   };
 

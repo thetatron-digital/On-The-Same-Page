@@ -87,7 +87,7 @@ export default function BlockingEditor({ onClose }: { onClose: () => void }) {
 
   const onDown = (e: React.PointerEvent<SVGSVGElement>) => {
     if (!diagram) return;
-    (e.target as Element).setPointerCapture?.(e.pointerId);
+    try { (e.target as Element).setPointerCapture?.(e.pointerId); } catch { /* pointer already gone */ }
     const p = toWorld(e);
     const handle = (e.target as Element).getAttribute('data-handle');
     if (handle && selected) { drag.current = { mode: 'rotate', id: selected.id, start: p, origin: items }; return; }
