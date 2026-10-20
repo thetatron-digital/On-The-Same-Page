@@ -4,12 +4,6 @@ import { DialogHost } from './components/DialogHost';
 import { SharedProjectPrompt } from './components/SharedProjectPrompt';
 import { Toolbar } from './components/Toolbar';
 import { Editor } from './components/Editor';
-import { Breakdown } from './components/Breakdown';
-import { ArtCart } from './components/ArtCart';
-import ViewFinder from './components/ViewFinder';
-import BaseCamp from './components/BaseCamp';
-import OnSet from './components/OnSet';
-import SuperVisor from './components/SuperVisor';
 import { Home } from './components/Home';
 import { useScreenplayStore } from './store/screenplayStore';
 import { useShallow } from 'zustand/react/shallow';
@@ -19,7 +13,13 @@ import { startRemoteSync } from './services/projectSync';
 import { useUrlSync } from './routing/useUrlSync';
 import './App.css';
 
-// Loaded when opened
+// Apps load when opened (ReWriter and Home are in the first download)
+const Breakdown = lazy(() => import('./components/Breakdown').then((m) => ({ default: m.Breakdown })));
+const ArtCart = lazy(() => import('./components/ArtCart').then((m) => ({ default: m.ArtCart })));
+const ViewFinder = lazy(() => import('./components/ViewFinder'));
+const BaseCamp = lazy(() => import('./components/BaseCamp'));
+const OnSet = lazy(() => import('./components/OnSet'));
+const SuperVisor = lazy(() => import('./components/SuperVisor'));
 const BottomLine = lazy(() => import('./components/budget/BottomLine'));
 
 function App() {
@@ -93,15 +93,12 @@ function App() {
       case 'supervisor':
         return <SuperVisor />;
       case 'bottomline':
-        return (
-          <Suspense fallback={null}>
-            <BottomLine />
-          </Suspense>
-        );
+        return <BottomLine />;
       default:
         return <Editor />;
     }
   };
+
 
   // Home page has its own layout, don't show toolbar
   if (activeApp === 'home') {
@@ -112,7 +109,7 @@ function App() {
     <div className="app">
       {activeApp === 'rewriter' && <AppMenuBar />}
       <Toolbar />
-      {renderApp()}
+      <Suspense fallback={<div className="app-loading" role="status">Loading…</div>}>{renderApp()}</Suspense>
       <DialogHost />
       <SharedProjectPrompt />
     </div>

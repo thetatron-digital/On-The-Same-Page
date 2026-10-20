@@ -22,3 +22,6 @@
     overflow: visible;
   }
 }
+
+/* Shown for a moment while an app's code downloads */
+.app-loading { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 13px; }
