@@ -46,6 +46,11 @@ describe('FDX round-trip', () => {
     expect(back.elements[0].omitted?.map((e) => e.content[0].text)).toEqual(['INT. B - DAY', 'b.']);
   });
 
+  it('keeps centered paragraphs and inserted page breaks', () => {
+    const back = roundTrip(script([{ id: 'a', type: 'Action', content: [{ text: 'THE END' }], centered: true, pageBreakBefore: true }]));
+    expect(back.elements[0]).toMatchObject({ centered: true, pageBreakBefore: true });
+  });
+
   it('keeps bookmarks', () => {
     const back = roundTrip(script([{ id: 'a', type: 'Action', content: [{ text: 'x' }], bookmark: 'Midpoint & "twist"' }]));
     expect(back.elements[0].bookmark).toBe('Midpoint & "twist"');

@@ -1,4 +1,9 @@
 /* Production menu dialogs (Revisions…, Scene Numbers…) */
+/* Opaque even though other apps' stylesheets restyle .modal-content */
+.modal-content.production-dialog {
+  background: var(--panel-bg, var(--toolbar-bg));
+}
+
 .production-dialog {
   min-width: 360px;
   max-width: 560px;
@@ -127,4 +132,8 @@
 
 .dropdown-item.indented {
   padding-left: 44px;
+}
+
+.shortcuts-dialog {
+  min-width: 420px;
 }

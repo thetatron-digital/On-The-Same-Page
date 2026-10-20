@@ -32,6 +32,7 @@ import { parseFDX } from './fdx';
 
 export type ImportFileType =
   | 'fdx'        // Final Draft screenplay
+  | 'fountain'   // Fountain plain-text screenplay
   | 'xml'        // Generic XML (breakdown, schedule, etc.)
   | 'mms'        // Movie Magic Scheduling
   | 'csv'        // CSV (artcart, generic)
@@ -54,6 +55,9 @@ export const detectFileType = (fileName: string, content: string): ImportFileTyp
   switch (ext) {
     case 'fdx':
       return 'fdx';
+    case 'fountain':
+    case 'spmd':
+      return 'fountain';
     case 'mms':
     case 'sex': // Schedule Exchange format
       return 'mms';

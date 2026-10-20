@@ -26,7 +26,18 @@ export interface ScreenplayElement {
   omitted?: ScreenplayElement[]; // Omit Scene: the scene as it was; this heading then reads OMITTED
   bookmark?: string; // Insert > Bookmark: a named place to jump to (FDX Paragraph Bookmark="")
   alts?: TextRun[][]; // Insert > Add Alt: alternate versions of this line; `content` is the one in use
+  pageBreakBefore?: boolean; // Insert > Page Break: this paragraph starts a new page (Fountain ===)
+  centered?: boolean; // centered text (Fountain >text<, FDX Alignment="Center")
+  lyric?: boolean; // lyrics (Fountain ~)
+  outline?: OutlineMark; // non-printing structure kept in the script (Fountain #, =, /* */)
 }
+
+// Non-printing paragraphs: they keep their place in the script but take no
+// space on the page, in the editor or in the PDF
+export type OutlineMark =
+  | { kind: 'section'; depth: number } // Fountain # / ## / ###
+  | { kind: 'synopsis' } // Fountain = text
+  | { kind: 'boneyard' }; // Fountain /* text */
 
 // Document > Macros: a keyboard shortcut that types text, optionally switching
 // the paragraph to `element` first and starting a `transition` paragraph after.

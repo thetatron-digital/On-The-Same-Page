@@ -1,5 +1,5 @@
 /* Macros, Bookmarks and Reports dialogs (shares ProductionDialogs.css) */
-.writing-dialog {
+.modal-content.writing-dialog {
   max-width: 760px;
 }
 
@@ -54,7 +54,7 @@
   background: var(--hover-bg);
 }
 
-.reports-dialog {
+.modal-content.reports-dialog {
   width: min(860px, 92vw);
   max-width: none;
 }
@@ -73,4 +73,47 @@
 .report-table td {
   vertical-align: top;
   padding: 4px 8px;
+}
+
+.modal-content.sides-dialog {
+  width: min(820px, 94vw);
+  max-width: none;
+}
+
+.sides-columns {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 16px;
+}
+
+.sides-scenes {
+  max-height: 340px;
+  padding: 4px 8px;
+}
+
+.sides-scene-number {
+  display: inline-block;
+  min-width: 2.5em;
+  font-weight: 600;
+}
+
+.sides-scene-meta,
+.dialog-hint {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.production-field input[type='text'] {
+  flex: 1;
+  padding: 4px 6px;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+}
+
+@media (max-width: 640px) {
+  .sides-columns {
+    grid-template-columns: 1fr;
+  }
 }

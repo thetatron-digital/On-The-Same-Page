@@ -1,7 +1,9 @@
 // ReWriter document: elements, undo/redo, file I/O, SmartType, scene numbers, page locks, watermark
 import type { StateCreator } from 'zustand';
 import type { ScreenplayElement, AutoCompleteSuggestion, PageLock } from '../../types/screenplay';
+import { NOTE_COLORS } from '../../types/screenplay';
 import { createNewScreenplay, generateId, parseFDX, generateFDX } from '../../utils/fdx';
+import { parseFountain } from '../../utils/fountain';
 import {
   extractCharactersFromScript,
   extractLocationsFromScript,
@@ -373,6 +375,32 @@ export const createScriptSlice: StateCreator<ScreenplayState, [], [], ScriptSlic
       console.error('Failed to parse FDX file:', error);
       throw error;
     }
+  },
+
+  loadFromFountain: (content) => {
+    const { screenplay, notes } = parseFountain(content);
+    const stats = calculateWritingStats(screenplay);
+    set({
+      screenplay,
+      // Fountain [[notes]] become ScriptNotes on their paragraphs
+      scriptNotes: notes.map((note) => ({
+        id: generateId(),
+        elementId: screenplay.elements[note.elementIndex].id,
+        author: 'Fountain',
+        content: note.text,
+        timestamp: new Date(),
+        resolved: false,
+        kind: 'script' as const,
+        color: NOTE_COLORS[0],
+      })),
+      activeNoteId: null,
+      selectedElementId: screenplay.elements[0]?.id || null,
+      isDirty: false,
+      documentGeneration: get().documentGeneration + 1,
+      documentOrigin: 'file',
+      stats,
+      currentPage: 1,
+    });
   },
 
   exportToFDX: () => {

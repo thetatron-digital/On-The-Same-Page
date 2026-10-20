@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { openScriptFile, SCRIPT_FILE_TYPES } from '../services/scriptFiles';
 import { useAuthStore, useProjectsStore } from '../services/projectService';
 import { googleAuth } from '../services/googleAuth';
 import { useScreenplayStore } from '../store/screenplayStore';
@@ -237,18 +238,12 @@ export const Home = () => {
           <label className="action-card">
             <input
               type="file"
-              accept=".fdx"
+              accept={SCRIPT_FILE_TYPES}
               style={{ display: 'none' }}
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) {
-                  // Trigger file open in store
-                  const input = document.createElement('input');
-                  input.type = 'file';
-                  input.accept = '.fdx';
-                  // This will be handled by Toolbar's file handler
-                  setActiveApp('rewriter');
-                }
+                if (file) openScriptFile(file).catch(() => alert('Could not open that file. Is it a Final Draft (.fdx) or Fountain script?'));
+                e.target.value = '';
               }}
             />
             <div className="action-icon">
@@ -258,8 +253,8 @@ export const Home = () => {
               </svg>
             </div>
             <div className="action-text">
-              <h3>Open FDX</h3>
-              <p>Import Final Draft file</p>
+              <h3>Open Script</h3>
+              <p>Final Draft (.fdx) or Fountain</p>
             </div>
           </label>
         </section>

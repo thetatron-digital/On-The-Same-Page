@@ -3,6 +3,8 @@ import type { Screenplay, ElementType, WatermarkSettings } from '../types/screen
 import { ELEMENT_FORMATTING } from '../types/screenplay';
 import { paginateScript } from '../engine/paginate';
 import { getRevisionSettings, pageRevision, showsRevisionMark } from '../engine/production';
+import { planSides, type SidesHeader } from '../engine/sides';
+import { scenesOf, formatEighths } from './reports';
 
 // PDF constants (in points, 72 points = 1 inch)
 const PAGE_WIDTH = 612; // 8.5 inches
@@ -40,6 +42,13 @@ export interface PDFOptions {
   showSceneNumbers?: boolean;
   watermark?: WatermarkSettings;
   revisedPagesOnly?: boolean; // only pages with revisions shown (Revisions: Revised pages only)
+  sides?: SidesOptions; // print sides for these scenes instead of the whole script
+}
+
+export interface SidesOptions {
+  sceneIds: string[]; // Scene Heading element ids
+  header: SidesHeader;
+  cover: boolean; // a call-sheet-style first page
 }
 
 // Dual dialogue positioning (column width is DUAL_COLUMN_CHARS in the engine)
@@ -91,11 +100,14 @@ const addWatermark = (doc: jsPDF, watermark: WatermarkSettings) => {
 export const generatePDF = (screenplay: Screenplay, options: PDFOptions = {}): jsPDF => {
   const { showSceneNumbers = false, watermark = DEFAULT_WATERMARK, revisedPagesOnly = false } = options;
   const revisions = getRevisionSettings(screenplay);
-  const allPages = paginateScript(screenplay).pages;
-  const pages = revisedPagesOnly
-    ? allPages.filter((page) => pageRevision(page, screenplay.elements, revisions))
-    : allPages;
-  const includeTitle = !!screenplay.title && !revisedPagesOnly;
+  const pagination = paginateScript(screenplay);
+  const sidesPlan = options.sides ? planSides(pagination, screenplay.elements, options.sides.sceneIds) : null;
+  const pages = sidesPlan
+    ? sidesPlan.map((p) => p.page)
+    : revisedPagesOnly
+      ? pagination.pages.filter((page) => pageRevision(page, screenplay.elements, revisions))
+      : pagination.pages;
+  const includeTitle = !!screenplay.title && !revisedPagesOnly && !options.sides;
 
   const doc = new jsPDF({
     unit: 'pt',
@@ -132,8 +144,8 @@ export const generatePDF = (screenplay: Screenplay, options: PDFOptions = {}): j
   }
 
   // Draws one wrapped line of an element at its margin and alignment
-  const drawLine = (type: ElementType, text: string, y: number, isFirstLine: boolean) => {
-    const formatting = ELEMENT_FORMATTING[type];
+  const drawLine = (type: ElementType, text: string, y: number, isFirstLine: boolean, centered = false) => {
+    const formatting = centered ? { ...ELEMENT_FORMATTING[type], alignment: 'center' as const } : ELEMENT_FORMATTING[type];
     const hang = isFirstLine ? inchesToPoints(formatting.firstIndent ?? 0) : 0;
     if (formatting.alignment === 'right') {
       doc.text(text, inchesToPoints(formatting.rightEdge), y, { align: 'right' });
@@ -156,12 +168,26 @@ export const generatePDF = (screenplay: Screenplay, options: PDFOptions = {}): j
   };
 
   if (pages.length === 0) {
-    doc.text('No revised pages.', LEFT_TEXT, TOP_MARGIN);
+    doc.text(options.sides ? 'No scenes chosen.' : 'No revised pages.', LEFT_TEXT, TOP_MARGIN);
   }
 
+  // Sides: a call-sheet-style cover, then the pages with a header line
+  const sides = options.sides;
+  const sidesCover = !!sides?.cover && pages.length > 0;
+  if (sides && sidesCover) drawSidesCover(doc, screenplay, sides);
+  const sidesLine = sides
+    ? [sides.header.production || screenplay.title || 'Untitled', 'SIDES', sides.header.date,
+       sides.header.shootDay && `Day ${sides.header.shootDay}`].filter(Boolean).join('  -  ')
+    : '';
+
   pages.forEach((page, pageIndex) => {
-    if (pageIndex > 0 || includeTitle) {
+    if (pageIndex > 0 || includeTitle || sidesCover) {
       doc.addPage();
+    }
+    if (sides) {
+      doc.setFontSize(9);
+      doc.text(sidesLine, LEFT_TEXT, 22);
+      doc.setFontSize(FONT_SIZE);
     }
     addWatermark(doc, watermark);
     doc.setFont('Courier', 'normal');
@@ -209,12 +235,60 @@ export const generatePDF = (screenplay: Screenplay, options: PDFOptions = {}): j
         }
       }
 
-      item.lines.forEach((line, li) => drawLine(item.type, line.text, y + li * LINE_HEIGHT, !item.continued && li === 0));
+      const source = screenplay.elements[item.elementIndex];
+      if (source?.lyric) doc.setFont('Courier', 'italic');
+      item.lines.forEach((line, li) => drawLine(item.type, line.text, y + li * LINE_HEIGHT, !item.continued && li === 0, source?.centered));
+      if (source?.lyric) doc.setFont('Courier', 'normal');
       drawMarks(item.elementIndex, y, item.lines.length);
     });
+
+    // Sides: cross out what belongs to other scenes
+    for (const run of sidesPlan?.[pageIndex].crossOut ?? []) {
+      const top = TOP_MARGIN + run.top * LINE_HEIGHT - LINE_HEIGHT + 2;
+      const bottom = TOP_MARGIN + (run.bottom - 1) * LINE_HEIGHT + 4;
+      doc.setLineWidth(1);
+      doc.line(LEFT_TEXT, top, PAGE_WIDTH - 72, bottom);
+      doc.line(LEFT_TEXT, bottom, PAGE_WIDTH - 72, top);
+    }
   });
 
   return doc;
+};
+
+// Sides cover page: production details and the scenes being shot
+const drawSidesCover = (doc: jsPDF, screenplay: Screenplay, sides: SidesOptions) => {
+  const { header } = sides;
+  const chosen = new Set(sides.sceneIds);
+  const headingIds = screenplay.elements.filter((el) => el.type === 'Scene Heading').map((el) => el.id);
+  const scenes = scenesOf(screenplay).filter((_, i) => chosen.has(headingIds[i]));
+  const cast = [...new Set(scenes.flatMap((s) => s.speakers))];
+  let y = TOP_MARGIN;
+  const line = (text: string, bold = false, size = FONT_SIZE) => {
+    doc.setFont('Courier', bold ? 'bold' : 'normal');
+    doc.setFontSize(size);
+    doc.splitTextToSize(text, PAGE_WIDTH - LEFT_TEXT - 72).forEach((part: string) => { doc.text(part, LEFT_TEXT, y); y += size + 2; });
+  };
+  line(header.production || screenplay.title || 'Untitled', true, 16);
+  line('SIDES', true, 14);
+  y += 6;
+  if (header.date) line(`Date: ${header.date}`);
+  if (header.shootDay) line(`Shoot day: ${header.shootDay}`);
+  if (header.callTime) line(`Call time: ${header.callTime}`);
+  y += 8;
+  line('SCENES', true);
+  scenes.forEach((s) => line(`${s.number.padEnd(5)} ${s.heading}  (${s.omitted ? 'OMITTED' : `${formatEighths(s.eighths)} pg`}, p. ${s.page})`));
+  y += 8;
+  if (cast.length) {
+    line('CAST', true);
+    line(cast.join(', '));
+    y += 8;
+  }
+  if (header.notes) {
+    line('NOTES', true);
+    line(header.notes);
+  }
+  doc.setFont('Courier', 'normal');
+  doc.setFontSize(FONT_SIZE);
 };
 
 export const downloadPDF = (screenplay: Screenplay, filename: string = 'screenplay.pdf', options: PDFOptions = {}): void => {

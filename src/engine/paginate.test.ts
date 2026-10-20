@@ -291,3 +291,24 @@ describe('PDF export', () => {
     expect(generatePDF({ title: 'Rain', author: 'A. Writer', titlePage, elements: script }).getNumberOfPages()).toBe(pageCount + 1);
   });
 });
+
+describe('paginate: inserted page breaks and non-printing paragraphs', () => {
+  it('starts a new page at a page break', () => {
+    const script = [el('Action', 'One.'), el('Action', 'Two.', { pageBreakBefore: true }), el('Action', 'Three.')];
+    const result = paginate(script);
+    expect(result.pageCount).toBe(2);
+    expect(result.elementPages).toEqual([1, 2, 2]);
+    expect(elementItems(result.pages[1])[0]).toMatchObject({ top: 0, spaceBefore: 0 });
+  });
+
+  it('gives sections, synopses and boneyard no space on the page', () => {
+    const script = [
+      el('General', 'ACT ONE', { outline: { kind: 'section', depth: 1 } }),
+      el('Scene Heading', 'INT. HALL - DAY'),
+      el('General', 'They meet.', { outline: { kind: 'synopsis' } }),
+      el('Action', 'Rain.'),
+    ];
+    const page = paginate(script).pages[0];
+    expect(elementItems(page).map((i) => [i.type, i.top])).toEqual([['Scene Heading', 0], ['Action', 2]]);
+  });
+});

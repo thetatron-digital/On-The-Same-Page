@@ -6,9 +6,11 @@ import { useScreenplayStore } from '../store/screenplayStore';
 import { createDefaultMacros, type ElementType, type Macro } from '../types/screenplay';
 import { bookmarks, getMacros, macroShortcut } from '../engine/scriptTools';
 import {
-  castReport, characterReport, listCharacters, locationReport, reportToCSV, reportToPDF, sceneReport,
+  castReport, characterReport, listCharacters, locationReport, reportToCSV, reportToPDF, sceneReport, scenesOf,
   type CastSort, type LocationSort, type SceneSort,
 } from '../utils/reports';
+import { generatePDF } from '../utils/pdf';
+import type { SidesHeader } from '../engine/sides';
 import { goToElement, isMac } from './writingActions';
 import './ProductionDialogs.css';
 import './WritingDialogs.css';
@@ -243,6 +245,86 @@ export const ReportsDialog = ({ onClose, initial }: DialogProps & { initial: Rep
           <button onClick={() => saveFile(`${base}.csv`, new Blob([reportToCSV(report)], { type: 'text/csv' }))}>Save CSV</button>
           <button onClick={() => saveFile(`${base}.pdf`, reportToPDF(report, screenplay.title).output('blob'))}>Save PDF</button>
           <button className="primary" onClick={onClose}>Done</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// File > Sides…: choose scenes, add a call-sheet-style header, save a PDF
+export const SidesDialog = ({ onClose }: DialogProps) => {
+  const { screenplay, selectedElementId, watermarkSettings } = useScreenplayStore(
+    useShallow((s) => ({ screenplay: s.screenplay, selectedElementId: s.selectedElementId, watermarkSettings: s.watermarkSettings }))
+  );
+  const scenes = useMemo(() => {
+    const headings = screenplay.elements.filter((el) => el.type === 'Scene Heading');
+    return scenesOf(screenplay).map((s, i) => ({ ...s, id: headings[i].id }));
+  }, [screenplay]);
+  const current = useMemo(() => {
+    let id = '';
+    for (const el of screenplay.elements) {
+      if (el.type === 'Scene Heading') id = el.id;
+      if (el.id === selectedElementId) return id;
+    }
+    return '';
+  }, [screenplay.elements, selectedElementId]);
+  const [chosen, setChosen] = useState<Set<string>>(() => new Set(current ? [current] : []));
+  const [header, setHeader] = useState<SidesHeader>({
+    production: screenplay.title,
+    date: new Date().toLocaleDateString(),
+    shootDay: '',
+    callTime: '',
+    notes: '',
+  });
+  const [cover, setCover] = useState(true);
+  const toggle = (id: string) => setChosen((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const field = (key: keyof SidesHeader, label: string) => (
+    <label className="production-field">
+      {label}
+      <input type="text" value={header[key]} onChange={(e) => setHeader({ ...header, [key]: e.target.value })} />
+    </label>
+  );
+  const save = () => {
+    const sceneIds = scenes.filter((s) => chosen.has(s.id)).map((s) => s.id);
+    const numbers = scenes.filter((s) => chosen.has(s.id)).map((s) => s.number).join('-');
+    generatePDF(screenplay, { sides: { sceneIds, header, cover }, watermark: watermarkSettings, showSceneNumbers: true })
+      .save(`${(header.production || 'Script').replace(/[\\/:*?"<>|]/g, '')} sides ${numbers}.pdf`);
+    onClose();
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content production-dialog sides-dialog" onClick={(e) => e.stopPropagation()}>
+        <h3>Sides</h3>
+        <div className="sides-columns">
+          <div className="revisions-table-wrap sides-scenes" role="group" aria-label="Scenes">
+            {scenes.map((s) => (
+              <label key={s.id} className="production-check">
+                <input type="checkbox" checked={chosen.has(s.id)} onChange={() => toggle(s.id)} />
+                <span className="sides-scene-number">{s.number}</span> {s.heading} <span className="sides-scene-meta">p. {s.page}</span>
+              </label>
+            ))}
+          </div>
+          <div>
+            {field('production', 'Production:')}
+            {field('date', 'Date:')}
+            {field('shootDay', 'Shoot day:')}
+            {field('callTime', 'Call time:')}
+            {field('notes', 'Notes:')}
+            <label className="production-check">
+              <input type="checkbox" checked={cover} onChange={(e) => setCover(e.target.checked)} />
+              Cover page with scenes and cast
+            </label>
+            <p className="dialog-hint">Pages keep their script numbers; other scenes on those pages are crossed out.</p>
+          </div>
+        </div>
+        <div className="modal-buttons">
+          <button onClick={onClose}>Cancel</button>
+          <button className="primary" disabled={chosen.size === 0} onClick={save}>Save PDF</button>
         </div>
       </div>
     </div>
