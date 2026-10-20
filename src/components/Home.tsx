@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuthStore, useProjectsStore } from '../services/projectService';
 import { googleAuth } from '../services/googleAuth';
 import { useScreenplayStore } from '../store/screenplayStore';
+import { openProject } from '../services/openProject';
 import { useShallow } from 'zustand/react/shallow';
 import type { Project, ProjectData } from '../types/user';
 import './Home.css';
@@ -15,7 +16,6 @@ export const Home = () => {
     error,
     fetchProjects,
     createProject,
-    loadProject,
     deleteProject,
     renameProject,
     duplicateProject,
@@ -77,9 +77,7 @@ export const Home = () => {
   // Handle open project
   const handleOpenProject = async (project: Project) => {
     try {
-      const data = await loadProject(project.id);
-      loadFromProjectData(data);
-      setActiveApp('rewriter');
+      await openProject(project.id);
     } catch (error) {
       console.error('Failed to open project:', error);
     }

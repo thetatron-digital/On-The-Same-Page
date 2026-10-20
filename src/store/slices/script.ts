@@ -20,7 +20,7 @@ export const createScriptSlice: StateCreator<ScreenplayState, [], [], ScriptSlic
   currentElementType: 'Scene Heading',
   isDirty: false,
   documentGeneration: 0,
-  documentOrigin: 'project',
+  documentOrigin: 'file',
   fileName: 'Untitled.fdx',
   // Undo/Redo state
   history: [],

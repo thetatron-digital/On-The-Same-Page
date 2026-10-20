@@ -73,6 +73,14 @@ describe('auto-save', () => {
     expect(saveProject).toHaveBeenCalledTimes(1);
   });
 
+  it('never auto-saves the blank startup document into the last session\'s project', async () => {
+    useScreenplayStore.setState(useScreenplayStore.getInitialState(), true);
+    expect(store().documentOrigin).toBe('file');
+    typeInFirstElement('INT. HOUSE');
+    await vi.advanceTimersByTimeAsync(AUTO_SAVE_DELAY_MS);
+    expect(saveProject).not.toHaveBeenCalled();
+  });
+
   it('does nothing without an open project', async () => {
     useProjectsStore.setState({ currentProjectId: null });
     typeInFirstElement('INT. HOUSE');
