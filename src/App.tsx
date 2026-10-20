@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, Suspense, lazy } from 'react';
 import { AppMenuBar } from './components/AppMenuBar';
 import { DialogHost } from './components/DialogHost';
 import { SharedProjectPrompt } from './components/SharedProjectPrompt';
@@ -18,6 +18,9 @@ import { startAutoSave } from './services/autoSave';
 import { startRemoteSync } from './services/projectSync';
 import { useUrlSync } from './routing/useUrlSync';
 import './App.css';
+
+// Loaded when opened
+const BottomLine = lazy(() => import('./components/budget/BottomLine'));
 
 function App() {
   const {
@@ -89,6 +92,12 @@ function App() {
         return <OnSet />;
       case 'supervisor':
         return <SuperVisor />;
+      case 'bottomline':
+        return (
+          <Suspense fallback={null}>
+            <BottomLine />
+          </Suspense>
+        );
       default:
         return <Editor />;
     }

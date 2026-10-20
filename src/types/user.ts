@@ -133,6 +133,7 @@ export interface ProjectData {
   superVisor?: import('./screenplay').SuperVisor;
   dailies?: import('./dailies').Dailies;
   references?: import('./references').References;
+  budget?: import('./budget').Budget;
 
   // BaseCamp production management (people, locations, scenes, call sheets)
   productionData?: import('./screenplay').ProductionData;

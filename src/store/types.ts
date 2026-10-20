@@ -111,7 +111,7 @@ export interface PanelLayout {
 }
 
 // App modes (top-level application switching)
-export type AppMode = 'home' | 'blueprint' | 'corkboard' | 'rewriter' | 'breakdown' | 'artcart' | 'viewfinder' | 'basecamp' | 'onset' | 'supervisor';
+export type AppMode = 'home' | 'blueprint' | 'corkboard' | 'rewriter' | 'breakdown' | 'artcart' | 'viewfinder' | 'basecamp' | 'onset' | 'supervisor' | 'bottomline';
 
 // Split View content (independent from main script)
 export interface SplitEntry {
@@ -571,6 +571,13 @@ export interface OnSetSlice {
   getQuickStatus: () => { currentScene: string; currentSetup: string; estimatedWrap: string; aheadBehind: string; nextUp: string; isOnLunch: boolean; lunchCountdown?: string } | null;
 }
 
+// BottomLine: production budget
+export interface BudgetSlice {
+  budget: import('../types/budget').Budget | null;
+  initializeBudget: () => void;
+  updateBudget: (change: (budget: import('../types/budget').Budget) => import('../types/budget').Budget) => void;
+}
+
 // Reference library (ShotDeck-style) for the production's own images
 export interface ReferencesSlice {
   references: import('../types/references').References | null;
@@ -648,6 +655,7 @@ export type ScreenplayState =
   SuperVisorSlice &
   DailiesSlice &
   ReferencesSlice &
+  BudgetSlice &
   ProjectSlice;
 
 // Fields a Strip Board sort level can use (Movie Magic's Sort window)

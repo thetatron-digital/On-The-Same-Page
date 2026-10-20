@@ -7,7 +7,7 @@ const time = (d?: Date) => d?.toLocaleTimeString([], { hour: 'numeric', minute: 
 
 const APP_NAMES: Record<string, string> = {
   home: 'Home', blueprint: 'BluePrint', corkboard: 'CorkBoard', rewriter: 'ReWriter', breakdown: 'BreakDown',
-  artcart: 'ArtCart', viewfinder: 'ViewFinder', basecamp: 'BaseCamp', onset: 'OnSet', supervisor: 'SuperVisor',
+  artcart: 'ArtCart', viewfinder: 'ViewFinder', basecamp: 'BaseCamp', onset: 'OnSet', supervisor: 'SuperVisor', bottomline: 'BottomLine',
 };
 
 // A stable colour per person

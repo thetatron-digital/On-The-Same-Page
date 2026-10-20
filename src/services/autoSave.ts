@@ -15,7 +15,7 @@ import type { ProjectData } from '../types/user';
 export const PERSISTED_KEYS = [
   'screenplay', 'storyOutline', 'beatBoards', 'versions', 'scriptNotes',
   'splitContent', 'breakdown', 'artCart', 'viewFinder', 'schedule', 'onSet',
-  'superVisor', 'dailies', 'references', 'productionData', 'showSceneNumbers', 'sceneNumberStyle',
+  'superVisor', 'dailies', 'references', 'budget', 'productionData', 'showSceneNumbers', 'sceneNumberStyle',
   'pageLocks', 'watermarkSettings',
 ] as const satisfies readonly (keyof ScreenplayState & keyof ProjectData)[];
 
