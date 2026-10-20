@@ -1,8 +1,14 @@
 import { useScreenplayStore } from '../store/screenplayStore';
+import { useShallow } from 'zustand/react/shallow';
 import './WritingStats.css';
 
 export const WritingStats = () => {
-  const { stats, togglePanel } = useScreenplayStore();
+  const { stats, togglePanel } = useScreenplayStore(
+    useShallow((s) => ({
+      stats: s.stats,
+      togglePanel: s.togglePanel,
+    }))
+  );
 
   return (
     <div className="stats-panel">

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useScreenplayStore } from '../store/screenplayStore';
+import { useShallow } from 'zustand/react/shallow';
 import { BREAKDOWN_CATEGORY_INFO } from '../types/screenplay';
 import type { BreakdownCategory, BreakdownElement } from '../types/screenplay';
 import { getPlainText } from '../utils/fdx';
@@ -39,7 +40,23 @@ export const Breakdown = () => {
     addBreakdownElement,
     deleteBreakdownElement,
     getBreakdownElementsForScene,
-  } = useScreenplayStore();
+  } = useScreenplayStore(
+    useShallow((s) => ({
+      screenplay: s.screenplay,
+      breakdown: s.breakdown,
+      breakdownScenes: s.breakdownScenes,
+      selectedBreakdownCategory: s.selectedBreakdownCategory,
+      selectedBreakdownSceneId: s.selectedBreakdownSceneId,
+      darkMode: s.darkMode,
+      initializeBreakdown: s.initializeBreakdown,
+      refreshBreakdownScenes: s.refreshBreakdownScenes,
+      selectBreakdownCategory: s.selectBreakdownCategory,
+      selectBreakdownScene: s.selectBreakdownScene,
+      addBreakdownElement: s.addBreakdownElement,
+      deleteBreakdownElement: s.deleteBreakdownElement,
+      getBreakdownElementsForScene: s.getBreakdownElementsForScene,
+    }))
+  );
 
   const [showSceneList, setShowSceneList] = useState(true);
   const [selectedText, setSelectedText] = useState('');

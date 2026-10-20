@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuthStore, useProjectsStore } from '../services/projectService';
 import { googleAuth } from '../services/googleAuth';
 import { useScreenplayStore } from '../store/screenplayStore';
+import { useShallow } from 'zustand/react/shallow';
 import type { Project, ProjectData } from '../types/user';
 import './Home.css';
 
@@ -21,11 +22,13 @@ export const Home = () => {
     clearError,
   } = useProjectsStore();
 
-  const {
-    setActiveApp,
-    loadFromProjectData,
-    resetToNew,
-  } = useScreenplayStore();
+  const { setActiveApp, loadFromProjectData, resetToNew } = useScreenplayStore(
+    useShallow((s) => ({
+      setActiveApp: s.setActiveApp,
+      loadFromProjectData: s.loadFromProjectData,
+      resetToNew: s.resetToNew,
+    }))
+  );
 
   const [showNewProject, setShowNewProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');

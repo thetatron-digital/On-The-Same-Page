@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useScreenplayStore } from '../store/screenplayStore';
+import { useShallow } from 'zustand/react/shallow';
 import type {
   ShootDay, SceneStrip, ProductionPerson, ProductionLocation, ProductionScene,
   CallSheet, PersonRole, CallSheetScene,
@@ -61,7 +62,44 @@ const BaseCamp: React.FC = () => {
     updateCallSheet,
     deleteCallSheet,
     updateProductionSettings,
-  } = useScreenplayStore();
+  } = useScreenplayStore(
+    useShallow((s) => ({
+      darkMode: s.darkMode,
+      schedule: s.schedule,
+      breakdownScenes: s.breakdownScenes,
+      viewFinder: s.viewFinder,
+      selectedShootDayId: s.selectedShootDayId,
+      selectedStripId: s.selectedStripId,
+      initializeSchedule: s.initializeSchedule,
+      importStripsFromBreakdown: s.importStripsFromBreakdown,
+      importProductionScenesAsStrips: s.importProductionScenesAsStrips,
+      createShotPackagesFromViewFinder: s.createShotPackagesFromViewFinder,
+      addShootDay: s.addShootDay,
+      updateShootDay: s.updateShootDay,
+      deleteShootDay: s.deleteShootDay,
+      assignStripToDay: s.assignStripToDay,
+      unassignStrip: s.unassignStrip,
+      selectShootDay: s.selectShootDay,
+      selectStrip: s.selectStrip,
+      updateScheduleSettings: s.updateScheduleSettings,
+      basecampView: s.basecampView,
+      setBasecampView: s.setBasecampView,
+      productionData: s.productionData,
+      addPerson: s.addPerson,
+      updatePerson: s.updatePerson,
+      deletePerson: s.deletePerson,
+      addLocation: s.addLocation,
+      updateLocation: s.updateLocation,
+      deleteLocation: s.deleteLocation,
+      addProductionScene: s.addProductionScene,
+      updateProductionScene: s.updateProductionScene,
+      deleteProductionScene: s.deleteProductionScene,
+      addCallSheet: s.addCallSheet,
+      updateCallSheet: s.updateCallSheet,
+      deleteCallSheet: s.deleteCallSheet,
+      updateProductionSettings: s.updateProductionSettings,
+    }))
+  );
 
   // State: when a call sheet is generated from strip board, auto-open it for editing
   const [autoEditCallSheetId, setAutoEditCallSheetId] = useState<string | null>(null);

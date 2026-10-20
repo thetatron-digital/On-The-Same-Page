@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useScreenplayStore } from '../store/screenplayStore';
+import { useShallow } from 'zustand/react/shallow';
 import type { ArtCartItem, SourcingStatus, ItemPriority, ApprovalStatus } from '../types/screenplay';
 import './ArtCart.css';
 
@@ -71,7 +72,29 @@ export const ArtCart = () => {
     selectArtCartCategory,
     setArtCartFilterStatus,
     calculateBudgetTotals,
-  } = useScreenplayStore();
+  } = useScreenplayStore(
+    useShallow((s) => ({
+      artCart: s.artCart,
+      breakdown: s.breakdown,
+      darkMode: s.darkMode,
+      selectedArtCartCategory: s.selectedArtCartCategory,
+      artCartFilterStatus: s.artCartFilterStatus,
+      initializeArtCart: s.initializeArtCart,
+      importFromBreakdown: s.importFromBreakdown,
+      checkScriptVersionSync: s.checkScriptVersionSync,
+      addArtCartItem: s.addArtCartItem,
+      updateArtCartItem: s.updateArtCartItem,
+      setArtCartItemStatus: s.setArtCartItemStatus,
+      addItemOption: s.addItemOption,
+      deleteItemOption: s.deleteItemOption,
+      approveItemOption: s.approveItemOption,
+      setRecommendedOption: s.setRecommendedOption,
+      addVendor: s.addVendor,
+      selectArtCartCategory: s.selectArtCartCategory,
+      setArtCartFilterStatus: s.setArtCartFilterStatus,
+      calculateBudgetTotals: s.calculateBudgetTotals,
+    }))
+  );
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showVendorModal, setShowVendorModal] = useState(false);

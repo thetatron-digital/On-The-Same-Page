@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { useScreenplayStore } from '../store/screenplayStore';
+import { useShallow } from 'zustand/react/shallow';
 import type { CharacterRole, CharacterArc, CharacterArchetype } from '../types/screenplay';
 import { InfoTooltip, TOOLTIP_DATA, OPTIONS_DATA, getBeatTooltip } from './InfoTooltip';
 import './StoryMode.css';
@@ -28,7 +29,18 @@ export const StoryMode = () => {
     updateActs,
     updateBeatContent,
     initializeBeats,
-  } = useScreenplayStore();
+  } = useScreenplayStore(
+    useShallow((s) => ({
+      storyOutline: s.storyOutline,
+      updatePlotOverview: s.updatePlotOverview,
+      addCharacter: s.addCharacter,
+      updateCharacter: s.updateCharacter,
+      deleteCharacter: s.deleteCharacter,
+      updateActs: s.updateActs,
+      updateBeatContent: s.updateBeatContent,
+      initializeBeats: s.initializeBeats,
+    }))
+  );
 
   // Initialize beats on first load
   useEffect(() => {

@@ -9,12 +9,25 @@ import OnSet from './components/OnSet';
 import SuperVisor from './components/SuperVisor';
 import { Home } from './components/Home';
 import { useScreenplayStore } from './store/screenplayStore';
+import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore } from './services/projectService';
 import { startAutoSave } from './services/autoSave';
 import './App.css';
 
 function App() {
-  const { darkMode, isDirty, fileName, activeApp } = useScreenplayStore();
+  const {
+    darkMode,
+    isDirty,
+    fileName,
+    activeApp,
+  } = useScreenplayStore(
+    useShallow((s) => ({
+      darkMode: s.darkMode,
+      isDirty: s.isDirty,
+      fileName: s.fileName,
+      activeApp: s.activeApp,
+    }))
+  );
 
   // Apply theme to document
   useEffect(() => {

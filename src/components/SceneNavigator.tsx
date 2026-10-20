@@ -1,5 +1,6 @@
 import { useState, useRef, useMemo } from 'react';
 import { useScreenplayStore } from '../store/screenplayStore';
+import { useShallow } from 'zustand/react/shallow';
 import { getPlainText } from '../utils/fdx';
 import './SceneNavigator.css';
 
@@ -12,7 +13,19 @@ interface SceneInfo {
 }
 
 export const SceneNavigator = () => {
-  const { screenplay, stats, selectElement, visibility } = useScreenplayStore();
+  const {
+    screenplay,
+    stats,
+    selectElement,
+    visibility,
+  } = useScreenplayStore(
+    useShallow((s) => ({
+      screenplay: s.screenplay,
+      stats: s.stats,
+      selectElement: s.selectElement,
+      visibility: s.visibility,
+    }))
+  );
   const scrollRef = useRef<HTMLDivElement>(null);
   const [hoveredScene, setHoveredScene] = useState<SceneInfo | null>(null);
   const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });

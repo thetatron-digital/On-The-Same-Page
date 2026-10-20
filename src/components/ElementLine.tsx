@@ -3,6 +3,7 @@ import type { ScreenplayElement, ElementType } from '../types/screenplay';
 import { ELEMENT_SHORTCUTS } from '../types/screenplay';
 import { getPlainText, createTextRuns } from '../utils/fdx';
 import { useScreenplayStore } from '../store/screenplayStore';
+import { useShallow } from 'zustand/react/shallow';
 import './ElementLine.css';
 
 interface ElementLineProps {
@@ -59,7 +60,17 @@ export const ElementLine = ({ element, onFocus, isSelected, prevElementType }: E
     selectElement,
     mergeWithPrevious,
     setCurrentElementType,
-  } = useScreenplayStore();
+  } = useScreenplayStore(
+    useShallow((s) => ({
+      updateElement: s.updateElement,
+      updateElementType: s.updateElementType,
+      addElement: s.addElement,
+      deleteElement: s.deleteElement,
+      selectElement: s.selectElement,
+      mergeWithPrevious: s.mergeWithPrevious,
+      setCurrentElementType: s.setCurrentElementType,
+    }))
+  );
 
   const format = ELEMENT_FORMAT[element.type];
 
