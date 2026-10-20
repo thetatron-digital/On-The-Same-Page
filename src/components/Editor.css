@@ -23,7 +23,8 @@
   background: var(--editor-bg, #141414);
   cursor: text;
   display: flex;
-  justify-content: center;
+  /* "safe": when the page is wider than a split panel, scroll instead of cutting its left edge */
+  justify-content: safe center;
   padding: 20px;
 }
 
@@ -342,4 +343,25 @@
   .page-break-marker {
     display: none;
   }
+}
+
+/* Header / footer line on an on-screen page (Document > Header and Footer):
+   left at 1.5", centered, right edge at 7.25" (as in the PDF) */
+.page-header-row {
+  position: absolute;
+  left: 144px;
+  right: 120px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 12px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 16px;
+  line-height: 16px;
+  color: var(--script-text);
+  pointer-events: none;
+  white-space: pre;
+}
+
+.page-header-row span:last-child {
+  text-align: right;
 }

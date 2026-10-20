@@ -5,6 +5,8 @@ import { getPlainText } from '../utils/fdx';
 import { notesInScriptOrder } from '../engine/scriptTools';
 import { castReport, reportToCSV } from '../utils/reports';
 import { goToElement, insertNote } from './writingActions';
+import { ScenePropertiesPane } from './SceneProperties';
+import { SCENE_COLORS } from '../types/screenplay';
 import './Navigator.css';
 
 type NavigatorTab = 'scenes' | 'notes' | 'characters';
@@ -50,6 +52,8 @@ export const Navigator = () => {
       kind: el.outline?.kind ?? 'scene',
       depth: el.outline?.kind === 'section' ? el.outline.depth : 0,
       number: el.outline ? '' : el.sceneNumber ?? String(++sceneCount),
+      title: el.scene?.title,
+      color: el.scene?.color,
       text: getPlainText(el.content) || 'Untitled Scene',
     }));
 
@@ -104,8 +108,9 @@ export const Navigator = () => {
                     className={`scene-item ${selectedElementId === scene.id ? 'active' : ''}`}
                     onClick={() => goToElement(scene.id)}
                   >
+                    <span className="scene-color-bar" style={{ background: scene.color ? SCENE_COLORS[scene.color] : 'transparent' }} />
                     <span className="scene-number">{scene.number}.</span>
-                    <span className="scene-text">{scene.text}</span>
+                    <span className="scene-text">{scene.title ? <><strong>{scene.title}</strong> </> : null}{scene.text}</span>
                   </li>
                 ) : (
                   <li
@@ -120,6 +125,7 @@ export const Navigator = () => {
             )}
           </ul>
         )}
+        {tab === 'scenes' && <ScenePropertiesPane />}
 
         {tab === 'notes' && (
           <>

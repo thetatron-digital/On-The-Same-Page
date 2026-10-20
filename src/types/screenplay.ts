@@ -31,7 +31,24 @@ export interface ScreenplayElement {
   centered?: boolean; // centered text (Fountain >text<, FDX Alignment="Center")
   lyric?: boolean; // lyrics (Fountain ~)
   outline?: OutlineMark; // non-printing structure kept in the script (Fountain #, =, /* */)
+  scene?: SceneProperties; // on a Scene Heading: Navigator > Scene Properties
 }
+
+// Scene properties (Final Draft's NavSceneProperties): shown in the Navigator,
+// Scene View and Index Cards. Length and page come from the pagination engine.
+export interface SceneProperties {
+  title?: string;
+  color?: SceneColor;
+  summary?: string;
+}
+
+export type SceneColor = 'Red' | 'Orange' | 'Yellow' | 'Green' | 'Blue' | 'Purple' | 'Grey';
+
+// Our own shades for the scene color names
+export const SCENE_COLORS: Record<SceneColor, string> = {
+  Red: '#e5484d', Orange: '#f08c2e', Yellow: '#e6c229', Green: '#46a758',
+  Blue: '#3e7bfa', Purple: '#8e4ec6', Grey: '#8b8d98',
+};
 
 // Non-printing paragraphs: they keep their place in the script but take no
 // space on the page, in the editor or in the PDF
@@ -329,7 +346,57 @@ export interface Screenplay {
   macros?: Macro[]; // Document > Macros (defaults until edited)
   autoCompleteLists?: AutoCompleteLists; // Document > Auto-Complete Lists (defaults until edited)
   tableRead?: TableReadSettings; // Tools > Assign Voices
+  pageLayout?: PageLayoutSettings; // Document > Page Layout
+  headerFooter?: HeaderFooterSettings; // Document > Header and Footer
+  characterHighlights?: Record<string, string>; // Format > Highlight Characters: name -> color
 }
+
+// Document > Page Layout (inches; Final Draft's defaults)
+export type LineSpacing = 'veryTight' | 'tight' | 'normal' | 'loose';
+
+export interface PageLayoutSettings {
+  topMargin: number;
+  bottomMargin: number;
+  headerMargin: number; // from the top edge to the header line
+  footerMargin: number; // from the bottom edge to the footer line
+  lineSpacing: LineSpacing;
+  breakAtSentences: boolean; // split dialogue and action only at sentence ends
+}
+
+export const createDefaultPageLayout = (): PageLayoutSettings => ({
+  topMargin: 1, bottomMargin: 1, headerMargin: 0.5, footerMargin: 0.5, lineSpacing: 'normal', breakAtSentences: true,
+});
+
+// Points per line for each spacing (12pt Courier; "Normal" is single spacing)
+export const LINE_SPACING_POINTS: Record<LineSpacing, number> = { veryTight: 11, tight: 11.5, normal: 12, loose: 13 };
+
+// Document > Header and Footer. Text may hold the fields {Page}, {Revision},
+// {Date}, {Title}, {File} and {Scene}.
+export interface HeaderFooterLine {
+  left: string;
+  center: string;
+  right: string;
+}
+
+export interface HeaderFooterSettings {
+  header: HeaderFooterLine;
+  footer: HeaderFooterLine;
+  showHeader: boolean;
+  headerOnFirstPage: boolean;
+  showFooter: boolean;
+  footerOnFirstPage: boolean;
+  startingPage: number;
+}
+
+export const createDefaultHeaderFooter = (): HeaderFooterSettings => ({
+  header: { left: '', center: '{Revision}', right: '{Page}.' },
+  footer: { left: '', center: '', right: '' },
+  showHeader: true,
+  headerOnFirstPage: false,
+  showFooter: false,
+  footerOnFirstPage: true,
+  startingPage: 1,
+});
 
 // Tools > Table Read / Assign Voices: the browser's own speech voices
 export interface VoiceSetting {

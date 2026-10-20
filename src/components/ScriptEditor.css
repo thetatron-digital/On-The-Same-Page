@@ -96,7 +96,7 @@
   font-size: 16px;
   font-style: normal;
   font-weight: 400;
-  line-height: 1.0;
+  line-height: var(--script-line-height, 16px);
   text-transform: uppercase;
   white-space: pre;
   color: var(--script-text);
@@ -114,7 +114,7 @@
   padding: 0;
   font-family: 'Courier New', 'Courier Prime', Courier, monospace;
   font-size: 16px;
-  line-height: 1.0;
+  line-height: var(--script-line-height, 16px); /* Page Layout line spacing */
   color: var(--script-text);
   outline: none;
   white-space: pre-wrap;

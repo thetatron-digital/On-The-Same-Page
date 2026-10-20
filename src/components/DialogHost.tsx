@@ -12,6 +12,7 @@ import { RevisionsDialog, SceneNumbersDialog } from './ProductionDialogs';
 import { AutoCompleteListsDialog, BookmarksDialog, MacrosDialog, ReportsDialog, SidesDialog } from './WritingDialogs';
 import { FindPanel } from './FindReplace';
 import { AssignVoicesDialog } from './TableRead';
+import { HeaderFooterDialog, HighlightCharactersDialog, PageLayoutDialog, RenameCharacterDialog } from './DocumentDialogs';
 import './ProductionDialogs.css';
 
 interface DialogProps {
@@ -149,6 +150,10 @@ export const DialogHost = () => {
     case 'about': return <AboutDialog onClose={close} />;
     case 'autoComplete': return <AutoCompleteListsDialog onClose={close} />;
     case 'voices': return <AssignVoicesDialog onClose={close} />;
+    case 'highlightCharacters': return <HighlightCharactersDialog onClose={close} />;
+    case 'renameCharacter': return <RenameCharacterDialog onClose={close} />;
+    case 'pageLayout': return <PageLayoutDialog onClose={close} />;
+    case 'headerFooter': return <HeaderFooterDialog onClose={close} />;
     case 'find': return <FindPanel key={findTab} tab={findTab} onClose={close} />;
     default: return null;
   }

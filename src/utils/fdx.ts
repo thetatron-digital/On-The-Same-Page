@@ -1,5 +1,5 @@
 import type { Screenplay, ScreenplayElement, TextRun, ElementType, TitlePageInfo, RevisionSettings } from '../types/screenplay';
-import { createDefaultRevisionSettings } from '../types/screenplay';
+import { createDefaultRevisionSettings, SCENE_COLORS, type SceneColor } from '../types/screenplay';
 
 // Generate a unique ID
 export const generateId = (): string => {
@@ -82,6 +82,13 @@ export const parseFDX = (xmlContent: string): Screenplay => {
   const content = doc.querySelector('FinalDraft > Content');
   if (content) {
     content.querySelectorAll(':scope > Paragraph, :scope > OmittedScene').forEach((node) => {
+      // A Summary paragraph is the scene summary of the heading before it
+      if (node.getAttribute('Type') === 'Summary') {
+        const heading = [...screenplay.elements].reverse().find((el) => el.type === 'Scene Heading');
+        const summary = parseRuns(node).map((r) => r.text).join('').trim();
+        if (heading && summary) heading.scene = { ...heading.scene, summary };
+        return;
+      }
       screenplay.elements.push(...parseParagraphNode(node));
     });
   }
@@ -161,10 +168,35 @@ const parseParagraphNode = (node: Element): ScreenplayElement[] => {
   if (node.getAttribute('StartsNewPage') === 'Yes') element.pageBreakBefore = true;
   const revised = Math.max(0, ...runs.map((r) => r.revisionId ?? 0));
   if (revised > 0) element.revisionId = revised;
+  const props = node.querySelector(':scope > SceneProperties');
+  if (props && element.type === 'Scene Heading') {
+    const scene: NonNullable<ScreenplayElement['scene']> = {};
+    if (props.getAttribute('Title')) scene.title = props.getAttribute('Title')!;
+    const color = sceneColorFromFdx(props.getAttribute('Color'));
+    if (color) scene.color = color;
+    if (scene.title || scene.color) element.scene = scene;
+  }
   if (omittedNode) {
     element.omitted = Array.from(omittedNode.querySelectorAll(':scope > Paragraph')).flatMap(parseParagraphNode);
   }
   return [element];
+};
+
+// Scene colors: FDX stores a color; we keep the nearest named scene color
+const sceneColorFromFdx = (value: string | null): SceneColor | undefined => {
+  if (!value) return undefined;
+  const hex = fromFdxColor(value, '');
+  if (!hex) return undefined;
+  const rgb = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const [r, g, b] = rgb(hex);
+  let best: SceneColor | undefined;
+  let bestDistance = Infinity;
+  for (const [name, named] of Object.entries(SCENE_COLORS) as [SceneColor, string][]) {
+    const [nr, ng, nb] = rgb(named);
+    const d = (r - nr) ** 2 + (g - ng) ** 2 + (b - nb) ** 2;
+    if (d < bestDistance) { bestDistance = d; best = name; }
+  }
+  return best;
 };
 
 // FDX colors are 48-bit (#RRRRGGGGBBBB); ours are #rrggbb
@@ -279,10 +311,18 @@ export const generateFDX = (screenplay: Screenplay): string => {
       const revisionAttr = revisionId ? ` RevisionID="${revisionId}"` : '';
       out += `<Text${styleAttr}${revisionAttr}>${escapeXml(run.text)}</Text>\n`;
     });
+    if (element.type === 'Scene Heading' && (element.scene?.title || element.scene?.color)) {
+      const title = element.scene.title ? ` Title="${escapeXml(element.scene.title)}"` : '';
+      const color = element.scene.color ? ` Color="${toFdxColor(SCENE_COLORS[element.scene.color])}"` : '';
+      out += `<SceneProperties${title}${color}/>\n`;
+    }
     if (element.omitted) {
       out += `<OmittedScene>\n${element.omitted.map(paragraph).join('')}</OmittedScene>\n`;
     }
-    return `${out}</Paragraph>\n`;
+    const summary = element.type === 'Scene Heading' && element.scene?.summary
+      ? `<Paragraph Type="Summary">\n<Text>${escapeXml(element.scene.summary)}</Text>\n</Paragraph>\n`
+      : '';
+    return `${out}</Paragraph>\n${summary}`;
   };
 
   for (let i = 0; i < screenplay.elements.length; i++) {

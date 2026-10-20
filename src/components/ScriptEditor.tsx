@@ -1,6 +1,6 @@
 import { useRef, useCallback, useEffect } from 'react';
 import type { ScreenplayElement, ElementType } from '../types/screenplay';
-import { ELEMENT_BEHAVIOR, ELEMENT_FORMATTING, MARGIN_LEFT, NOTE_COLORS } from '../types/screenplay';
+import { ELEMENT_BEHAVIOR, ELEMENT_FORMATTING, LINE_SPACING_POINTS, MARGIN_LEFT, NOTE_COLORS } from '../types/screenplay';
 import { applyMacro, findMacro, getMacros, macroBank } from '../engine/scriptTools';
 import { getAutoCompleteLists } from '../utils/autoCompleteLists';
 import { getRevisionSettings, showsRevisionMark } from '../engine/production';
@@ -21,13 +21,13 @@ const indentChars = (type: ElementType): number =>
 
 // Position an element div exactly as the pagination engine lays it out, so the
 // browser wraps it at the same character count
-const applyElementLayout = (div: HTMLElement, type: ElementType, spaceBefore?: number) => {
+const applyElementLayout = (div: HTMLElement, type: ElementType, spaceBefore?: number, lineHeight = LINE_HEIGHT_PX) => {
   div.style.marginLeft = `${indentChars(type)}ch`;
   div.style.width = `${elementWidthChars(type)}ch`;
   div.style.textIndent = `${elementWidthChars(type) - firstLineWidthChars(type)}ch`;
   div.style.textAlign = ELEMENT_FORMATTING[type].alignment;
   if (spaceBefore !== undefined) {
-    div.style.marginTop = `${spaceBefore * LINE_HEIGHT_PX}px`;
+    div.style.marginTop = `${spaceBefore * lineHeight}px`;
   }
 };
 
@@ -118,6 +118,7 @@ export const ScriptEditor = () => {
     scriptNotes,
     showNotes,
     showAlts,
+    spelling,
   } = useScreenplayStore(
     useShallow((s) => ({
       screenplay: s.screenplay,
@@ -131,6 +132,7 @@ export const ScriptEditor = () => {
       scriptNotes: s.scriptNotes,
       showNotes: s.visibility.scriptNotes,
       showAlts: s.visibility.alts,
+      spelling: s.visibility.spelling,
     }))
   );
 
@@ -162,7 +164,13 @@ export const ScriptEditor = () => {
     const openNotes = showNotes ? scriptNotes.filter((n) => !n.resolved && n.elementId) : [];
     const elementsKey = screenplay.elements.map(e => `${e.id}:${e.type}:${getPlainText(e.content)}:${e.revisionId ?? ''}:${e.omitted ? 'o' : ''}:${e.bookmark ?? ''}:${showAlts ? e.alts?.length ?? 0 : ''}:${e.pageBreakBefore ? 'p' : ''}${e.centered ? 'c' : ''}${e.lyric ? 'l' : ''}${e.outline ? 'h' : ''}`).join('|') +
       `#${revisions.activeSetId}:${revisions.marksShown}:${JSON.stringify(screenplay.lockedPages ?? [])}` +
-      `#${openNotes.map((n) => `${n.id}:${n.elementId}:${n.color}`).join(',')}`;
+      `#${openNotes.map((n) => `${n.id}:${n.elementId}:${n.color}`).join(',')}` +
+      `#${JSON.stringify([screenplay.pageLayout, screenplay.headerFooter?.startingPage, screenplay.characterHighlights])}`;
+    // Document > Page Layout line spacing: 16px per line at Normal (12pt)
+    const lineHeight = (LINE_HEIGHT_PX * (LINE_SPACING_POINTS[screenplay.pageLayout?.lineSpacing ?? 'normal'] ?? 12)) / 12;
+    editor.style.setProperty('--script-line-height', `${lineHeight}px`);
+    const highlights = screenplay.characterHighlights ?? {};
+    let speakerNow = '';
     if (elementsKey === lastElementsRef.current) {
       return; // No actual content change, skip re-render to preserve selection
     }
@@ -263,7 +271,13 @@ export const ScriptEditor = () => {
       div.setAttribute('data-element-id', element.id);
       div.setAttribute('data-element-type', element.type);
       div.className = `script-element ${getElementClass(element.type)}`;
-      applyElementLayout(div, element.type, spaceBefore.get(element.id));
+      applyElementLayout(div, element.type, spaceBefore.get(element.id), lineHeight);
+
+      // Format > Highlight Characters: a character's name and speech in their color
+      if (element.type === 'Character') speakerNow = text.replace(/\s*\(.*$/, '').trim().toUpperCase();
+      else if (element.type !== 'Dialogue' && element.type !== 'Parenthetical') speakerNow = '';
+      const highlight = speakerNow && highlights[speakerNow];
+      if (highlight) div.style.backgroundColor = `${highlight}40`;
       if (element.centered) div.style.textAlign = 'center';
       if (element.lyric) div.style.fontStyle = 'italic';
       // Sections, synopses and boneyard keep their place but take no space
@@ -373,7 +387,7 @@ export const ScriptEditor = () => {
       if (dualBlocks.has(index)) {
         const block = document.createElement('div');
         block.className = 'dual-dialogue-block';
-        block.style.marginTop = `${(spaceBefore.get(element.id) ?? 1) * LINE_HEIGHT_PX}px`;
+        block.style.marginTop = `${(spaceBefore.get(element.id) ?? 1) * lineHeight}px`;
         const left = document.createElement('div');
         const right = document.createElement('div');
         left.className = 'dual-dialogue-column';
@@ -1046,7 +1060,9 @@ export const ScriptEditor = () => {
         onKeyDown={handleKeyDown}
         onClick={handleClick}
         onPaste={handlePaste}
-        spellCheck
+        // Tools > Spelling: the browser's own spell checker (right-click for suggestions)
+        spellCheck={spelling}
+        lang={navigator.language || 'en'}
       />
       <AutoComplete
         onSelect={handleAutoCompleteSelect}

@@ -29,8 +29,8 @@
 //   Text that no longer fits before the next locked page flows onto A-pages
 //   (12A, 12B, ...); a page that shrinks keeps its place and ends short.
 
-import type { ElementType, LockedPage, Screenplay, ScreenplayElement } from '../types/screenplay';
-import { ELEMENT_FORMATTING, LINES_PER_PAGE } from '../types/screenplay';
+import type { ElementType, LockedPage, PageLayoutSettings, Screenplay, ScreenplayElement } from '../types/screenplay';
+import { ELEMENT_FORMATTING, LINE_SPACING_POINTS, LINES_PER_PAGE, PAGE_HEIGHT_INCHES } from '../types/screenplay';
 
 export const CHARS_PER_INCH = 10; // Courier 12pt
 export const MIN_SPLIT_LINES = 2;
@@ -38,6 +38,8 @@ export const DUAL_COLUMN_CHARS = 25; // 2.5" per dual dialogue column
 
 export interface PaginateOptions {
   lockedPages?: LockedPage[];
+  breakAtSentences?: boolean; // default true; false lets speeches and action split at any line
+  startingPage?: number; // number printed on the first page (Header and Footer)
   linesPerPage?: number;
   moreText?: string;
   contdText?: string;
@@ -349,6 +351,7 @@ export const nextPageLabel = (label: string): string => {
 
 export const paginate = (elements: ScreenplayElement[], options: PaginateOptions = {}): Pagination => {
   const cap = Math.max(4, options.linesPerPage ?? LINES_PER_PAGE);
+  const atSentences = options.breakAtSentences ?? true;
   const moreText = options.moreText ?? '(MORE)';
   const contdText = options.contdText ?? "(CONT'D)";
 
@@ -370,7 +373,8 @@ export const paginate = (elements: ScreenplayElement[], options: PaginateOptions
   const midLocks = (u: SingleUnit): LockedPage[] =>
     (locks.get(u.el.id) ?? []).filter((l) => l.offset > 0 && l.offset < u.text.length);
 
-  const pages: Page[] = [{ number: 1, label: lockAtStart(0)?.label ?? '1', items: [], linesUsed: 0 }];
+  const firstNumber = Math.max(1, Math.floor(options.startingPage ?? 1));
+  const pages: Page[] = [{ number: 1, label: lockAtStart(0)?.label ?? String(firstNumber), items: [], linesUsed: 0 }];
   let page = pages[0];
   let speaker = ''; // current dialogue block's character name
 
@@ -378,7 +382,7 @@ export const paginate = (elements: ScreenplayElement[], options: PaginateOptions
   // the next number, or the next A-page while pages are locked.
   const newPage = (brk: Omit<PageBreak, 'page'>, label?: string) => {
     const number = pages.length + 1;
-    page = { number, label: label ?? (locked ? nextPageLabel(page.label) : String(number)), items: [], linesUsed: 0 };
+    page = { number, label: label ?? (locked ? nextPageLabel(page.label) : String(number + firstNumber - 1)), items: [], linesUsed: 0 };
     pages.push(page);
     breaks.push({ ...brk, page: number });
     if (brk.contd) {
@@ -405,7 +409,7 @@ export const paginate = (elements: ScreenplayElement[], options: PaginateOptions
     const u = units[k];
     const n = unitHeight(u);
     const next = units[k + 1];
-    if (u.kind === 'single' && isSplittable(u) && n >= 2 * MIN_SPLIT_LINES && sentenceStarts(u.text).length > 0) {
+    if (u.kind === 'single' && isSplittable(u) && n >= 2 * MIN_SPLIT_LINES && (!atSentences || sentenceStarts(u.text).length > 0)) {
       return MIN_SPLIT_LINES + (u.type === 'Dialogue' ? 1 : 0);
     }
     if (keeps(k)) return n + spaceBeforeOf(next) + minLead(k + 1);
@@ -444,7 +448,9 @@ export const paginate = (elements: ScreenplayElement[], options: PaginateOptions
   // than a page) fall back to cutting after the last line that fits.
   const chooseCut = (u: SingleUnit, from: number, to: number, avail: number, mustSplit: boolean): number => {
     const minBefore = mustSplit ? 1 : MIN_SPLIT_LINES;
-    const starts = sentenceStarts(u.text).filter((s) => s > from && s < to);
+    // Final Draft breaks at sentence ends by default (Page Layout option); otherwise any line will do
+    const starts = (atSentences ? sentenceStarts(u.text) : wrapRange(u, from, to).slice(1).map((l) => l.start))
+      .filter((s) => s > from && s < to);
     for (let i = starts.length - 1; i >= 0; i--) {
       const kept = wrapRange(u, from, starts[i]).length;
       if (kept > avail) continue;
@@ -616,14 +622,30 @@ export const paginate = (elements: ScreenplayElement[], options: PaginateOptions
   return { pages, pageCount: pages.length, breaks, elementPages, continuedCharacters, contdText, linesPerPage: cap };
 };
 
-// The editor, stats, navigator and PDF all paginate the same script on each
-// change; cache by the elements array (and locks) so the work happens once.
-const cache = new WeakMap<ScreenplayElement[], { locks?: LockedPage[]; result: Pagination }>();
+// Lines per page for a page layout: the first line sits on the top margin and
+// the last one no lower than the bottom margin (1" margins at 12pt = 55 lines)
+export const linesPerPageFor = (layout: PageLayoutSettings | undefined): number => {
+  if (!layout) return LINES_PER_PAGE;
+  const leading = LINE_SPACING_POINTS[layout.lineSpacing] ?? 12;
+  return Math.max(10, Math.floor(((PAGE_HEIGHT_INCHES - layout.topMargin - layout.bottomMargin) * 72) / leading) + 1);
+};
 
-export const paginateScript = (script: Pick<Screenplay, 'elements' | 'lockedPages'>): Pagination => {
+type PaginatedScript = Pick<Screenplay, 'elements' | 'lockedPages' | 'pageLayout' | 'headerFooter'>;
+
+// The editor, stats, navigator and PDF all paginate the same script on each
+// change; cache by the elements array (and settings) so the work happens once.
+const cache = new WeakMap<ScreenplayElement[], { key: unknown[]; result: Pagination }>();
+
+export const paginateScript = (script: PaginatedScript): Pagination => {
+  const key = [script.lockedPages, script.pageLayout, script.headerFooter?.startingPage];
   const hit = cache.get(script.elements);
-  if (hit && hit.locks === script.lockedPages) return hit.result;
-  const result = paginate(script.elements, { lockedPages: script.lockedPages });
-  cache.set(script.elements, { locks: script.lockedPages, result });
+  if (hit && hit.key.every((k, i) => k === key[i])) return hit.result;
+  const result = paginate(script.elements, {
+    lockedPages: script.lockedPages,
+    linesPerPage: linesPerPageFor(script.pageLayout),
+    breakAtSentences: script.pageLayout?.breakAtSentences ?? true,
+    startingPage: script.headerFooter?.startingPage,
+  });
+  cache.set(script.elements, { key, result });
   return result;
 };

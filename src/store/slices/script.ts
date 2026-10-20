@@ -26,6 +26,7 @@ import {
   unlockAPages,
 } from '../../engine/production';
 import { addAlt, cycleAlt, removeAlt, setBookmark } from '../../engine/scriptTools';
+import { moveScene, renameCharacter } from '../../engine/scenes';
 import type { HistoryEntry, ScreenplayState, ScriptSlice } from '../types';
 
 // Auto-Complete suggestions: script characters and locations plus the
@@ -811,4 +812,56 @@ export const createScriptSlice: StateCreator<ScreenplayState, [], [], ScriptSlic
 
   setTableReadSettings: (settings) =>
     set((state) => ({ screenplay: { ...state.screenplay, tableRead: settings }, isDirty: true })),
+
+  // Scenes, characters and page settings
+  setSceneProperties: (headingId, changes) => {
+    const state = get();
+    const elements = state.screenplay.elements.map((el) =>
+      el.id === headingId ? { ...el, scene: { ...el.scene, ...changes } } : el);
+    set({ screenplay: { ...state.screenplay, elements }, isDirty: true });
+  },
+
+  moveScene: (from, to) => {
+    const state = get();
+    const elements = moveScene(state.screenplay.elements, from, to);
+    if (elements !== state.screenplay.elements) state.setScreenplay({ ...state.screenplay, elements });
+  },
+
+  renameCharacter: (from, to, alsoInText) => {
+    const state = get();
+    const result = renameCharacter(state.screenplay.elements, from, to, alsoInText);
+    if (result.count === 0) return 0;
+    const oldName = from.trim().toUpperCase();
+    const newName = to.trim().toUpperCase();
+    // Settings keyed by the name follow it
+    const rekey = <T,>(map: Record<string, T> | undefined) => {
+      if (!map || !(oldName in map)) return map;
+      const next = { ...map, [newName]: map[oldName] };
+      delete next[oldName];
+      return next;
+    };
+    const screenplay = { ...state.screenplay, elements: result.elements };
+    if (screenplay.characterHighlights) screenplay.characterHighlights = rekey(screenplay.characterHighlights);
+    if (screenplay.tableRead) screenplay.tableRead = { ...screenplay.tableRead, characters: rekey(screenplay.tableRead.characters) ?? {} };
+    if (screenplay.autoCompleteLists) {
+      screenplay.autoCompleteLists = {
+        ...screenplay.autoCompleteLists,
+        characters: screenplay.autoCompleteLists.characters.map((c) => (c === oldName ? newName : c)),
+      };
+    }
+    state.setScreenplay(screenplay);
+    return result.count;
+  },
+
+  setCharacterHighlights: (highlights) =>
+    set((state) => ({ screenplay: { ...state.screenplay, characterHighlights: highlights }, isDirty: true })),
+
+  setPageLayout: (layout) =>
+    set((state) => {
+      const screenplay = { ...state.screenplay, pageLayout: layout };
+      return { screenplay, isDirty: true, stats: calculateWritingStats(screenplay) };
+    }),
+
+  setHeaderFooter: (settings) =>
+    set((state) => ({ screenplay: { ...state.screenplay, headerFooter: settings }, isDirty: true })),
 });
