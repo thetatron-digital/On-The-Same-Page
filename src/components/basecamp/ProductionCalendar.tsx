@@ -12,6 +12,7 @@ import {
   type Weekday,
 } from '../../engine/schedule/calendar';
 import { toYMD } from '../../utils/doodReport';
+import { scheduleToIcs } from '../../utils/calendarIcs';
 import './basecampTools.css';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -25,8 +26,8 @@ const KIND_LABEL: Record<SpecialDayKind, string> = {
 const monthStart = (ymd: string) => `${ymd.slice(0, 7)}-01`;
 
 export function ProductionCalendar() {
-  const { schedule, setScheduleCalendar } = useScreenplayStore(
-    useShallow((s) => ({ schedule: s.schedule, setScheduleCalendar: s.setScheduleCalendar }))
+  const { schedule, setScheduleCalendar, projectTitle } = useScreenplayStore(
+    useShallow((s) => ({ schedule: s.schedule, setScheduleCalendar: s.setScheduleCalendar, projectTitle: s.screenplay.title }))
   );
   const today = toYMD(new Date());
   const [draft, setDraft] = useState<Calendar>(
@@ -69,6 +70,22 @@ export function ProductionCalendar() {
       <div className="bc-page-header bct-header">
         <h2>Calendar</h2>
         <div className="bct-actions">
+          <button
+            className="bc-btn bc-btn-outline"
+            disabled={!schedule?.shootDays.length}
+            title="Shoot days as calendar events for Google, Apple or Outlook Calendar"
+            onClick={() => {
+              const title = projectTitle || schedule!.projectName || 'Production';
+              const blob = new Blob([scheduleToIcs(schedule!, { title })], { type: 'text/calendar;charset=utf-8' });
+              const a = document.createElement('a');
+              a.href = URL.createObjectURL(blob);
+              a.download = `${title} shoot days.ics`;
+              a.click();
+              setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+            }}
+          >
+            Export to Calendar
+          </button>
           {schedule?.calendar && (
             <button className="bc-btn bc-btn-outline" onClick={() => setScheduleCalendar(null)}>Remove Calendar</button>
           )}
