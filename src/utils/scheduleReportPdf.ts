@@ -1,7 +1,7 @@
 // PDF output for the One-Line and Shooting Schedule reports (jsPDF, letter)
 import jsPDF from 'jspdf';
 import { STRIP_COLOR_HEX, stripColorFor } from '../types/screenplay';
-import { dayBreakLine, formatReportDate, type ReportStrip, type ScheduleReport } from './scheduleReports';
+import { dayBreakLine, formatReportDate, type ReportStrip, type ScheduleReport, type TableReport } from './scheduleReports';
 
 export type ReportKind = 'oneLine' | 'shooting';
 
@@ -173,6 +173,75 @@ export function scheduleReportPdf(report: ScheduleReport, kind: ReportKind): jsP
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
   doc.text(`Total: ${report.days.length} shoot days -- ${report.totalPages} pages`, M, y);
+  footer();
+  return doc;
+}
+
+/** Simple table PDF for the list reports (Cast List, Location List, ...) */
+export function tableReportPdf(report: TableReport, projectTitle: string, credits?: string): jsPDF {
+  const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+  const printed = new Date();
+  let page = 1;
+  let y = 0;
+  // Column widths: short ID / count columns narrow, text columns share the rest
+  const narrow = (c: string) => /^(ID|I\/E|Scenes|Pages)$/.test(c);
+  const narrowW = 46;
+  const wideCount = report.columns.filter((c) => !narrow(c)).length || 1;
+  const wideW = (CW - narrowW * (report.columns.length - wideCount)) / wideCount;
+  const xs: number[] = [];
+  report.columns.reduce((x, c) => { xs.push(x); return x + (narrow(c) ? narrowW : wideW); }, M);
+  const widthOf = (i: number) => (narrow(report.columns[i]) ? narrowW : wideW) - 6;
+
+  const header = () => {
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor('#1a1a1a');
+    doc.text(report.title, M, M + 6);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+    doc.text(projectTitle, PW - M, M + 6, { align: 'right' });
+    doc.setDrawColor('#999999'); doc.setLineWidth(0.75); doc.line(M, M + 14, PW - M, M + 14);
+    y = M + 28;
+    if (credits) {
+      doc.setFontSize(8); doc.setTextColor('#555555');
+      doc.text(doc.splitTextToSize(credits, CW)[0] ?? '', M, M + 25);
+      doc.setTextColor('#1a1a1a'); y = M + 38;
+    }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8);
+    report.columns.forEach((c, i) => doc.text(c.toUpperCase(), xs[i], y));
+    doc.setDrawColor('#cccccc'); doc.line(M, y + 4, PW - M, y + 4);
+    y += 16;
+  };
+  const footer = () => {
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor('#666666');
+    doc.text(`Printed on ${printed.toLocaleDateString('en-US')} at ${printed.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`, M, FOOT);
+    doc.text(`Page ${page}`, PW - M, FOOT, { align: 'right' });
+    doc.setTextColor('#1a1a1a');
+  };
+  const ensure = (h: number) => {
+    if (y + h <= PH - M - 12) return;
+    footer(); doc.addPage(); page++; header();
+  };
+
+  header();
+  for (const section of report.sections) {
+    if (section.heading) {
+      ensure(30);
+      doc.setFillColor('#e8e8e8'); doc.rect(M, y - 11, CW, 16, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+      doc.text(section.heading, M + 6, y); y += 18;
+    }
+    if (section.rows.length === 0 && section.heading) {
+      doc.setFont('helvetica', 'italic'); doc.setFontSize(9); doc.setTextColor('#777777');
+      doc.text('None', M + 6, y); doc.setTextColor('#1a1a1a'); y += 14;
+    }
+    for (const row of section.rows) {
+      const cells = row.map((cell, i) => doc.splitTextToSize(cell, widthOf(i)) as string[]);
+      const h = Math.max(...cells.map((c) => c.length)) * 11 + 3;
+      ensure(h);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+      cells.forEach((lines, i) => lines.forEach((line, j) => doc.text(line, xs[i], y + j * 11)));
+      y += h;
+    }
+    y += 6;
+  }
   footer();
   return doc;
 }
