@@ -447,7 +447,7 @@ export const Toolbar = () => {
       setDirty(false);
       // An explicitly saved document belongs to this project from now on
       useScreenplayStore.getState().setDocumentOrigin('project');
-    } catch (error) {
+    } catch {
       alert('Failed to save to cloud. Please try again.');
     }
   };

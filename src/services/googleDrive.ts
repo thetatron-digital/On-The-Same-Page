@@ -14,6 +14,24 @@ import {
 } from '../types/user';
 import { migrateProjectData, parseProjectData, reviveDates } from '../utils/projectData';
 
+// Fields requested from the Drive v3 files.list endpoint
+interface DrivePermission {
+  type: string;
+  role: string;
+  emailAddress?: string;
+  displayName?: string;
+}
+
+interface DriveFile {
+  id: string;
+  name: string;
+  description?: string;
+  createdTime: string;
+  modifiedTime: string;
+  shared?: boolean;
+  permissions?: DrivePermission[];
+}
+
 const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
 const UPLOAD_API_BASE = 'https://www.googleapis.com/upload/drive/v3';
 
@@ -100,7 +118,7 @@ class GoogleDriveService {
     const result = await response.json();
     const user = googleAuth.getStoredUser();
 
-    return (result.files || []).map((file: any) => ({
+    return (result.files || []).map((file: DriveFile) => ({
       id: file.id,
       name: file.name.replace('.json', ''),
       description: file.description || '',
@@ -111,8 +129,8 @@ class GoogleDriveService {
       ownerName: user?.name,
       isShared: file.shared || false,
       sharedWith: file.permissions
-        ?.filter((p: any) => p.type === 'user' && p.emailAddress !== user?.email)
-        .map((p: any) => ({
+        ?.filter((p: DrivePermission) => p.type === 'user' && p.emailAddress !== user?.email)
+        .map((p: DrivePermission) => ({
           email: p.emailAddress,
           name: p.displayName,
           permission: p.role === 'writer' ? 'edit' : 'view',

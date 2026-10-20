@@ -5,6 +5,7 @@ import { useScreenplayStore } from '../store/screenplayStore';
 import { openProject } from '../services/openProject';
 import { useShallow } from 'zustand/react/shallow';
 import type { Project, ProjectData } from '../types/user';
+import type { AppMode } from '../store/types';
 import './Home.css';
 
 export const Home = () => {
@@ -435,7 +436,7 @@ export const Home = () => {
               <button
                 key={app.id}
                 className="app-card"
-                onClick={() => setActiveApp(app.id as any)}
+                onClick={() => setActiveApp(app.id as AppMode)}
               >
                 <span className="app-name">{app.name}</span>
                 <span className="app-desc">{app.desc}</span>

@@ -3,7 +3,8 @@ import ReactDOM from 'react-dom';
 import { useScreenplayStore } from '../store/screenplayStore';
 import { useShallow } from 'zustand/react/shallow';
 import type { CharacterRole, CharacterArc, CharacterArchetype } from '../types/screenplay';
-import { InfoTooltip, TOOLTIP_DATA, OPTIONS_DATA, getBeatTooltip } from './InfoTooltip';
+import { InfoTooltip } from './InfoTooltip';
+import { TOOLTIP_DATA, OPTIONS_DATA, getBeatTooltip } from './infoTooltipData';
 import './StoryMode.css';
 
 type StoryTab = 'plot' | 'characters' | 'acts' | 'beats';
