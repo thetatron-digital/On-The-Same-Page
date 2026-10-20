@@ -25,6 +25,9 @@ import type {
   AutoCompleteTrigger,
   AutoCompleteLists,
   TableReadSettings,
+  SceneProperties,
+  PageLayoutSettings,
+  HeaderFooterSettings,
   PageLock,
   RevisionSettings,
   RevisionSet,
@@ -91,10 +94,21 @@ export interface VisibilityState {
   sceneNavigator: boolean;
   scriptNotes: boolean;
   alts: boolean; // View > Document > Show Alts.
+  spelling: boolean; // Tools > Spelling: check spelling as you type
 }
 
 // View modes (within Re-writer app)
 export type ViewMode = 'script' | 'split';
+
+// View > Script / Scene View / Index Cards, and View > Split (Final Draft's panels)
+export type PanelView = 'script' | 'sceneView' | 'cardsScript' | 'cardsSummary';
+export interface PanelLayout {
+  primary: PanelView;
+  split: 'none' | 'vertical' | 'horizontal';
+  secondary: PanelView;
+  cardsAcross: number; // 1-9
+  sceneViewShows: { title: boolean; summary: boolean; action: boolean };
+}
 
 // App modes (top-level application switching)
 export type AppMode = 'home' | 'blueprint' | 'corkboard' | 'rewriter' | 'breakdown' | 'artcart' | 'viewfinder' | 'basecamp' | 'onset' | 'supervisor';
@@ -229,6 +243,13 @@ export interface ScriptSlice {
   setMacros: (macros: Macro[]) => void;
   setAutoCompleteLists: (lists: AutoCompleteLists) => void;
   setTableReadSettings: (settings: TableReadSettings) => void;
+  // Scenes, characters and page settings
+  setSceneProperties: (headingId: string, changes: Partial<SceneProperties>) => void;
+  moveScene: (from: number, to: number) => void;
+  renameCharacter: (from: string, to: string, alsoInText: boolean) => number;
+  setCharacterHighlights: (highlights: Record<string, string>) => void;
+  setPageLayout: (layout: PageLayoutSettings) => void;
+  setHeaderFooter: (settings: HeaderFooterSettings) => void;
 }
 
 // App shell: active app, zoom, panels, theme, writing stats
@@ -239,6 +260,7 @@ export interface UiSlice {
   zoom: number;
   activeApp: AppMode;
   viewMode: ViewMode;
+  panelLayout: PanelLayout;
   panels: PanelState;
   visibility: VisibilityState;
   stats: WritingStats;
@@ -248,6 +270,7 @@ export interface UiSlice {
   setZoom: (zoom: number) => void;
   setActiveApp: (app: AppMode) => void;
   setViewMode: (mode: ViewMode) => void;
+  setPanelLayout: (changes: Partial<PanelLayout>) => void;
   togglePanel: (panel: keyof PanelState) => void;
   toggleVisibility: (item: keyof VisibilityState) => void;
   setCurrentPage: (page: number) => void;

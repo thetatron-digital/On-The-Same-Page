@@ -12,6 +12,13 @@ export const createUiSlice: StateCreator<ScreenplayState, [], [], UiSlice> = (se
   zoom: 100,
   activeApp: 'rewriter',
   viewMode: 'script',
+  panelLayout: {
+    primary: 'script',
+    split: 'none',
+    secondary: 'cardsSummary',
+    cardsAcross: 2,
+    sceneViewShows: { title: true, summary: true, action: true },
+  },
   panels: {
     navigator: false,
     elements: false,
@@ -24,6 +31,7 @@ export const createUiSlice: StateCreator<ScreenplayState, [], [], UiSlice> = (se
     sceneNavigator: true,
     scriptNotes: true,
     alts: false,
+    spelling: true,
   },
   stats: {
     pageCount: 1,
@@ -42,6 +50,7 @@ export const createUiSlice: StateCreator<ScreenplayState, [], [], UiSlice> = (se
   setActiveApp: (app) => set({ activeApp: app }),
 
   setViewMode: (mode) => set({ viewMode: mode }),
+  setPanelLayout: (changes) => set((state) => ({ panelLayout: { ...state.panelLayout, ...changes } })),
 
   togglePanel: (panel) =>
     set((state) => ({

@@ -126,6 +126,50 @@ export const COMMANDS: Command[] = [
   { id: 'edit.findNext', label: 'Find Next', keys: [k('F3')], run: () => { findAgain(); } },
   { id: 'edit.findPrevious', label: 'Find Previous', keys: [k('F3', { shift: true })], run: () => { findAgain(true); } },
 
+  { id: 'edit.renameCharacter', label: 'Rename Character…', run: () => dialogs().show('renameCharacter') },
+
+  // View: panels (Final Draft's split views)
+  ...(([['script', 'Script'], ['sceneView', 'Scene View'], ['cardsScript', 'Index Cards – Script'], ['cardsSummary', 'Index Cards – Summary']] as const)
+    .map(([view, label]): Command => ({
+      id: `view.panel.${view}`,
+      label,
+      checked: () => store().viewMode === 'script' && store().panelLayout.primary === view,
+      run: () => {
+        const s = store();
+        if (s.viewMode !== 'script') s.setViewMode('script');
+        // The script shows in one panel only
+        const secondary = view === 'script' && s.panelLayout.secondary === 'script' ? 'cardsSummary' : s.panelLayout.secondary;
+        s.setPanelLayout({ primary: view, secondary });
+      },
+    }))),
+  ...(([['vertical', 'Vertically'], ['horizontal', 'Horizontally'], ['none', 'Unsplit']] as const).map(([split, label]): Command => ({
+    id: `view.split.${split}`,
+    label,
+    checked: () => store().panelLayout.split === split,
+    run: () => {
+      const s = store();
+      if (s.viewMode !== 'script') s.setViewMode('script');
+      const secondary = s.panelLayout.primary === 'script' ? (s.panelLayout.secondary === 'script' ? 'cardsSummary' : s.panelLayout.secondary) : 'script';
+      s.setPanelLayout({ split, secondary });
+    },
+  }))),
+  {
+    id: 'view.swapPanels', label: 'Swap Panels', enabled: () => store().panelLayout.split !== 'none',
+    run: () => { const { primary, secondary } = store().panelLayout; store().setPanelLayout({ primary: secondary, secondary: primary }); },
+  },
+  ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n): Command => ({
+    id: `view.cardsAcross.${n}`,
+    label: String(n),
+    checked: () => store().panelLayout.cardsAcross === n,
+    run: () => store().setPanelLayout({ cardsAcross: n }),
+  })),
+  ...(([['title', 'Show Scene Title'], ['summary', 'Show Summary'], ['action', 'Show Action']] as const).map(([field, label]): Command => ({
+    id: `view.sceneViewShows.${field}`,
+    label,
+    checked: () => store().panelLayout.sceneViewShows[field],
+    run: () => { const shows = store().panelLayout.sceneViewShows; store().setPanelLayout({ sceneViewShows: { ...shows, [field]: !shows[field] } }); },
+  }))),
+
   // View
   { id: 'view.ruler', label: 'Ruler', checked: () => store().visibility.ruler, run: () => store().toggleVisibility('ruler') },
   { id: 'view.sceneNavigator', label: 'Scene Strip', checked: () => store().visibility.sceneNavigator, run: () => store().toggleVisibility('sceneNavigator') },
@@ -148,6 +192,7 @@ export const COMMANDS: Command[] = [
     checked: () => store().currentElementType === type,
     run: () => changeElement(type),
   })),
+  { id: 'format.highlightCharacters', label: 'Highlight Characters…', run: () => dialogs().show('highlightCharacters') },
   {
     id: 'format.centered', label: 'Centered', enabled: hasParagraph,
     checked: () => !!store().screenplay.elements.find((el) => el.id === currentId())?.centered,
@@ -168,6 +213,8 @@ export const COMMANDS: Command[] = [
   { id: 'insert.generalNote', label: 'General Note', keys: [letter('g', { mod: true, shift: true })], run: () => insertNote('general') },
 
   // Document
+  { id: 'document.pageLayout', label: 'Page Layout…', run: () => dialogs().show('pageLayout') },
+  { id: 'document.headerFooter', label: 'Header and Footer…', run: () => dialogs().show('headerFooter') },
   { id: 'document.watermark', label: 'Watermark…', run: () => dialogs().show('watermark') },
   { id: 'document.titlePage', label: 'Title Page…', run: () => store().togglePanel('titlePage') },
   { id: 'document.autoComplete', label: 'Auto-Complete Lists…', keys: [letter('l', { mod: true, soft: true })], run: () => dialogs().show('autoComplete') },
@@ -179,6 +226,10 @@ export const COMMANDS: Command[] = [
   { id: 'tools.locationReport', label: 'Location Report…', run: () => dialogs().show('reports', 'location') },
   { id: 'tools.characterReport', label: 'Character Report…', run: () => dialogs().show('reports', 'character') },
   { id: 'tools.castReport', label: 'Cast Report…', run: () => dialogs().show('reports', 'cast') },
+  {
+    id: 'tools.spelling', label: 'Check Spelling as You Type', checked: () => store().visibility.spelling,
+    run: () => store().toggleVisibility('spelling'),
+  },
   { id: 'tools.tableRead', label: 'Table Read…', run: () => { useTableRead.getState().show(); play(); } },
   { id: 'tools.assignVoices', label: 'Assign Voices…', run: () => dialogs().show('voices') },
   { id: 'tools.navigator', label: () => (store().panels.navigator ? 'Hide Navigator' : 'Show Navigator'), run: () => store().togglePanel('navigator') },
@@ -227,12 +278,18 @@ export const MENUS: { title: string; items: MenuEntry[] }[] = [
     title: 'Edit',
     items: [
       'edit.undo', 'edit.redo', '---', 'edit.cut', 'edit.copy', 'edit.paste', '---', 'edit.selectAll', '---',
-      'edit.find', 'edit.replace', 'edit.goto', 'edit.findSelection', 'edit.findNext', 'edit.findPrevious',
+      'edit.find', 'edit.replace', 'edit.goto', 'edit.findSelection', 'edit.findNext', 'edit.findPrevious', 'edit.renameCharacter',
     ],
   },
   {
     title: 'View',
     items: [
+      { submenu: 'Split', items: ['view.split.vertical', 'view.split.horizontal', 'view.split.none', '---', 'view.swapPanels'] }, '---',
+      'view.panel.script', '---',
+      'view.panel.sceneView',
+      { submenu: 'Show/Hide Scene View', items: ['view.sceneViewShows.action', 'view.sceneViewShows.title', 'view.sceneViewShows.summary'] }, '---',
+      'view.panel.cardsScript', 'view.panel.cardsSummary',
+      { submenu: 'Cards Across', items: [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `view.cardsAcross.${n}`) }, '---',
       'view.twoColumn', '---', 'view.ruler', 'view.sceneNavigator',
       { submenu: 'Document', items: ['view.scriptNotes', 'view.alts'] }, '---',
       { submenu: 'Zoom', items: ['view.zoomIn', 'view.zoomOut', '---', 'view.zoom100'] },
@@ -241,7 +298,7 @@ export const MENUS: { title: string; items: MenuEntry[] }[] = [
   {
     title: 'Format',
     items: [
-      { submenu: 'Change Element To', items: ELEMENT_ORDER.map((t) => `format.element.${t}`) }, '---',
+      { submenu: 'Change Element To', items: ELEMENT_ORDER.map((t) => `format.element.${t}`) }, 'format.highlightCharacters', '---',
       { submenu: 'Alignment', items: ['format.centered'] }, '---',
       'format.dualDialogue',
     ],
@@ -250,11 +307,14 @@ export const MENUS: { title: string; items: MenuEntry[] }[] = [
     title: 'Insert',
     items: ['insert.addAlt', 'insert.removeAlt', '---', 'insert.pageBreak', '---', 'insert.bookmark', 'insert.scriptNote', 'insert.generalNote'],
   },
-  { title: 'Document', items: ['document.watermark', '---', 'document.titlePage', 'document.autoComplete', 'document.macros', 'document.bookmarks'] },
+  {
+    title: 'Document',
+    items: ['document.pageLayout', 'document.headerFooter', 'document.watermark', '---', 'document.titlePage', 'document.autoComplete', 'document.macros', 'document.bookmarks'],
+  },
   {
     title: 'Tools',
     items: [
-      'tools.tableRead', 'tools.assignVoices', '---',
+      'tools.spelling', '---', 'tools.tableRead', 'tools.assignVoices', '---',
       { submenu: 'Reports', items: ['tools.sceneReport', 'tools.locationReport', '---', 'tools.characterReport', 'tools.castReport'] }, '---',
       'tools.navigator', 'tools.writingStats',
     ],

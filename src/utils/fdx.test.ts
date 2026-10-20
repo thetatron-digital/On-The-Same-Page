@@ -51,6 +51,15 @@ describe('FDX round-trip', () => {
     expect(back.elements[0]).toMatchObject({ centered: true, pageBreakBefore: true });
   });
 
+  it('keeps scene titles, colors and summaries', () => {
+    const back = roundTrip(script([
+      { id: 'h', type: 'Scene Heading', content: [{ text: 'INT. A - DAY' }], scene: { title: 'The meeting', color: 'Green', summary: 'They meet & talk.' } },
+      { id: 'a', type: 'Action', content: [{ text: 'Rain.' }] },
+    ]));
+    expect(back.elements).toHaveLength(2);
+    expect(back.elements[0].scene).toEqual({ title: 'The meeting', color: 'Green', summary: 'They meet & talk.' });
+  });
+
   it('keeps bookmarks', () => {
     const back = roundTrip(script([{ id: 'a', type: 'Action', content: [{ text: 'x' }], bookmark: 'Midpoint & "twist"' }]));
     expect(back.elements[0].bookmark).toBe('Midpoint & "twist"');

@@ -1,9 +1,10 @@
 import jsPDF from 'jspdf';
 import type { Screenplay, ElementType, WatermarkSettings } from '../types/screenplay';
-import { ELEMENT_FORMATTING } from '../types/screenplay';
+import { ELEMENT_FORMATTING, LINE_SPACING_POINTS, createDefaultPageLayout, type HeaderFooterLine } from '../types/screenplay';
 import { paginateScript } from '../engine/paginate';
 import { getRevisionSettings, pageRevision, showsRevisionMark } from '../engine/production';
 import { planSides, type SidesHeader } from '../engine/sides';
+import { fillFields, getHeaderFooter, headerContext, showsFooter, showsHeader } from './headerFooter';
 import { scenesOf, formatEighths } from './reports';
 
 // PDF constants (in points, 72 points = 1 inch)
@@ -11,9 +12,8 @@ const PAGE_WIDTH = 612; // 8.5 inches
 const PAGE_HEIGHT = 792; // 11 inches
 const TOP_MARGIN = 72; // 1 inch
 const BOTTOM_MARGIN = 72; // 1 inch
-const LINE_HEIGHT = 12; // 12 points for Courier 12pt
+const DEFAULT_LINE_HEIGHT = 12; // 12 points for Courier 12pt (Page Layout can change it)
 const FONT_SIZE = 12;
-const HEADER_MARGIN = 36; // 0.5 inch: page number baseline
 const LEFT_TEXT = 108; // 1.5 inches: left text margin
 const PAGE_NUMBER_RIGHT = 522; // 7.25 inches: page numbers are right-aligned here
 const SCENE_NUMBER_LEFT = 54; // 0.75 inch
@@ -42,6 +42,7 @@ export interface PDFOptions {
   showSceneNumbers?: boolean;
   watermark?: WatermarkSettings;
   revisedPagesOnly?: boolean; // only pages with revisions shown (Revisions: Revised pages only)
+  fileName?: string; // for the {File} header field
   sides?: SidesOptions; // print sides for these scenes instead of the whole script
 }
 
@@ -100,6 +101,11 @@ const addWatermark = (doc: jsPDF, watermark: WatermarkSettings) => {
 export const generatePDF = (screenplay: Screenplay, options: PDFOptions = {}): jsPDF => {
   const { showSceneNumbers = false, watermark = DEFAULT_WATERMARK, revisedPagesOnly = false } = options;
   const revisions = getRevisionSettings(screenplay);
+  // Document > Page Layout: top margin and line spacing; Header and Footer
+  const layout = screenplay.pageLayout ?? createDefaultPageLayout();
+  const headerFooter = getHeaderFooter(screenplay);
+  const textTop = layout.topMargin * 72;
+  const LINE_HEIGHT = LINE_SPACING_POINTS[layout.lineSpacing] ?? DEFAULT_LINE_HEIGHT;
   const pagination = paginateScript(screenplay);
   const sidesPlan = options.sides ? planSides(pagination, screenplay.elements, options.sides.sceneIds) : null;
   const pages = sidesPlan
@@ -192,19 +198,22 @@ export const generatePDF = (screenplay: Screenplay, options: PDFOptions = {}): j
     addWatermark(doc, watermark);
     doc.setFont('Courier', 'normal');
 
-    // Header (not on script page 1): the page's revision, then the page number
-    // (locked scripts print A-page labels such as 12A)
-    if (page.number > 1) {
-      doc.text(`${page.label}.`, PAGE_NUMBER_RIGHT, HEADER_MARGIN, { align: 'right' });
-      const revised = pageRevision(page, screenplay.elements, revisions);
-      if (revised) {
-        const label = revised.date ? `${revised.label} ${revised.date}` : revised.label;
-        doc.text(label, PAGE_WIDTH / 2, HEADER_MARGIN, { align: 'center' });
-      }
-    }
+    // Header and footer (Document > Header and Footer): by default the page
+    // number at the right and the page's revision in the middle, from page 2
+    const ctx = headerContext(page, screenplay, options.fileName ?? '');
+    const drawRow = (row: HeaderFooterLine, y: number) => {
+      const left = fillFields(row.left, ctx);
+      const center = fillFields(row.center, ctx);
+      const right = fillFields(row.right, ctx);
+      if (left) doc.text(left, LEFT_TEXT, y);
+      if (center) doc.text(center, PAGE_WIDTH / 2, y, { align: 'center' });
+      if (right) doc.text(right, PAGE_NUMBER_RIGHT, y, { align: 'right' });
+    };
+    if (showsHeader(headerFooter, page.number)) drawRow(headerFooter.header, layout.headerMargin * 72);
+    if (showsFooter(headerFooter, page.number)) drawRow(headerFooter.footer, PAGE_HEIGHT - layout.footerMargin * 72);
 
     page.items.forEach((item) => {
-      const y = TOP_MARGIN + item.top * LINE_HEIGHT;
+      const y = textTop + item.top * LINE_HEIGHT;
 
       // (MORE) and the CONT'D speaker line sit at the Character indent
       if (item.kind !== 'element' && item.kind !== 'dual') {
@@ -244,8 +253,8 @@ export const generatePDF = (screenplay: Screenplay, options: PDFOptions = {}): j
 
     // Sides: cross out what belongs to other scenes
     for (const run of sidesPlan?.[pageIndex].crossOut ?? []) {
-      const top = TOP_MARGIN + run.top * LINE_HEIGHT - LINE_HEIGHT + 2;
-      const bottom = TOP_MARGIN + (run.bottom - 1) * LINE_HEIGHT + 4;
+      const top = textTop + run.top * LINE_HEIGHT - LINE_HEIGHT + 2;
+      const bottom = textTop + (run.bottom - 1) * LINE_HEIGHT + 4;
       doc.setLineWidth(1);
       doc.line(LEFT_TEXT, top, PAGE_WIDTH - 72, bottom);
       doc.line(LEFT_TEXT, bottom, PAGE_WIDTH - 72, top);

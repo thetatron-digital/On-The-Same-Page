@@ -83,8 +83,10 @@
   background: var(--hover-bg);
 }
 
-.scene-item.active {
-  background: var(--accent-color-alpha);
+/* Scoped: ViewFinder's stylesheet also styles a global .scene-item.active */
+.navigator-panel .scene-item.active {
+  background: var(--accent-color-alpha, rgba(74, 158, 255, 0.15));
+  color: inherit;
 }
 
 .scene-number {
@@ -106,7 +108,7 @@
   -webkit-box-orient: vertical;
 }
 
-.scene-item.active .scene-text {
+.navigator-panel .scene-item.active .scene-text {
   color: var(--accent-color);
 }
 
@@ -233,4 +235,89 @@
 .outline-item.synopsis {
   font-style: italic;
   padding-top: 0;
+}
+
+/* Scene color stripe in the Scenes list */
+.scene-color-bar {
+  flex-shrink: 0;
+  width: 3px;
+  align-self: stretch;
+  border-radius: 2px;
+}
+
+/* Scene Properties pane */
+.scene-props {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.scene-props h4 {
+  margin: 0;
+}
+
+.scene-props-heading {
+  font-family: 'Courier New', Courier, monospace;
+  color: var(--text-primary);
+}
+
+.scene-props label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.scene-props input,
+.scene-props textarea {
+  padding: 5px 7px;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font: inherit;
+  resize: vertical;
+}
+
+.scene-props-colors {
+  display: flex;
+  gap: 5px;
+}
+
+.scene-color {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
+
+.scene-color.none {
+  background: linear-gradient(135deg, transparent 45%, #d33 45%, #d33 55%, transparent 55%), var(--input-bg);
+}
+
+.scene-color.selected {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 1px;
+}
+
+.scene-props-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 10px;
+  margin: 0;
+}
+
+.scene-props-facts dt {
+  color: var(--text-muted);
+}
+
+.scene-props-facts dd {
+  margin: 0;
+  color: var(--text-primary);
 }
