@@ -35,6 +35,22 @@ import {
   generateBreakdownScenes,
   getElementsForScene,
 } from '../utils/breakdown';
+import { PROJECT_DATA_VERSION } from '../types/user';
+
+// Fresh BaseCamp production data for a new or pre-v2 project
+const createDefaultProductionData = (): ProductionData => ({
+  people: [],
+  locations: [],
+  scenes: [],
+  departments: DEFAULT_DEPARTMENTS.map((d, i) => ({ ...d, id: `dept-default-${i}` })),
+  callSheets: [],
+  settings: {
+    projectName: '',
+    defaultCallTime: '7:00 AM',
+    defaultLunchDuration: 30,
+    defaultDisclaimer: DEFAULT_DISCLAIMER,
+  },
+});
 
 // Panel visibility options
 interface PanelState {
@@ -87,11 +103,18 @@ interface HistoryEntry {
   selectedElementId: string | null;
 }
 
-interface ScreenplayState {
+export interface ScreenplayState {
   screenplay: Screenplay;
   selectedElementId: string | null;
   currentElementType: ElementType;
   isDirty: boolean;
+  // Bumped whenever the whole document is replaced (open, new, import).
+  // Auto-save uses it to tell a document swap apart from an edit.
+  documentGeneration: number;
+  // 'project': opened/created as a saved project, safe to auto-save.
+  // 'file': File > New or an opened .fdx; auto-save waits for a manual save.
+  documentOrigin: 'project' | 'file';
+  setDocumentOrigin: (origin: 'project' | 'file') => void;
   fileName: string;
   darkMode: boolean;
   activeTheme: ThemeId;
@@ -554,6 +577,8 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
   selectedElementId: null,
   currentElementType: 'Scene Heading',
   isDirty: false,
+  documentGeneration: 0,
+  documentOrigin: 'project',
   fileName: 'Untitled.fdx',
   darkMode: true,
   activeTheme: 'default',
@@ -686,19 +711,7 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
   selectedStripId: null,
 
   // Production Management state
-  productionData: {
-    people: [],
-    locations: [],
-    scenes: [],
-    departments: DEFAULT_DEPARTMENTS.map((d, i) => ({ ...d, id: `dept-default-${i}` })),
-    callSheets: [],
-    settings: {
-      projectName: '',
-      defaultCallTime: '7:00 AM',
-      defaultLunchDuration: 30,
-      defaultDisclaimer: DEFAULT_DISCLAIMER,
-    },
-  },
+  productionData: createDefaultProductionData(),
   basecampView: 'dashboard' as const,
 
   // OnSet state
@@ -794,6 +807,8 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
       screenplay: newScript,
       selectedElementId: newScript.elements[0]?.id || null,
       isDirty: false,
+      documentGeneration: get().documentGeneration + 1,
+      documentOrigin: 'file',
       fileName: 'Untitled.fdx',
       stats,
       currentPage: 1,
@@ -993,6 +1008,8 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
         screenplay,
         selectedElementId: screenplay.elements[0]?.id || null,
         isDirty: false,
+        documentGeneration: get().documentGeneration + 1,
+        documentOrigin: 'file',
         stats,
         currentPage: 1,
       });
@@ -1010,6 +1027,8 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
   setFileName: (name) => set({ fileName: name }),
 
   setDirty: (dirty) => set({ isDirty: dirty }),
+
+  setDocumentOrigin: (origin) => set({ documentOrigin: origin }),
 
   // UI actions
   setZoom: (zoom) => set({ zoom: Math.max(50, Math.min(200, zoom)) }),
@@ -4692,12 +4711,16 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
       schedule: data.schedule || null,
       onSet: data.onSet || null,
       superVisor: data.superVisor || null,
+      productionData: data.productionData || createDefaultProductionData(),
+      basecampView: 'dashboard',
       showSceneNumbers: data.showSceneNumbers ?? false,
       sceneNumberStyle: data.sceneNumberStyle || 'numeric',
       pageLocks: data.pageLocks || [],
       watermarkSettings: data.watermarkSettings || get().watermarkSettings,
       selectedElementId: data.screenplay.elements[0]?.id || null,
       isDirty: false,
+      documentGeneration: get().documentGeneration + 1,
+      documentOrigin: 'project',
       fileName: `${data.screenplay.title || 'Untitled'}.fdx`,
       stats,
       history: [],
@@ -4712,6 +4735,8 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
       screenplay: newScript,
       selectedElementId: newScript.elements[0]?.id || null,
       isDirty: false,
+      documentGeneration: get().documentGeneration + 1,
+      documentOrigin: 'project',
       fileName: 'Untitled.fdx',
       stats,
       currentPage: 1,
@@ -4773,6 +4798,8 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
       selectedStripId: null,
       onSet: null,
       superVisor: null,
+      productionData: createDefaultProductionData(),
+      basecampView: 'dashboard',
       showSceneNumbers: false,
       pageLocks: [],
     });
@@ -4793,11 +4820,12 @@ export const useScreenplayStore = create<ScreenplayState>((set, get) => ({
       schedule: state.schedule || undefined,
       onSet: state.onSet || undefined,
       superVisor: state.superVisor || undefined,
+      productionData: state.productionData,
       showSceneNumbers: state.showSceneNumbers,
       sceneNumberStyle: state.sceneNumberStyle,
       pageLocks: state.pageLocks,
       watermarkSettings: state.watermarkSettings,
-      version: 1,
+      version: PROJECT_DATA_VERSION,
       savedAt: new Date(),
     };
   },

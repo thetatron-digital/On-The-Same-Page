@@ -10,6 +10,7 @@ import SuperVisor from './components/SuperVisor';
 import { Home } from './components/Home';
 import { useScreenplayStore } from './store/screenplayStore';
 import { useAuthStore } from './services/projectService';
+import { startAutoSave } from './services/autoSave';
 import './App.css';
 
 function App() {
@@ -39,6 +40,9 @@ function App() {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isDirty]);
+
+  // Save the open project 30 s after the last change
+  useEffect(() => startAutoSave(), []);
 
   // Initialize auth on mount
   useEffect(() => {

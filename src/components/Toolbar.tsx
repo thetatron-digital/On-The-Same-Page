@@ -405,6 +405,8 @@ export const Toolbar = () => {
       const data = getProjectData();
       await saveProject(currentProjectId, data);
       setDirty(false);
+      // An explicitly saved document belongs to this project from now on
+      useScreenplayStore.getState().setDocumentOrigin('project');
     } catch (error) {
       alert('Failed to save to cloud. Please try again.');
     }
