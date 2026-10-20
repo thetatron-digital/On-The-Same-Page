@@ -464,6 +464,11 @@ export interface ScheduleSlice {
   updateBanner: (dayId: string, bannerId: string, updates: { text?: string; color?: string }) => void;
   deleteBanner: (dayId: string, bannerId: string) => void;
   updateDOODSettings: (updates: Partial<DOODSettings>) => void;
+  createStripboard: (name: string, mode: 'copy' | 'empty', description?: string) => string;
+  switchStripboard: (boardId: string) => void;
+  renameStripboard: (boardId: string, name: string, description?: string) => void;
+  deleteStripboard: (boardId: string) => string | null;
+  moveAllStripsToBoneyard: () => void;
   addRedFlag: (flag: Omit<RedFlag, 'id'>) => string | null;
   updateRedFlag: (id: string, updates: Partial<Omit<RedFlag, 'id'>>) => string | null;
   deleteRedFlag: (id: string) => void;

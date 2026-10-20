@@ -217,3 +217,51 @@ describe('Day breaks and banners', () => {
     expect(store().schedule!.shootDays[0].banners!.map((b) => b.text)).toEqual(['COMPANY MOVE', 'WRAP NOTE']);
   });
 });
+
+describe('Stripboard Manager', () => {
+  beforeEach(setUpBoard); // strips a..e on one day
+
+  it('a copied board keeps its own day breaks; switching back restores the first', () => {
+    store().autoAssignDayBreaks({ maxPagesPerDay: 5 }); // [a b] [c] [d e]
+    store().createStripboard('Weather Cover', 'copy');
+    expect(store().schedule!.activeBoardName).toBe('Weather Cover');
+    expect(dayStrips()).toEqual([['a', 'b'], ['c'], ['d', 'e']]);
+
+    store().sortScheduledStrips([{ field: 'sceneNumber', direction: 'desc' }]);
+    store().autoAssignDayBreaks({ maxPagesPerDay: 20 });
+    expect(dayStrips()).toEqual([['c', 'e', 'a', 'd', 'b']]);
+
+    const main = store().schedule!.otherBoards!.find((b) => b.name === 'Main Board')!;
+    store().switchStripboard(main.id);
+    expect(store().schedule!.activeBoardName).toBe('Main Board');
+    expect(dayStrips()).toEqual([['a', 'b'], ['c'], ['d', 'e']]);
+    // strips point at the active board's days again
+    const day2 = store().schedule!.shootDays[1].id;
+    expect(store().schedule!.strips.find((s) => s.id === 'c')!.scheduledDayId).toBe(day2);
+  });
+
+  it('an empty board starts with every strip in the Boneyard', () => {
+    store().createStripboard('Actor Scenario', 'empty');
+    const schedule = store().schedule!;
+    expect(schedule.shootDays).toEqual([]);
+    expect(schedule.unscheduledStrips.sort()).toEqual(['a', 'b', 'c', 'd', 'e']);
+    expect(schedule.strips.every((s) => !s.scheduledDayId)).toBe(true);
+  });
+
+  it('renames boards and refuses to delete the active one', () => {
+    store().createStripboard('Plan B', 'copy');
+    const active = store().schedule!.activeBoardId!;
+    expect(store().deleteStripboard(active)).toMatch(/Switch/);
+    const main = store().schedule!.otherBoards![0];
+    store().renameStripboard(main.id, 'Scene Order', 'Script order');
+    expect(store().schedule!.otherBoards![0]).toMatchObject({ name: 'Scene Order', description: 'Script order' });
+    expect(store().deleteStripboard(main.id)).toBeNull();
+    expect(store().schedule!.otherBoards).toEqual([]);
+  });
+
+  it('Move All Strips to Boneyard empties the days', () => {
+    store().moveAllStripsToBoneyard();
+    expect(dayStrips()).toEqual([[]]);
+    expect(store().schedule!.unscheduledStrips).toHaveLength(5);
+  });
+});
