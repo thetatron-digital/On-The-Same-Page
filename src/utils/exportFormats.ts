@@ -1,10 +1,10 @@
+import { generateALE } from './supervisorReports';
 import type {
   Breakdown,
   ArtCart,
   ViewFinder,
   Schedule,
   SuperVisor,
-  TakeEntry,
   StoryOutline,
 } from '../types/screenplay';
 import type { ProjectData } from '../types/user';
@@ -435,26 +435,8 @@ export const generateSupervisorXML = (superVisor: SuperVisor): string => {
   return xml;
 };
 
-// Generate Avid Log Exchange (ALE) format for editor import
-export const generateALE = (takes: TakeEntry[]): string => {
-  let ale = 'Heading\n';
-  ale += 'FIELD_DELIM\tTABS\n';
-  ale += 'VIDEO_FORMAT\t1080\n';
-  ale += 'FPS\t24\n\n';
-
-  ale += 'Column\n';
-  ale += 'Name\tScene\tShot\tTake\tCamera\tCircled\tTimecode In\tTimecode Out\tDuration\tNotes\n\n';
-
-  ale += 'Data\n';
-  for (const take of takes) {
-    const name = `${take.sceneNumber}_${take.shotNumber}_T${take.takeNumber}`;
-    ale += `${name}\t${take.sceneNumber}\t${take.shotNumber}\t${take.takeNumber}\t${take.camera}\t`;
-    ale += `${take.circled ? 'Y' : 'N'}\t${take.timecodeIn || ''}\t${take.timecodeOut || ''}\t`;
-    ale += `${take.duration || ''}\t${take.editorNotes || ''}\n`;
-  }
-
-  return ale;
-};
+// Avid Log Exchange: see supervisorReports.ts
+export { generateALE };
 
 // ============================================
 // ARTCART CSV EXPORT
