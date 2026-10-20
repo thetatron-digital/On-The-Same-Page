@@ -13,6 +13,7 @@ import './BaseCamp.css';
 import { BoardTools } from './basecamp/BoardTools';
 import { DayOutOfDays } from './basecamp/DayOutOfDays';
 import { ProductionCalendar } from './basecamp/ProductionCalendar';
+import { ScheduleReports } from './basecamp/ScheduleReports';
 
 // ============================================
 // BASECAMP - Production Management & Call Sheets
@@ -250,6 +251,8 @@ const BaseCamp: React.FC = () => {
         return <ProductionCalendar />;
       case 'dood':
         return <DayOutOfDays />;
+      case 'reports':
+        return <ScheduleReports />;
       default:
         return <DashboardView />;
     }
@@ -264,6 +267,7 @@ const BaseCamp: React.FC = () => {
     { id: 'stripboard', label: 'Strip Board', icon: '▥' },
     { id: 'calendar', label: 'Calendar', icon: '▦' },
     { id: 'dood', label: 'Day Out of Days', icon: '▤' },
+    { id: 'reports', label: 'Reports', icon: '▧' },
     { id: 'callsheets', label: 'Call Sheets', icon: '▤' },
     { id: 'settings', label: 'Settings', icon: '⚙' },
   ];

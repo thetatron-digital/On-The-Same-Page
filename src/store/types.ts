@@ -473,7 +473,7 @@ export interface ScheduleSlice {
 export interface ProductionSlice {
   // Production Management State (shared)
   productionData: ProductionData;
-  basecampView: 'dashboard' | 'callsheets' | 'people' | 'scenes' | 'locations' | 'settings' | 'stripboard' | 'calendar' | 'dood';
+  basecampView: 'dashboard' | 'callsheets' | 'people' | 'scenes' | 'locations' | 'settings' | 'stripboard' | 'calendar' | 'dood' | 'reports';
   // Production Management actions
   setBasecampView: (view: ScreenplayState['basecampView']) => void;
   initializeProductionData: () => void;

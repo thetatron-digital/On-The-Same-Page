@@ -112,7 +112,8 @@ export const getDayNight = (timeOfDay: string): 'Day' | 'Night' => {
  * Format eighths for display (e.g., "1 2/8" or "2 4/8")
  */
 export const formatEighths = (eighths: number): string => {
-  if (eighths <= 8) {
+  if (eighths <= 0) return '0';
+  if (eighths < 8) {
     return `${eighths}/8`;
   }
 
