@@ -266,8 +266,9 @@ describe('paginate: dual dialogue', () => {
 describe('paginateScript', () => {
   it('reuses the result for the same elements array', () => {
     const script = actions(3);
-    expect(paginateScript(script)).toBe(paginateScript(script));
-    expect(paginateScript([...script])).not.toBe(paginateScript(script));
+    const doc = { elements: script };
+    expect(paginateScript(doc)).toBe(paginateScript(doc));
+    expect(paginateScript({ elements: [...script] })).not.toBe(paginateScript(doc));
   });
 });
 

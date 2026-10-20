@@ -12,6 +12,18 @@ import {
   getTimeOfDaySuggestions,
 } from '../../utils/scriptParser';
 import { calculateWritingStats, MAX_HISTORY } from '../helpers';
+import { paginateScript } from '../../engine/paginate';
+import {
+  clearRevised,
+  getRevisionSettings,
+  lockPagesAt,
+  markRevised,
+  numberScenes,
+  removeSceneNumbers,
+  stampRevisions,
+  toggleOmitScene,
+  unlockAPages,
+} from '../../engine/production';
 import type { HistoryEntry, ScreenplayState, ScriptSlice } from '../types';
 
 export const createScriptSlice: StateCreator<ScreenplayState, [], [], ScriptSlice> = (set, get) => ({
@@ -131,7 +143,14 @@ export const createScriptSlice: StateCreator<ScreenplayState, [], [], ScriptSlic
   canRedo: () => get().future.length > 0,
 
   setScreenplay: (screenplay) => {
+    const prev = get().screenplay;
     get().saveToHistory();
+    // Revision Mode: stamp new and edited paragraphs with the active revision set
+    const revisions = screenplay.revisions;
+    if (revisions?.revisionMode) {
+      const elements = stampRevisions(prev.elements, screenplay.elements, revisions.activeSetId);
+      if (elements !== screenplay.elements) screenplay = { ...screenplay, elements };
+    }
     const stats = calculateWritingStats(screenplay);
     set({ screenplay, isDirty: true, stats });
   },
@@ -633,5 +652,103 @@ export const createScriptSlice: StateCreator<ScreenplayState, [], [], ScriptSlic
       screenplay: { ...state.screenplay, elements },
       isDirty: true,
     });
+  },
+
+  // Production menu: revisions
+  updateRevisionSettings: (changes) =>
+    set((state) => ({
+      screenplay: { ...state.screenplay, revisions: { ...getRevisionSettings(state.screenplay), ...changes } },
+      isDirty: true,
+    })),
+
+  updateRevisionSet: (id, changes) =>
+    set((state) => {
+      const settings = getRevisionSettings(state.screenplay);
+      const sets = settings.sets.map((s) => (s.id === id ? { ...s, ...changes, id } : s));
+      return { screenplay: { ...state.screenplay, revisions: { ...settings, sets } }, isDirty: true };
+    }),
+
+  toggleRevisionMode: () => {
+    const settings = getRevisionSettings(get().screenplay);
+    get().updateRevisionSettings({ revisionMode: !settings.revisionMode });
+  },
+
+  markRevised: (elementIds) => {
+    const state = get();
+    if (elementIds.length === 0) return;
+    const settings = getRevisionSettings(state.screenplay);
+    state.saveToHistory();
+    const elements = markRevised(state.screenplay.elements, new Set(elementIds), settings.activeSetId);
+    set({ screenplay: { ...state.screenplay, elements, revisions: settings }, isDirty: true });
+  },
+
+  clearRevised: (elementIds) => {
+    const state = get();
+    if (elementIds.length === 0) return;
+    state.saveToHistory();
+    const elements = clearRevised(state.screenplay.elements, new Set(elementIds));
+    set({ screenplay: { ...state.screenplay, elements }, isDirty: true });
+  },
+
+  // Production menu: locked pages. Locking records where every page starts now
+  // (relocking also fixes the current A-pages in place).
+  lockPages: () => {
+    const state = get();
+    state.saveToHistory();
+    const lockedPages = lockPagesAt(paginateScript(state.screenplay), state.screenplay.elements);
+    set({ screenplay: { ...state.screenplay, lockedPages }, isDirty: true });
+  },
+
+  unlockAPages: () => {
+    const state = get();
+    if (!state.screenplay.lockedPages) return;
+    state.saveToHistory();
+    set({ screenplay: { ...state.screenplay, lockedPages: unlockAPages(state.screenplay.lockedPages) }, isDirty: true });
+  },
+
+  unlockAllPages: () => {
+    const state = get();
+    if (!state.screenplay.lockedPages) return;
+    state.saveToHistory();
+    const screenplay = { ...state.screenplay };
+    delete screenplay.lockedPages;
+    set({ screenplay, isDirty: true });
+  },
+
+  // Production menu: scene numbers and omitted scenes
+  numberScenes: (options) => {
+    const state = get();
+    state.saveToHistory();
+    const elements = numberScenes(state.screenplay.elements, options);
+    set({ screenplay: { ...state.screenplay, elements }, showSceneNumbers: true, isDirty: true });
+  },
+
+  removeSceneNumbers: () => {
+    const state = get();
+    state.saveToHistory();
+    const elements = removeSceneNumbers(state.screenplay.elements);
+    set({ screenplay: { ...state.screenplay, elements }, showSceneNumbers: false, isDirty: true });
+  },
+
+  editSceneNumber: (elementId, sceneNumber) => {
+    const state = get();
+    state.saveToHistory();
+    const value = sceneNumber.trim().toUpperCase();
+    const elements = state.screenplay.elements.map((el) => {
+      if (el.id !== elementId) return el;
+      const next = { ...el };
+      if (value) next.sceneNumber = value;
+      else delete next.sceneNumber;
+      return next;
+    });
+    set({ screenplay: { ...state.screenplay, elements }, showSceneNumbers: true, isDirty: true });
+  },
+
+  toggleOmitScene: (elementId) => {
+    const state = get();
+    const elements = toggleOmitScene(state.screenplay.elements, elementId);
+    if (elements === state.screenplay.elements) return;
+    // Goes through setScreenplay so Revision Mode marks the omission
+    state.setScreenplay({ ...state.screenplay, elements });
   },
 });

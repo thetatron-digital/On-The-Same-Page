@@ -1,4 +1,5 @@
-import type { Screenplay, ScreenplayElement, TextRun, ElementType, TitlePageInfo } from '../types/screenplay';
+import type { Screenplay, ScreenplayElement, TextRun, ElementType, TitlePageInfo, RevisionSettings } from '../types/screenplay';
+import { createDefaultRevisionSettings } from '../types/screenplay';
 
 // Generate a unique ID
 export const generateId = (): string => {
@@ -80,47 +81,13 @@ export const parseFDX = (xmlContent: string): Screenplay => {
   // Parse script content (skip TitlePage content)
   const content = doc.querySelector('FinalDraft > Content');
   if (content) {
-    // Get paragraphs that are NOT inside TitlePage
-    const allParagraphs = content.querySelectorAll(':scope > Paragraph');
-
-    allParagraphs.forEach((para) => {
-      const typeAttr = para.getAttribute('Type');
-      // Skip title page element types
-      if (typeAttr === 'Title' || typeAttr === 'Author' || typeAttr === 'Source' || typeAttr === 'Contact') {
-        return;
-      }
-
-      const elementType = mapFDXTypeToElementType(typeAttr || 'Action');
-
-      const textRuns: TextRun[] = [];
-      const textElements = para.querySelectorAll('Text');
-
-      textElements.forEach((textEl) => {
-        const style = textEl.getAttribute('Style') as TextRun['style'] | null;
-        textRuns.push({
-          text: textEl.textContent || '',
-          style: style || undefined,
-        });
-      });
-
-      // Only add if there's actual content
-      if (textRuns.length > 0 || para.textContent?.trim()) {
-        const element: ScreenplayElement = {
-          id: generateId(),
-          type: elementType,
-          content: textRuns.length > 0 ? textRuns : [{ text: para.textContent || '' }],
-        };
-
-        // Handle scene numbers
-        const sceneNumber = para.getAttribute('Number');
-        if (sceneNumber) {
-          element.sceneNumber = sceneNumber;
-        }
-
-        screenplay.elements.push(element);
-      }
+    content.querySelectorAll(':scope > Paragraph, :scope > OmittedScene').forEach((node) => {
+      screenplay.elements.push(...parseParagraphNode(node));
     });
   }
+
+  const revisions = parseRevisions(doc);
+  if (revisions) screenplay.revisions = revisions;
 
   // Ensure at least one element
   if (screenplay.elements.length === 0) {
@@ -132,6 +99,106 @@ export const parseFDX = (xmlContent: string): Screenplay => {
   }
 
   return screenplay;
+};
+
+const TITLE_PAGE_TYPES = new Set(['Title', 'Author', 'Source', 'Contact']);
+
+// Text runs directly inside a <Paragraph>
+const parseRuns = (para: Element): TextRun[] =>
+  Array.from(para.querySelectorAll(':scope > Text')).map((textEl) => {
+    const run: TextRun = { text: textEl.textContent || '' };
+    const style = textEl.getAttribute('Style') as TextRun['style'] | null;
+    if (style) run.style = style;
+    const revisionId = parseInt(textEl.getAttribute('RevisionID') || '0', 10);
+    if (revisionId > 0) run.revisionId = revisionId;
+    return run;
+  });
+
+// One <Paragraph> (or <OmittedScene>) of the script body as elements. A
+// paragraph holding <DualDialogue> becomes its two side-by-side speeches; one
+// holding <OmittedScene> becomes an OMITTED heading that keeps the scene.
+const parseParagraphNode = (node: Element): ScreenplayElement[] => {
+  if (node.tagName === 'OmittedScene') {
+    const kept = Array.from(node.querySelectorAll(':scope > Paragraph')).flatMap(parseParagraphNode);
+    if (kept.length === 0) return [];
+    return [{
+      id: generateId(),
+      type: 'Scene Heading',
+      content: [{ text: 'OMITTED' }],
+      sceneNumber: kept[0].sceneNumber,
+      omitted: kept,
+    }];
+  }
+
+  const typeAttr = node.getAttribute('Type') || 'Action';
+  if (TITLE_PAGE_TYPES.has(typeAttr)) return [];
+
+  const dual = node.querySelector(':scope > DualDialogue');
+  if (dual) {
+    const speeches = Array.from(dual.querySelectorAll(':scope > Paragraph')).flatMap(parseParagraphNode);
+    const second = speeches.findIndex((el, i) => i > 0 && el.type === 'Character');
+    return speeches.map((el, i) => ({
+      ...el,
+      isDualDialogue: true,
+      dualDialoguePosition: second > 0 && i >= second ? 'right' as const : 'left' as const,
+    }));
+  }
+
+  const runs = parseRuns(node);
+  const omittedNode = node.querySelector(':scope > OmittedScene');
+  if (runs.length === 0 && !omittedNode && !node.textContent?.trim()) return [];
+
+  const element: ScreenplayElement = {
+    id: generateId(),
+    type: mapFDXTypeToElementType(typeAttr),
+    content: runs.length > 0 ? runs : [{ text: omittedNode ? 'OMITTED' : '' }],
+  };
+  const sceneNumber = node.getAttribute('Number');
+  if (sceneNumber) element.sceneNumber = sceneNumber;
+  const revised = Math.max(0, ...runs.map((r) => r.revisionId ?? 0));
+  if (revised > 0) element.revisionId = revised;
+  if (omittedNode) {
+    element.omitted = Array.from(omittedNode.querySelectorAll(':scope > Paragraph')).flatMap(parseParagraphNode);
+  }
+  return [element];
+};
+
+// FDX colors are 48-bit (#RRRRGGGGBBBB); ours are #rrggbb
+const fromFdxColor = (color: string | null, fallback: string): string => {
+  const hex = color?.replace('#', '') ?? '';
+  if (/^[0-9a-f]{12}$/i.test(hex)) return `#${hex.slice(0, 2)}${hex.slice(4, 6)}${hex.slice(8, 10)}`.toLowerCase();
+  if (/^[0-9a-f]{6}$/i.test(hex)) return `#${hex}`.toLowerCase();
+  return fallback;
+};
+
+const toFdxColor = (color: string): string => {
+  const hex = color.replace('#', '').toUpperCase();
+  return `#${hex.slice(0, 2).repeat(2)}${hex.slice(2, 4).repeat(2)}${hex.slice(4, 6).repeat(2)}`;
+};
+
+// <Revisions ActiveSet Location RevisionMode RevisionsShown ShowPageColor><Revision …/></Revisions>
+const parseRevisions = (doc: Document): RevisionSettings | undefined => {
+  const node = doc.querySelector('FinalDraft > Revisions');
+  if (!node) return undefined;
+  const defaults = createDefaultRevisionSettings();
+  const sets = Array.from(node.querySelectorAll(':scope > Revision')).map((rev, i) => {
+    const id = parseInt(rev.getAttribute('ID') || String(i + 1), 10);
+    const fallback = defaults.sets.find((s) => s.id === id) ?? defaults.sets[0];
+    return {
+      id,
+      label: rev.getAttribute('Name') || fallback.label,
+      mark: rev.getAttribute('Mark') || '*',
+      pageColor: fromFdxColor(rev.getAttribute('PageColor'), fallback.pageColor),
+    };
+  });
+  return {
+    sets: sets.length > 0 ? sets : defaults.sets,
+    activeSetId: parseInt(node.getAttribute('ActiveSet') || '1', 10),
+    revisionMode: node.getAttribute('RevisionMode') === 'Yes',
+    marksShown: node.getAttribute('RevisionsShown') === 'All' ? 'all' : 'active',
+    showPageColors: node.getAttribute('ShowPageColor') === 'Yes',
+    markLocation: parseFloat(node.getAttribute('Location') || '') || defaults.markLocation,
+  };
 };
 
 // Map FDX paragraph type to our ElementType
@@ -197,17 +264,33 @@ export const generateFDX = (screenplay: Screenplay): string => {
 `;
 
   // Add script content
-  screenplay.elements.forEach((element) => {
-    const sceneNumAttr = element.sceneNumber ? ` Number="${element.sceneNumber}"` : '';
-    xml += `<Paragraph Type="${element.type}"${sceneNumAttr}>\n`;
-
+  const paragraph = (element: ScreenplayElement): string => {
+    const sceneNumAttr = element.sceneNumber ? ` Number="${escapeXml(element.sceneNumber)}"` : '';
+    let out = `<Paragraph Type="${element.type}"${sceneNumAttr}>\n`;
     element.content.forEach((run) => {
       const styleAttr = run.style ? ` Style="${run.style}"` : '';
-      xml += `<Text${styleAttr}>${escapeXml(run.text)}</Text>\n`;
+      const revisionId = run.revisionId ?? element.revisionId;
+      const revisionAttr = revisionId ? ` RevisionID="${revisionId}"` : '';
+      out += `<Text${styleAttr}${revisionAttr}>${escapeXml(run.text)}</Text>\n`;
     });
+    if (element.omitted) {
+      out += `<OmittedScene>\n${element.omitted.map(paragraph).join('')}</OmittedScene>\n`;
+    }
+    return `${out}</Paragraph>\n`;
+  };
 
-    xml += `</Paragraph>\n`;
-  });
+  for (let i = 0; i < screenplay.elements.length; i++) {
+    const element = screenplay.elements[i];
+    if (element.isDualDialogue && element.dualDialoguePosition === 'left') {
+      // Both speeches of a dual dialogue go in one <DualDialogue> paragraph
+      let j = i;
+      while (j < screenplay.elements.length && screenplay.elements[j].isDualDialogue) j++;
+      xml += `<Paragraph>\n<DualDialogue>\n${screenplay.elements.slice(i, j).map(paragraph).join('')}</DualDialogue>\n</Paragraph>\n`;
+      i = j - 1;
+      continue;
+    }
+    xml += paragraph(element);
+  }
 
   xml += `</Content>
 <HeaderAndFooter>
@@ -257,9 +340,19 @@ export const generateFDX = (screenplay: Screenplay): string => {
 <ParagraphSpec Alignment="Right" FirstIndent="0.00" Leading="1" LeftIndent="0.00" RightIndent="0.00" SpaceBefore="12" Spacing="1"/>
 </ElementSetting>
 </ElementSettings>
-</FinalDraft>`;
+${revisionsXml(screenplay.revisions)}</FinalDraft>`;
 
   return xml;
+};
+
+// <Revisions> block; written only once a script has revision settings
+const revisionsXml = (revisions: RevisionSettings | undefined): string => {
+  if (!revisions) return '';
+  const attr = (v: string) => v.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  const sets = revisions.sets.map((s) =>
+    `<Revision ID="${s.id}" Name="${attr(s.label)}" Mark="${attr(s.mark)}" Color="#000000000000" PageColor="${toFdxColor(s.pageColor)}" Style="" FullRevision="No"/>\n`,
+  ).join('');
+  return `<Revisions ActiveSet="${revisions.activeSetId}" Location="${revisions.markLocation}" RevisionMode="${revisions.revisionMode ? 'Yes' : 'No'}" RevisionsShown="${revisions.marksShown === 'all' ? 'All' : 'Active'}" ShowPageColor="${revisions.showPageColors ? 'Yes' : 'No'}">\n${sets}</Revisions>\n`;
 };
 
 // Create a new empty screenplay

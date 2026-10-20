@@ -314,6 +314,26 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
+/* Other apps' stylesheets also define a global .modal-content; keep toolbar
+   dialogs opaque whichever loads last */
+.toolbar .modal-content {
+  background: var(--panel-bg, var(--toolbar-bg));
+}
+
+/* Export: PDF options */
+.export-pdf-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.modal-content .export-pdf-option input {
+  width: auto;
+}
+
 .modal-content h3 {
   margin: 0 0 16px 0;
   font-size: 16px;

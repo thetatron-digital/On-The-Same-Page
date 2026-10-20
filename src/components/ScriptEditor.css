@@ -12,6 +12,23 @@
   -ms-user-select: text;
 }
 
+/* Revision mark (*) in the right margin, one per line of a revised paragraph */
+.revision-mark {
+  position: absolute;
+  top: 0;
+  white-space: pre;
+  text-indent: 0;
+  font-style: normal;
+  font-weight: 400;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Omitted scene placeholder (Production > Omit Scene) */
+.script-element.omitted-scene {
+  cursor: default;
+}
+
 /* Automatic (CONT'D) after a character who speaks again in the scene */
 .auto-contd {
   user-select: none;
@@ -97,6 +114,12 @@
   margin-top: 32px;
   font-weight: 700;
   text-transform: uppercase;
+  /* Undo BreakDown's global .scene-heading list style (13px, no wrap, clipped),
+     which would hide scene numbers and revision marks and break wrapping */
+  font-size: 16px;
+  white-space: pre-wrap;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .script-element.scene-heading:first-child {

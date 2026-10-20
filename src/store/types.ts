@@ -2,6 +2,7 @@
 import type { ProductionCalendar } from '../engine/schedule/calendar';
 import type { DOODSettings } from '../engine/schedule/dood';
 import type { AutoDayBreakOptions, SortDirection } from '../engine/schedule/stripboard';
+import type { SceneNumberOptions } from '../engine/production';
 import type {
   Screenplay,
   ElementType,
@@ -21,6 +22,8 @@ import type {
   ScriptLocation,
   AutoCompleteSuggestion,
   PageLock,
+  RevisionSettings,
+  RevisionSet,
   WatermarkSettings,
   Breakdown,
   BreakdownElement,
@@ -193,6 +196,21 @@ export interface ScriptSlice {
   toggleWatermark: () => void;
   // Dual Dialogue actions
   toggleDualDialogue: (characterElementId: string) => void;
+  // Production menu: revisions
+  updateRevisionSettings: (changes: Partial<RevisionSettings>) => void;
+  updateRevisionSet: (id: number, changes: Partial<RevisionSet>) => void;
+  toggleRevisionMode: () => void;
+  markRevised: (elementIds: string[]) => void;
+  clearRevised: (elementIds: string[]) => void;
+  // Production menu: locked pages
+  lockPages: () => void;
+  unlockAPages: () => void;
+  unlockAllPages: () => void;
+  // Production menu: scene numbers and omitted scenes
+  numberScenes: (options: SceneNumberOptions) => void;
+  removeSceneNumbers: () => void;
+  editSceneNumber: (elementId: string, sceneNumber: string) => void;
+  toggleOmitScene: (elementId: string) => void;
 }
 
 // App shell: active app, zoom, panels, theme, writing stats

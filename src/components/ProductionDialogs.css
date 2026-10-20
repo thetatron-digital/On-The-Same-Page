@@ -1,0 +1,130 @@
+/* Production menu dialogs (Revisions…, Scene Numbers…) */
+.production-dialog {
+  min-width: 360px;
+  max-width: 560px;
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.production-check,
+.production-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.production-field select,
+.production-field input[type='number'] {
+  padding: 4px 6px;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+}
+
+.production-field input[type='number'] {
+  width: 72px;
+}
+
+.production-dialog .production-check input,
+.production-dialog .production-field input[type='number'] {
+  width: auto;
+}
+
+.production-group {
+  margin-left: 22px;
+}
+
+.production-group.disabled {
+  opacity: 0.5;
+}
+
+.production-row {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0 4px;
+}
+
+.production-row button {
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  background: var(--toolbar-bg);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.production-row button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.revisions-table-wrap {
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+}
+
+.revisions-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.revisions-table th {
+  position: sticky;
+  top: 0;
+  background: var(--panel-bg, var(--toolbar-bg));
+  text-align: left;
+  font-weight: 600;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.revisions-table td {
+  padding: 3px 8px;
+}
+
+.revisions-table tr.active {
+  background: var(--hover-bg);
+}
+
+.modal-content .revisions-table input[type='text'] {
+  padding: 3px 6px;
+  font-size: 13px;
+}
+
+.modal-content .revisions-table input[type='radio'] {
+  width: auto;
+}
+
+.modal-content .revisions-table .mark-input {
+  width: 3em;
+  text-align: center;
+}
+
+.modal-content .revisions-table input[type='color'] {
+  width: 40px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--border-color);
+}
+
+/* Production menu: shortcut hints and submenu */
+.dropdown-item .dropdown-shortcut {
+  margin-left: auto;
+  padding-left: 16px;
+  opacity: 0.6;
+  font-size: 11px;
+}
+
+.dropdown-submenu-title {
+  padding: 6px 12px 2px 32px;
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.dropdown-item.indented {
+  padding-left: 44px;
+}
