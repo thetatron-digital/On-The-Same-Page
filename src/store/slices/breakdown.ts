@@ -3,6 +3,7 @@ import type { StateCreator } from 'zustand';
 import type { Breakdown } from '../../types/screenplay';
 import { generateId } from '../../utils/fdx';
 import { generateBreakdownScenes, getElementsForScene } from '../../utils/breakdown';
+import { importFdxTags, readFdxTags } from '../../utils/fdxTags';
 import { addLinkedElements, deleteElement, mergeElements, pendingLinkedElements, renumberBoardIds, syncElementList } from '../../utils/elements';
 import type { ScreenplayState, BreakdownSlice } from '../types';
 
@@ -202,6 +203,59 @@ export const createBreakdownSlice: StateCreator<ScreenplayState, [], [], Breakdo
     const next = addLinkedElements(breakdown, sceneId, pending);
     set({ breakdown: { ...next, updatedAt: new Date() }, breakdownScenes: next.scenes, isDirty: true });
     return pending.length;
+  },
+
+  // Final Draft Tags Mode -> BreakDown (tags, master elements, sheet fields)
+  importFinalDraftTags: (fdxXml) => {
+    let data;
+    try {
+      data = readFdxTags(fdxXml);
+    } catch (error) {
+      return error instanceof Error ? error.message : 'Could not read that file.';
+    }
+    if (data.definitionsByTag.size === 0) return 'That Final Draft file has no tags. Tag it in Final Draft (Production > Tags Mode) first.';
+    if (!get().breakdown) get().initializeBreakdown();
+    get().refreshBreakdownScenes();
+    const { breakdown, screenplay } = get();
+    if (!breakdown) return 'Could not start a breakdown for this script.';
+
+    const result = importFdxTags(data, screenplay.elements);
+    const key = (t: { sourceElementId: string; startOffset: number; endOffset: number; category: string; text: string }) =>
+      `${t.sourceElementId}|${t.startOffset}|${t.endOffset}|${t.category}|${t.text.toUpperCase()}`;
+    const existing = new Set(breakdown.elements.map(key));
+    const newTags = result.tags.filter((t) => !existing.has(key(t)));
+
+    // Sheet fields from Final Draft fill only what is still empty
+    const sheets = { ...(breakdown.sheets ?? {}) };
+    let sheetCount = 0;
+    for (const [sceneId, fields] of Object.entries(result.sheets)) {
+      const current = sheets[sceneId] ?? {};
+      const merged = { ...current };
+      for (const [field, value] of Object.entries(fields) as [keyof typeof current, string][]) {
+        if (!merged[field]) merged[field] = value;
+      }
+      sheets[sceneId] = merged;
+      sheetCount++;
+    }
+
+    const before = breakdown.elementList?.length ?? 0;
+    const synced = syncElementList({
+      ...breakdown,
+      elements: [...breakdown.elements, ...newTags],
+      scenes: breakdown.scenes.map((s) => ({
+        ...s,
+        elements: [...s.elements, ...newTags.filter((t) => t.sceneId === s.id).map((t) => t.id)],
+      })),
+      sheets,
+      updatedAt: new Date(),
+    });
+    set({ breakdown: synced, breakdownScenes: synced.scenes, isDirty: true });
+    return {
+      tags: newTags.length,
+      elements: (synced.elementList?.length ?? 0) - before,
+      sheets: sheetCount,
+      unmatched: result.unmatchedParagraphs,
+    };
   },
 
   setElementLinkMode: (mode) => {

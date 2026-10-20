@@ -234,6 +234,29 @@ export const Breakdown = () => {
             <button className="collapse-btn element-manager-btn" onClick={() => setShowElementManager(true)} title="All elements, Board IDs and Day Out of Days figures">
               Element Manager
             </button>
+            <label className="collapse-btn element-manager-btn" title="Bring in the tags from a script tagged in Final Draft (Production > Tags Mode)">
+              Import Final Draft Tags…
+              <input
+                type="file"
+                accept=".fdx,.fdxt"
+                hidden
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = '';
+                  if (!file) return;
+                  const result = useScreenplayStore.getState().importFinalDraftTags(await file.text());
+                  if (typeof result === 'string') {
+                    alert(result);
+                  } else {
+                    alert(
+                      `Imported ${result.tags} tag${result.tags === 1 ? '' : 's'} (${result.elements} new element${result.elements === 1 ? '' : 's'})` +
+                      (result.sheets ? ` and sheet fields for ${result.sheets} scene${result.sheets === 1 ? '' : 's'}` : '') + '.' +
+                      (result.unmatched ? `\n\n${result.unmatched} tagged paragraph${result.unmatched === 1 ? ' was' : 's were'} not found in this script. Open the same .fdx in ReWriter first to import everything.` : '')
+                    );
+                  }
+                }}
+              />
+            </label>
             {selectedText && (
               <div className="selection-hint">
                 Select category to tag: "{selectedText.slice(0, 30)}{selectedText.length > 30 ? '...' : ''}"
