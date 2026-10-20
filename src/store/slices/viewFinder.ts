@@ -358,6 +358,33 @@ export const createViewFinderSlice: StateCreator<ScreenplayState, [], [], ViewFi
     });
   },
 
+  insertStoryboardFrame: (storyboardId, index, frame) => {
+    const state = get();
+    if (!state.viewFinder) return '';
+    const id = generateId();
+    const storyboards = state.viewFinder.storyboards.map((sb) => {
+      if (sb.id !== storyboardId) return sb;
+      const frames = [...sb.frames];
+      frames.splice(Math.max(0, Math.min(index, frames.length)), 0, { ...frame, id, order: 0 });
+      return { ...sb, frames: frames.map((f, i) => ({ ...f, order: i + 1 })), updatedAt: new Date() };
+    });
+    set({ viewFinder: { ...state.viewFinder, storyboards, updatedAt: new Date() }, isDirty: true });
+    return id;
+  },
+
+  updateStoryboardSettings: (storyboardId, updates) => {
+    const state = get();
+    if (!state.viewFinder) return;
+    set({
+      viewFinder: {
+        ...state.viewFinder,
+        storyboards: state.viewFinder.storyboards.map((sb) => (sb.id === storyboardId ? { ...sb, ...updates, updatedAt: new Date() } : sb)),
+        updatedAt: new Date(),
+      },
+      isDirty: true,
+    });
+  },
+
   reorderStoryboardFrames: (storyboardId, frameIds) => {
     const state = get();
     if (!state.viewFinder) return;

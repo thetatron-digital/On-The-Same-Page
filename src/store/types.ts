@@ -47,6 +47,7 @@ import type {
   Shot,
   ShotStatus,
   StoryboardFrame,
+  Storyboard,
   CameraPackage,
   SceneCoverage,
   Schedule,
@@ -407,6 +408,8 @@ export interface ViewFinderSlice {
   updateStoryboardFrame: (storyboardId: string, frameId: string, updates: Partial<StoryboardFrame>) => void;
   deleteStoryboardFrame: (storyboardId: string, frameId: string) => void;
   reorderStoryboardFrames: (storyboardId: string, frameIds: string[]) => void;
+  insertStoryboardFrame: (storyboardId: string, index: number, frame: Omit<StoryboardFrame, 'id' | 'order'>) => string;
+  updateStoryboardSettings: (storyboardId: string, updates: Partial<Pick<Storyboard, 'fps' | 'defaultBoardTimingMs' | 'aspectRatio'>>) => void;
   linkFrameToShot: (storyboardId: string, frameId: string, shotId: string | undefined) => void;
   // Camera package actions
   addCameraPackage: (pkg: Omit<CameraPackage, 'id'>) => string;
