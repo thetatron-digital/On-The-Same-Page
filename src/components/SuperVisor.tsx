@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useScreenplayStore } from '../store/screenplayStore';
 import { useShallow } from 'zustand/react/shallow';
 import type { TakeEntry } from '../types/screenplay';
+import { Dailies } from './dailies/Dailies';
 import './SuperVisor.css';
 
-type ViewTab = 'takes' | 'continuity' | 'reports';
+type ViewTab = 'takes' | 'continuity' | 'reports' | 'dailies';
 
 const SuperVisor: React.FC = () => {
   const {
@@ -195,6 +196,12 @@ const SuperVisor: React.FC = () => {
           >
             Reports
           </button>
+          <button
+            className={`tab ${activeTab === 'dailies' ? 'active' : ''}`}
+            onClick={() => setActiveTab('dailies')}
+          >
+            Dailies
+          </button>
         </div>
 
         <div className="header-actions">
@@ -219,8 +226,11 @@ const SuperVisor: React.FC = () => {
         </div>
       </div>
 
+      {/* Dailies: review clips (needs no session) */}
+      {activeTab === 'dailies' && <Dailies />}
+
       {/* No session state */}
-      {!session && (
+      {!session && activeTab !== 'dailies' && (
         <div className="no-session">
           <div className="empty-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
