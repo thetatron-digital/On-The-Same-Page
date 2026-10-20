@@ -17,8 +17,11 @@ import { ScheduleReports } from './basecamp/ScheduleReports';
 import { RedFlags } from './basecamp/RedFlags';
 import { ProductionInfoView } from './basecamp/ProductionInfoView';
 import { ProductionReportView } from './basecamp/ProductionReportView';
+import { SunPanel } from './basecamp/SunPanel';
+import { useSunPanel } from './basecamp/sunPanelState';
+import { shootDates } from '../engine/schedule/calendar';
 import { findConflicts } from '../engine/schedule/redFlags';
-import { scheduledElementDays } from '../utils/doodReport';
+import { scheduledElementDays, toYMD } from '../utils/doodReport';
 import { csvToPeople, newContacts, peopleToCsv, peopleToVcf, vcfToPeople } from '../utils/contacts';
 
 const downloadFile = (text: string, name: string, type: string) => {
@@ -1346,6 +1349,11 @@ const BaseCamp: React.FC = () => {
     const [geocoding, setGeocoding] = useState(false);
     const [nearbyHospitals, setNearbyHospitals] = useState<NearestHospitalResult[]>([]);
     const { locations } = productionData;
+    const { locationId: sunLocationId, set: setSun } = useSunPanel();
+    const sunLocation = locations.find((l) => l.id === sunLocationId && l.latitude != null && l.longitude != null);
+    const shootDateList = schedule?.calendar
+      ? shootDates(schedule.calendar, schedule.shootDays.length)
+      : (schedule?.shootDays ?? []).map((d) => (d.date ? toYMD(d.date) : '')).filter(Boolean);
 
     const emptyLocation = (): Omit<ProductionLocation, 'id'> => ({
       name: '', streetAddress: '', city: '', state: '', postalCode: '', phone: '', nearestHospital: '',
@@ -1498,6 +1506,9 @@ const BaseCamp: React.FC = () => {
                   </td>
                   <td>
                     <div className="bc-row-actions">
+                      {loc.latitude != null && loc.longitude != null && (
+                        <button className={`bc-icon-btn ${sunLocationId === loc.id ? 'active' : ''}`} onClick={() => setSun({ locationId: sunLocationId === loc.id ? null : loc.id })} title="Sun: golden hour, sunrise, sunset">☀</button>
+                      )}
                       <button className="bc-icon-btn" onClick={() => openEdit(loc)} title="Edit">✎</button>
                       <button
                         className="bc-icon-btn danger"
@@ -1516,6 +1527,8 @@ const BaseCamp: React.FC = () => {
             )}
           </tbody>
         </table>
+
+        {sunLocation && <SunPanel location={sunLocation} shootDates={shootDateList} />}
 
         {/* Add/Edit Location Modal */}
         {showModal && (
