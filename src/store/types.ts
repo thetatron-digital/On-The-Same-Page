@@ -1,6 +1,7 @@
 // Types for the OTSP store. Each app owns one slice; ScreenplayState is their union.
 import type { ProductionCalendar } from '../engine/schedule/calendar';
 import type { DOODSettings } from '../engine/schedule/dood';
+import type { RedFlag } from '../engine/schedule/redFlags';
 import type { AutoDayBreakOptions, SortDirection } from '../engine/schedule/stripboard';
 import type { SceneNumberOptions } from '../engine/production';
 import type {
@@ -462,6 +463,10 @@ export interface ScheduleSlice {
   updateBanner: (dayId: string, bannerId: string, updates: { text?: string; color?: string }) => void;
   deleteBanner: (dayId: string, bannerId: string) => void;
   updateDOODSettings: (updates: Partial<DOODSettings>) => void;
+  addRedFlag: (flag: Omit<RedFlag, 'id'>) => string | null;
+  updateRedFlag: (id: string, updates: Partial<Omit<RedFlag, 'id'>>) => string | null;
+  deleteRedFlag: (id: string) => void;
+  addRedFlagName: (name: string) => void;
   // Schedule settings
   updateScheduleSettings: (settings: Partial<Pick<Schedule, 'defaultCallTime' | 'defaultLunchDuration' | 'showLunchOnBoard'>>) => void;
   // Selection
@@ -473,7 +478,7 @@ export interface ScheduleSlice {
 export interface ProductionSlice {
   // Production Management State (shared)
   productionData: ProductionData;
-  basecampView: 'dashboard' | 'callsheets' | 'people' | 'scenes' | 'locations' | 'settings' | 'stripboard' | 'calendar' | 'dood' | 'reports';
+  basecampView: 'dashboard' | 'callsheets' | 'people' | 'scenes' | 'locations' | 'settings' | 'stripboard' | 'calendar' | 'dood' | 'reports' | 'redflags';
   // Production Management actions
   setBasecampView: (view: ScreenplayState['basecampView']) => void;
   initializeProductionData: () => void;

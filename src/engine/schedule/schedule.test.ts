@@ -120,6 +120,13 @@ describe('Day Out of Days', () => {
     expect(row.totals.hold).toBe(0);
   });
 
+  it('a flag on a holiday replaces the holiday in the totals', () => {
+    const cal = createCalendar(MONDAY, { specialDays: [{ date: '2026-03-03', kind: 'holiday' }] });
+    const row = buildDOODRow({ ...element([0, 1]), events: [{ date: '2026-03-03', kind: 'fitting' }] }, layOutSchedule(cal, 2));
+    expect(codes(row)).toEqual(['SW', 'FT', 'WF']);
+    expect(row.totals).toMatchObject({ holiday: 0, work: 2, total: 2 });
+  });
+
   it('gives an element that never works an empty row', () => {
     const row = buildDOODRow(element([]), fiveDays);
     expect(codes(row)).toEqual(['', '', '', '', '']);

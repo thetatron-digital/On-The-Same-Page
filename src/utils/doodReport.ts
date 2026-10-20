@@ -7,6 +7,7 @@
 
 import type { Breakdown, ProductionPerson, Schedule } from '../types/screenplay';
 import { layOutSchedule, type CalendarColumn } from '../engine/schedule/calendar';
+import { doodEventsFor } from '../engine/schedule/redFlags';
 import {
   buildDOOD,
   DEFAULT_DOOD_SETTINGS,
@@ -139,6 +140,7 @@ export function buildScheduleDOOD(
       name: el.name,
       boardId: el.boardId,
       options: resolveDOODOptions(settings, category, el.id),
+      events: doodEventsFor(schedule.redFlags ?? [], el.id),
       workDays: schedule.shootDays.flatMap((day, i) => (day.strips.some(el.works) ? [i] : [])),
     }))
     .filter((el) => el.workDays.length > 0)
@@ -189,4 +191,42 @@ export function doodToCsv(report: DOODReport): string {
     ]),
   ];
   return lines.map((line) => line.map(csvCell).join(',')).join('\n') + '\n';
+}
+
+/**
+ * Who works on which dated shoot day: cast on each strip plus every
+ * tagged element of the strip's scene. Feeds the Red Flag Conflicts check.
+ */
+export function scheduledElementDays(
+  schedule: Schedule,
+  context: { breakdown: Breakdown | null; people: ProductionPerson[] }
+): import('../engine/schedule/redFlags').ScheduledElementDay[] {
+  const stripById = new Map(schedule.strips.map((s) => [s.id, s]));
+  const records = new Map((context.breakdown?.elementList ?? []).map((e) => [e.id, e]));
+  const columns = scheduleColumns(schedule).filter((c) => c.kind === 'shoot');
+  // Same cast naming as the DOOD: "1. ADA"
+  const castNames = new Map(
+    castElements(schedule, context.breakdown, context.people).map((c) => [c.id, c.boardId ? `${c.boardId}. ${c.name}` : c.name])
+  );
+  const result: import('../engine/schedule/redFlags').ScheduledElementDay[] = [];
+  schedule.shootDays.forEach((day, i) => {
+    const date = columns[i]?.date || toYMD(day.date);
+    if (!date) return;
+    for (const stripId of day.strips) {
+      const strip = stripById.get(stripId);
+      if (!strip) continue;
+      const base = { date, dayNumber: day.dayNumber, sceneNumber: strip.sceneNumber };
+      for (const id of strip.castIds) {
+        result.push({ ...base, elementId: id, elementName: castNames.get(id) ?? id, category: CAST_CATEGORY });
+      }
+      const tagged = new Set<string>();
+      for (const tag of context.breakdown?.elements ?? []) {
+        if (tag.sceneId !== strip.sceneId || !tag.elementRefId || tagged.has(tag.elementRefId) || tag.category === CAST_CATEGORY) continue;
+        tagged.add(tag.elementRefId);
+        const record = records.get(tag.elementRefId);
+        result.push({ ...base, elementId: tag.elementRefId, elementName: record?.name ?? tag.text, category: tag.category });
+      }
+    }
+  });
+  return result;
 }

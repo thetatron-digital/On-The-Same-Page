@@ -14,6 +14,9 @@ import { BoardTools } from './basecamp/BoardTools';
 import { DayOutOfDays } from './basecamp/DayOutOfDays';
 import { ProductionCalendar } from './basecamp/ProductionCalendar';
 import { ScheduleReports } from './basecamp/ScheduleReports';
+import { RedFlags } from './basecamp/RedFlags';
+import { findConflicts } from '../engine/schedule/redFlags';
+import { scheduledElementDays } from '../utils/doodReport';
 
 // ============================================
 // BASECAMP - Production Management & Call Sheets
@@ -46,6 +49,7 @@ const BaseCamp: React.FC = () => {
     updateShootDay,
     deleteShootDay,
     deleteBanner,
+    breakdown,
     assignStripToDay,
     unassignStrip,
     selectShootDay,
@@ -83,6 +87,7 @@ const BaseCamp: React.FC = () => {
       updateShootDay: s.updateShootDay,
       deleteShootDay: s.deleteShootDay,
       deleteBanner: s.deleteBanner,
+      breakdown: s.breakdown,
       assignStripToDay: s.assignStripToDay,
       unassignStrip: s.unassignStrip,
       selectShootDay: s.selectShootDay,
@@ -253,6 +258,8 @@ const BaseCamp: React.FC = () => {
         return <DayOutOfDays />;
       case 'reports':
         return <ScheduleReports />;
+      case 'redflags':
+        return <RedFlags />;
       default:
         return <DashboardView />;
     }
@@ -268,6 +275,7 @@ const BaseCamp: React.FC = () => {
     { id: 'calendar', label: 'Calendar', icon: '▦' },
     { id: 'dood', label: 'Day Out of Days', icon: '▤' },
     { id: 'reports', label: 'Reports', icon: '▧' },
+    { id: 'redflags', label: 'Red Flags', icon: '⚑' },
     { id: 'callsheets', label: 'Call Sheets', icon: '▤' },
     { id: 'settings', label: 'Settings', icon: '⚙' },
   ];
@@ -2454,6 +2462,18 @@ const BaseCamp: React.FC = () => {
     const [draggedStrip, setDraggedStrip] = useState<string | null>(null);
     const [conflictWarning, setConflictWarning] = useState<{ stripId: string; dayId: string; conflicts: string[] } | null>(null);
 
+    // Red Flag conflicts per scheduled scene (shown as a flag on the strip)
+    const flagConflicts = (() => {
+      const byScene = new Map<string, string[]>();
+      if (!schedule) return byScene;
+      const availability = productionData.people
+        .filter(p => p.availability)
+        .map(p => ({ elementId: p.id, startDate: p.availability!.startDate, endDate: p.availability!.endDate, blockedDates: p.availability!.blockedDates ?? [] }));
+      const found = findConflicts(scheduledElementDays(schedule, { breakdown, people: productionData.people }), schedule.redFlags ?? [], availability);
+      for (const c of found) byScene.set(`${c.dayNumber}|${c.sceneNumber}`, [...(byScene.get(`${c.dayNumber}|${c.sceneNumber}`) ?? []), `${c.flag}: ${c.element}${c.note ? ` (${c.note})` : ''}`]);
+      return byScene;
+    })();
+
     const getStrip = (stripId: string): SceneStrip | undefined => {
       return schedule?.strips.find(s => s.id === stripId);
     };
@@ -2572,6 +2592,11 @@ const BaseCamp: React.FC = () => {
           {strip.isLocked && <span className="strip-lock">🔒</span>}
           {strip.hasStunts && <span className="strip-flag">⚡</span>}
           {strip.hasVFX && <span className="strip-flag">✨</span>}
+          {(() => {
+            const day = schedule?.shootDays.find(d => d.id === strip.scheduledDayId);
+            const hits = day ? flagConflicts.get(`${day.dayNumber}|${strip.sceneNumber}`) : undefined;
+            return hits ? <span className="strip-flag strip-flag-conflict" title={hits.join('\n')}>⚑</span> : null;
+          })()}
         </div>
       );
     };

@@ -14,6 +14,7 @@ import { generateId } from '../../utils/fdx';
 import type { ScreenplayState, ScheduleSlice, StripSortLevel } from '../types';
 import { shootDates } from '../../engine/schedule/calendar';
 import { DEFAULT_DOOD_SETTINGS } from '../../engine/schedule/dood';
+import { DEFAULT_RED_FLAG_NAMES, doodFlagClash } from '../../engine/schedule/redFlags';
 import { autoDayBreaks, sortStrips, type SortLevel } from '../../engine/schedule/stripboard';
 
 // Scheduled strips in board order (day by day)
@@ -880,6 +881,42 @@ export const createScheduleSlice: StateCreator<ScreenplayState, [], [], Schedule
       },
       isDirty: true,
     });
+  },
+
+  addRedFlag: (flag) => {
+    if (!get().schedule) get().initializeSchedule();
+    const schedule = get().schedule!;
+    const flags = schedule.redFlags ?? [];
+    const clash = doodFlagClash(flags, flag);
+    if (clash) return `${clash.name} is already set for this element on ${clash.date}. Only one Day Out of Days red flag per element per day.`;
+    set({ schedule: { ...schedule, redFlags: [...flags, { ...flag, id: generateId() }], updatedAt: new Date() }, isDirty: true });
+    return null;
+  },
+
+  updateRedFlag: (id, updates) => {
+    const schedule = get().schedule;
+    if (!schedule) return null;
+    const flags = schedule.redFlags ?? [];
+    const current = flags.find((f) => f.id === id);
+    if (!current) return null;
+    const clash = doodFlagClash(flags, { ...current, ...updates });
+    if (clash) return `${clash.name} is already set for this element on ${clash.date}. Only one Day Out of Days red flag per element per day.`;
+    set({ schedule: { ...schedule, redFlags: flags.map((f) => (f.id === id ? { ...f, ...updates } : f)), updatedAt: new Date() }, isDirty: true });
+    return null;
+  },
+
+  deleteRedFlag: (id) => {
+    const schedule = get().schedule;
+    if (!schedule) return;
+    set({ schedule: { ...schedule, redFlags: (schedule.redFlags ?? []).filter((f) => f.id !== id), updatedAt: new Date() }, isDirty: true });
+  },
+
+  addRedFlagName: (name) => {
+    if (!get().schedule) get().initializeSchedule();
+    const schedule = get().schedule!;
+    const names = schedule.redFlagNames ?? DEFAULT_RED_FLAG_NAMES;
+    if (!name.trim() || names.includes(name.trim())) return;
+    set({ schedule: { ...schedule, redFlagNames: [...names, name.trim()], updatedAt: new Date() }, isDirty: true });
   },
 
   updateDOODSettings: (updates) => {
