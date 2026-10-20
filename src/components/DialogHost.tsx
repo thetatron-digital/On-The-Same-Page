@@ -13,6 +13,8 @@ import { AutoCompleteListsDialog, BookmarksDialog, MacrosDialog, ReportsDialog, 
 import { FindPanel } from './FindReplace';
 import { AssignVoicesDialog } from './TableRead';
 import { HeaderFooterDialog, HighlightCharactersDialog, PageLayoutDialog, RenameCharacterDialog } from './DocumentDialogs';
+import { ShareDialog } from './ShareDialog';
+import { useProjectsStore } from '../services/projectService';
 import './ProductionDialogs.css';
 
 interface DialogProps {
@@ -154,6 +156,7 @@ export const DialogHost = () => {
     case 'renameCharacter': return <RenameCharacterDialog onClose={close} />;
     case 'pageLayout': return <PageLayoutDialog onClose={close} />;
     case 'headerFooter': return <HeaderFooterDialog onClose={close} />;
+    case 'share': return <ShareDialog projectId={useProjectsStore.getState().currentProjectId} onClose={close} />;
     case 'find': return <FindPanel key={findTab} tab={findTab} onClose={close} />;
     default: return null;
   }

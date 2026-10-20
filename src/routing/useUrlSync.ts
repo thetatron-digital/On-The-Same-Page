@@ -7,6 +7,8 @@ import { useLocation, useNavigate } from 'react-router';
 import { useScreenplayStore } from '../store/screenplayStore';
 import { useAuthStore, useProjectsStore } from '../services/projectService';
 import { openProject } from '../services/openProject';
+import { ProjectAccessError } from '../services/googleDrive';
+import { useSharedAccessPrompt } from '../services/openShared';
 import { buildPath, HOME, parsePath } from './routes';
 
 export function useUrlSync(): void {
@@ -32,6 +34,7 @@ export function useUrlSync(): void {
           await openProject(target.projectId, target.app);
         } catch (error) {
           console.error('Failed to open project from URL:', error);
+          if (error instanceof ProjectAccessError) useSharedAccessPrompt.setState({ projectId: target.projectId, app: target.app });
           setActiveApp('home');
         }
       } else {
@@ -55,6 +58,7 @@ export function useUrlSync(): void {
     if (target.projectId && target.projectId !== currentProjectId) {
       openProject(target.projectId, target.app).catch((error) => {
         console.error('Failed to open project from URL:', error);
+        if (error instanceof ProjectAccessError) useSharedAccessPrompt.setState({ projectId: target.projectId!, app: target.app });
         setActiveApp('home');
       });
       return;

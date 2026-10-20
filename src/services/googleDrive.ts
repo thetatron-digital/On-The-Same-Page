@@ -16,11 +16,37 @@ import { migrateProjectData, parseProjectData, reviveDates } from '../utils/proj
 
 // Fields requested from the Drive v3 files.list endpoint
 interface DrivePermission {
+  id?: string;
   type: string;
   role: string;
   emailAddress?: string;
   displayName?: string;
 }
+
+/** Someone with access to a project, as the Share dialog lists them */
+export interface ProjectMember {
+  permissionId: string;
+  email?: string;
+  name?: string;
+  type: 'user' | 'group' | 'domain' | 'anyone';
+  role: 'owner' | 'edit' | 'comment' | 'view';
+}
+
+const ROLE_FROM_DRIVE: Record<string, ProjectMember['role']> = {
+  owner: 'owner', organizer: 'owner', fileOrganizer: 'edit', writer: 'edit', commenter: 'comment', reader: 'view',
+};
+
+/** Thrown when a Drive project exists but this app can't see it yet */
+export class ProjectAccessError extends Error {
+  projectId: string;
+  constructor(projectId: string) {
+    super('This project was not shared with this account, or OTSP has not been given access to it yet.');
+    this.projectId = projectId;
+  }
+}
+
+/** OTSP's own link to a project (opens it in the app) */
+export const projectLink = (projectId: string, app = 'rewriter') => `${window.location.origin}/projects/${projectId}/${app}`;
 
 interface DriveFile {
   id: string;
@@ -29,6 +55,8 @@ interface DriveFile {
   createdTime: string;
   modifiedTime: string;
   shared?: boolean;
+  ownedByMe?: boolean;
+  owners?: { displayName?: string; emailAddress?: string; permissionId?: string }[];
   permissions?: DrivePermission[];
 }
 
@@ -115,47 +143,52 @@ class GoogleDriveService {
   async listProjects(): Promise<Project[]> {
     const headers = await this.getAuthHeader();
     const folderId = await this.getAppFolder();
+    const fields = 'files(id, name, description, createdTime, modifiedTime, ownedByMe, owners(displayName, emailAddress), shared, permissions)';
+    const list = async (q: string): Promise<DriveFile[]> => {
+      const response = await fetch(
+        `${DRIVE_API_BASE}/files?` + new URLSearchParams({ q, fields, orderBy: 'modifiedTime desc', spaces: 'drive' }),
+        { headers }
+      );
+      if (!response.ok) throw new Error('Failed to list projects');
+      return (await response.json()).files || [];
+    };
 
-    const response = await fetch(
-      `${DRIVE_API_BASE}/files?` +
-        new URLSearchParams({
-          q: `'${folderId}' in parents and mimeType='${GOOGLE_CONFIG.MIME_TYPES.JSON}' and trashed=false`,
-          fields: 'files(id, name, description, createdTime, modifiedTime, owners, shared, sharingUser, permissions)',
-          orderBy: 'modifiedTime desc',
-          spaces: 'drive',
-        }),
-      { headers }
-    );
-
-    if (!response.ok) {
-      throw new Error('Failed to list projects');
-    }
-
-    const result = await response.json();
+    // Our projects, plus projects others shared with us that OTSP has been
+    // given access to (drive.file scope: opened once through the picker)
+    const [own, shared] = await Promise.all([
+      list(`'${folderId}' in parents and mimeType='${GOOGLE_CONFIG.MIME_TYPES.JSON}' and trashed=false`),
+      list(`sharedWithMe and mimeType='${GOOGLE_CONFIG.MIME_TYPES.JSON}' and trashed=false`).catch(() => [] as DriveFile[]),
+    ]);
+    const seen = new Set<string>();
+    const files = [...own, ...shared].filter((f) => !seen.has(f.id) && seen.add(f.id));
+    files.sort((a, b) => b.modifiedTime.localeCompare(a.modifiedTime));
     const user = googleAuth.getStoredUser();
 
-    return (result.files || []).map((file: DriveFile) => ({
-      id: file.id,
-      name: file.name.replace('.json', ''),
-      description: file.description || '',
-      createdAt: new Date(file.createdTime),
-      updatedAt: new Date(file.modifiedTime),
-      ownerId: user?.id || '',
-      ownerEmail: user?.email || '',
-      ownerName: user?.name,
-      isShared: file.shared || false,
-      sharedWith: file.permissions
-        ?.filter((p: DrivePermission) => p.type === 'user' && p.emailAddress !== user?.email)
-        .map((p: DrivePermission) => ({
-          email: p.emailAddress,
-          name: p.displayName,
-          permission: p.role === 'writer' ? 'edit' : 'view',
-          addedAt: new Date(),
-        })),
-    }));
+    return files.map((file: DriveFile): Project => {
+      const owner = file.ownedByMe === false ? file.owners?.[0] : undefined;
+      return {
+        id: file.id,
+        name: file.name.replace(/\.json$/, ''),
+        description: file.description || '',
+        createdAt: new Date(file.createdTime),
+        updatedAt: new Date(file.modifiedTime),
+        ownerId: owner ? owner.emailAddress || '' : user?.id || '',
+        ownerEmail: owner ? owner.emailAddress || '' : user?.email || '',
+        ownerName: owner ? owner.displayName : user?.name,
+        isShared: file.shared || false,
+        sharedWithMe: !!owner,
+        sharedWith: file.permissions
+          ?.filter((p: DrivePermission) => p.type === 'user' && p.emailAddress && p.emailAddress !== user?.email)
+          .map((p: DrivePermission) => ({
+            email: p.emailAddress!,
+            name: p.displayName,
+            permission: p.role === 'writer' ? 'edit' as const : 'view' as const,
+            addedAt: new Date(),
+          })),
+      };
+    });
   }
 
-  // Create a new project
   async createProject(name: string, data: ProjectData): Promise<Project> {
     const headers = await this.getAuthHeader();
     const folderId = await this.getAppFolder();
@@ -232,6 +265,7 @@ class GoogleDriveService {
       { headers }
     );
 
+    if (response.status === 404 || response.status === 403) throw new ProjectAccessError(projectId);
     if (!response.ok) {
       throw new Error('Failed to load project');
     }
@@ -243,6 +277,7 @@ class GoogleDriveService {
   async getRevision(projectId: string): Promise<DriveRevision> {
     const headers = await this.getAuthHeader();
     const response = await fetch(`${DRIVE_API_BASE}/files/${projectId}?fields=${encodeURIComponent(REVISION_FIELDS)}`, { headers });
+    if (response.status === 404 || response.status === 403) throw new ProjectAccessError(projectId);
     if (!response.ok) throw new Error('Failed to check the project for changes');
     return toRevision(await response.json());
   }
@@ -357,29 +392,57 @@ class GoogleDriveService {
   async shareProject(
     projectId: string,
     email: string,
-    permission: 'view' | 'edit'
+    permission: 'view' | 'comment' | 'edit',
+    message?: string
   ): Promise<void> {
     const headers = await this.getAuthHeader();
-
+    // Google emails the invite; the message carries OTSP's own link
+    const emailMessage = [message?.trim(), `Open it in OTSP: ${projectLink(projectId)}`].filter(Boolean).join('\n\n');
     const response = await fetch(
-      `${DRIVE_API_BASE}/files/${projectId}/permissions`,
+      `${DRIVE_API_BASE}/files/${projectId}/permissions?` + new URLSearchParams({ sendNotificationEmail: 'true', emailMessage }),
       {
         method: 'POST',
-        headers: {
-          ...headers,
-          'Content-Type': 'application/json',
-        },
+        headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: 'user',
-          role: permission === 'edit' ? 'writer' : 'reader',
+          role: permission === 'edit' ? 'writer' : permission === 'comment' ? 'commenter' : 'reader',
           emailAddress: email,
         }),
       }
     );
 
     if (!response.ok) {
-      throw new Error('Failed to share project');
+      throw new Error(response.status === 400 ? `Could not share with ${email}. Check the address.` : 'Failed to share project');
     }
+  }
+
+  // Everyone with access to a project
+  async listMembers(projectId: string): Promise<ProjectMember[]> {
+    const headers = await this.getAuthHeader();
+    const response = await fetch(
+      `${DRIVE_API_BASE}/files/${projectId}/permissions?fields=${encodeURIComponent('permissions(id,type,role,emailAddress,displayName)')}`,
+      { headers }
+    );
+    if (!response.ok) throw new Error('Could not load who has access');
+    const { permissions = [] } = (await response.json()) as { permissions?: DrivePermission[] };
+    return permissions.map((p) => ({
+      permissionId: p.id ?? '',
+      email: p.emailAddress,
+      name: p.displayName,
+      type: p.type as ProjectMember['type'],
+      role: ROLE_FROM_DRIVE[p.role] ?? 'view',
+    }));
+  }
+
+  // Change someone's access
+  async updateMember(projectId: string, permissionId: string, permission: 'view' | 'comment' | 'edit'): Promise<void> {
+    const headers = await this.getAuthHeader();
+    const response = await fetch(`${DRIVE_API_BASE}/files/${projectId}/permissions/${permissionId}`, {
+      method: 'PATCH',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: permission === 'edit' ? 'writer' : permission === 'comment' ? 'commenter' : 'reader' }),
+    });
+    if (!response.ok) throw new Error('Could not change access');
   }
 
   // Remove sharing for a user

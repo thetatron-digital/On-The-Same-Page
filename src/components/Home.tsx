@@ -4,6 +4,9 @@ import { useAuthStore, useProjectsStore } from '../services/projectService';
 import { googleAuth } from '../services/googleAuth';
 import { useScreenplayStore } from '../store/screenplayStore';
 import { openProject } from '../services/openProject';
+import { openSharedProject } from '../services/openShared';
+import { isPickerConfigured } from '../services/googlePicker';
+import { ShareDialog } from './ShareDialog';
 import { useShallow } from 'zustand/react/shallow';
 import type { Project, ProjectData } from '../types/user';
 import type { AppMode } from '../store/types';
@@ -38,6 +41,8 @@ export const Home = () => {
   const [renameValue, setRenameValue] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [view, setView] = useState<'grid' | 'list'>('grid');
+  const [sharingId, setSharingId] = useState<string | null>(null);
+  const [sharedError, setSharedError] = useState<string | null>(null);
 
   // Initialize auth and fetch projects
   useEffect(() => {
@@ -235,6 +240,29 @@ export const Home = () => {
             </div>
           </button>
 
+          {user && isPickerConfigured() && (
+            <button
+              className="action-card"
+              onClick={() => {
+                setSharedError(null);
+                openSharedProject().catch((e) => setSharedError(e instanceof Error ? e.message : 'Could not open the project'));
+              }}
+            >
+              <div className="action-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+              </div>
+              <div className="action-text">
+                <h3>Open Shared Project</h3>
+                <p>From someone else's Drive</p>
+              </div>
+            </button>
+          )}
+
           <label className="action-card">
             <input
               type="file"
@@ -360,10 +388,31 @@ export const Home = () => {
                         </div>
                         <div className="project-info">
                           <h3>{project.name}</h3>
-                          <p>Last modified {formatDate(project.updatedAt)}</p>
+                          <p>
+                            {project.sharedWithMe ? `Shared by ${project.ownerName || project.ownerEmail} · ` : ''}
+                            Last modified {formatDate(project.updatedAt)}
+                          </p>
                         </div>
                       </div>
                       <div className="project-actions">
+                        {!project.isLocal && (
+                          <button
+                            className="action-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSharingId(project.id);
+                            }}
+                            title="Share"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <circle cx="18" cy="5" r="3" />
+                              <circle cx="6" cy="12" r="3" />
+                              <circle cx="18" cy="19" r="3" />
+                              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                            </svg>
+                          </button>
+                        )}
                         <button
                           className="action-btn"
                           onClick={(e) => {
@@ -530,10 +579,12 @@ export const Home = () => {
         </div>
       )}
 
+      {sharingId && <ShareDialog projectId={sharingId} onClose={() => setSharingId(null)} />}
+
       {/* Error Toast */}
-      {error && (
-        <div className="error-toast" onClick={clearError}>
-          <span>{error}</span>
+      {(error || sharedError) && (
+        <div className="error-toast" onClick={() => { clearError(); setSharedError(null); }}>
+          <span>{error || sharedError}</span>
           <button>&times;</button>
         </div>
       )}

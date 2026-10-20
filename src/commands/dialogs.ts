@@ -7,7 +7,7 @@ import type { FindTab } from '../components/FindReplace';
 export type DialogId =
   | 'revisions' | 'sceneNumbers' | 'macros' | 'bookmarks' | 'reports'
   | 'sides' | 'pdf' | 'watermark' | 'shortcuts' | 'about' | 'find' | 'autoComplete' | 'voices'
-  | 'highlightCharacters' | 'renameCharacter' | 'pageLayout' | 'headerFooter';
+  | 'highlightCharacters' | 'renameCharacter' | 'pageLayout' | 'headerFooter' | 'share';
 
 interface DialogState {
   open: DialogId | null;

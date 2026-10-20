@@ -26,6 +26,7 @@ export interface Project {
 
   // Sharing
   isShared: boolean;
+  sharedWithMe?: boolean;   // someone else's project shared with this user
   sharedWith?: SharedUser[];
   shareLink?: string;
 
@@ -67,6 +68,11 @@ export const GOOGLE_CONFIG = {
   // Users will need to create their own at console.cloud.google.com
   // For now, using a placeholder that will work with localhost
   CLIENT_ID: import.meta.env.VITE_GOOGLE_CLIENT_ID || '',
+
+  // Google Picker (free): opening a project someone shared with you.
+  // API key restricted to the Picker API, and the Cloud project number.
+  API_KEY: import.meta.env.VITE_GOOGLE_API_KEY || '',
+  APP_ID: import.meta.env.VITE_GOOGLE_APP_ID || '',
 
   // Scopes we need
   SCOPES: [
