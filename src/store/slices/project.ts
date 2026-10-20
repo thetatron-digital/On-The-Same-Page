@@ -40,6 +40,35 @@ export const createProjectSlice: StateCreator<ScreenplayState, [], [], ProjectSl
     });
   },
 
+  // Data merged from or pulled from a collaborator: same project, so the
+  // selection, view, document generation and undo history stay
+  applyProjectData: (data) => {
+    const state = get();
+    set({
+      screenplay: data.screenplay,
+      storyOutline: data.storyOutline || state.storyOutline,
+      beatBoards: data.beatBoards || [],
+      versions: data.versions || [],
+      scriptNotes: data.scriptNotes || [],
+      splitContent: data.splitContent || state.splitContent,
+      breakdown: data.breakdown || null,
+      artCart: data.artCart || null,
+      viewFinder: data.viewFinder || null,
+      schedule: data.schedule || null,
+      onSet: data.onSet || null,
+      superVisor: data.superVisor || null,
+      productionData: data.productionData || state.productionData,
+      showSceneNumbers: data.showSceneNumbers ?? state.showSceneNumbers,
+      sceneNumberStyle: data.sceneNumberStyle || state.sceneNumberStyle,
+      pageLocks: data.pageLocks || [],
+      watermarkSettings: data.watermarkSettings || state.watermarkSettings,
+      selectedElementId: data.screenplay.elements.some((e) => e.id === state.selectedElementId)
+        ? state.selectedElementId
+        : data.screenplay.elements[0]?.id || null,
+      stats: calculateWritingStats(data.screenplay),
+    });
+  },
+
   resetToNew: () => {
     const newScript = createNewScreenplay();
     const stats = calculateWritingStats(newScript);
