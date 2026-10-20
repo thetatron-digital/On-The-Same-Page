@@ -17,6 +17,7 @@ export const createStorySlice: StateCreator<ScreenplayState, [], [], StorySlice>
 
   // Script Notes state
   scriptNotes: [],
+  activeNoteId: null,
 
   // Split View state
   splitContent: {
@@ -183,9 +184,11 @@ export const createStorySlice: StateCreator<ScreenplayState, [], [], StorySlice>
     })),
 
   // Script Notes actions
-  addNote: (elementId, content, author = 'You') => {
+  addNote: (elementId, content, author = 'You', fields = {}) => {
     const id = generateId();
     const note: ScriptNote = {
+      kind: 'script',
+      ...fields,
       id,
       elementId,
       author,
@@ -206,10 +209,20 @@ export const createStorySlice: StateCreator<ScreenplayState, [], [], StorySlice>
       ),
     })),
 
+  updateNoteFields: (noteId, changes) =>
+    set((state) => ({
+      scriptNotes: state.scriptNotes.map((n) =>
+        n.id === noteId ? { ...n, ...changes, id: n.id, modifiedAt: new Date() } : n
+      ),
+    })),
+
   deleteNote: (noteId) =>
     set((state) => ({
       scriptNotes: state.scriptNotes.filter((n) => n.id !== noteId),
+      activeNoteId: state.activeNoteId === noteId ? null : state.activeNoteId,
     })),
+
+  setActiveNote: (noteId) => set({ activeNoteId: noteId }),
 
   resolveNote: (noteId) =>
     set((state) => ({

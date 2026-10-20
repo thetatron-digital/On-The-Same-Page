@@ -24,6 +24,7 @@ import {
   toggleOmitScene,
   unlockAPages,
 } from '../../engine/production';
+import { addAlt, cycleAlt, removeAlt, setBookmark } from '../../engine/scriptTools';
 import type { HistoryEntry, ScreenplayState, ScriptSlice } from '../types';
 
 export const createScriptSlice: StateCreator<ScreenplayState, [], [], ScriptSlice> = (set, get) => ({
@@ -751,4 +752,30 @@ export const createScriptSlice: StateCreator<ScreenplayState, [], [], ScriptSlic
     // Goes through setScreenplay so Revision Mode marks the omission
     state.setScreenplay({ ...state.screenplay, elements });
   },
+
+  // Insert / Document menus: bookmarks, alts, macros
+  setBookmark: (elementId, name) => {
+    const state = get();
+    state.saveToHistory();
+    set({ screenplay: { ...state.screenplay, elements: setBookmark(state.screenplay.elements, elementId, name) }, isDirty: true });
+  },
+
+  addAlt: (elementId) => {
+    const state = get();
+    state.saveToHistory();
+    set({ screenplay: { ...state.screenplay, elements: addAlt(state.screenplay.elements, elementId) }, isDirty: true });
+  },
+
+  removeAlt: (elementId) => {
+    const state = get();
+    state.setScreenplay({ ...state.screenplay, elements: removeAlt(state.screenplay.elements, elementId) });
+  },
+
+  cycleAlt: (elementId, direction) => {
+    const state = get();
+    state.setScreenplay({ ...state.screenplay, elements: cycleAlt(state.screenplay.elements, elementId, direction) });
+  },
+
+  setMacros: (macros) =>
+    set((state) => ({ screenplay: { ...state.screenplay, macros }, isDirty: true })),
 });

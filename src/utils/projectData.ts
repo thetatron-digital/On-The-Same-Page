@@ -15,7 +15,7 @@ import { LEGACY_CATEGORY_NAMES } from '../types/screenplay';
 // "2026-02-25", which never match ISO_TIMESTAMP below.
 const DATE_KEYS = new Set([
   'createdAt', 'updatedAt', 'lastSyncedAt', 'addedAt', 'lastFetched',
-  'savedAt', 'lockedAt', 'timestamp', 'lastModified', 'approvalDate',
+  'savedAt', 'lockedAt', 'timestamp', 'modifiedAt', 'lastModified', 'approvalDate',
   'dueDate', 'acquiredDate', 'returnDate', 'syncedAt', 'date', 'startDate',
   'estimatedEndDate', 'dayStartedAt', 'currentSetupStartedAt', 'lastUpdated',
   'startedAt', 'completedAt', 'lunchStartedAt', 'endedAt', 'exportedAt',

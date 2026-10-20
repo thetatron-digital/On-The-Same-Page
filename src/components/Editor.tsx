@@ -9,6 +9,7 @@ import { SceneNavigator } from './SceneNavigator';
 import { BeatBoard } from './BeatBoard';
 import { SplitView } from './SplitView';
 import { StoryMode } from './StoryMode';
+import { NotePopover } from './ScriptNotes';
 import { paginateScript } from '../engine/paginate';
 import { getRevisionSettings, pageRevision } from '../engine/production';
 import { ELEMENT_BEHAVIOR } from '../types/screenplay';
@@ -262,6 +263,9 @@ export const Editor = () => {
             </div>
           </div>
         </div>
+
+        {/* ScriptNote popover (opened from a margin marker or the Navigator) */}
+        <NotePopover />
 
         {/* Status bar */}
         <div className="status-bar">

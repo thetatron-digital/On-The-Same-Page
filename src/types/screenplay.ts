@@ -24,7 +24,44 @@ export interface ScreenplayElement {
   dualDialoguePosition?: 'left' | 'right'; // Position in dual dialogue
   revisionId?: number; // revision set this paragraph was last revised in
   omitted?: ScreenplayElement[]; // Omit Scene: the scene as it was; this heading then reads OMITTED
+  bookmark?: string; // Insert > Bookmark: a named place to jump to (FDX Paragraph Bookmark="")
+  alts?: TextRun[][]; // Insert > Add Alt: alternate versions of this line; `content` is the one in use
 }
+
+// Document > Macros: a keyboard shortcut that types text, optionally switching
+// the paragraph to `element` first and starting a `transition` paragraph after.
+export interface Macro {
+  id: string;
+  name: string;
+  element: ElementType | 'None';
+  text: string;
+  transition: ElementType | 'None';
+  bank: 1 | 2; // 1: Ctrl+Opt+digit (Mac) / Alt+Shift+digit; 2: adds Shift / Ctrl+Alt+Shift
+  key: string; // '0'-'9'
+}
+
+// Default macros: the standard scene-heading and transition phrases
+export const createDefaultMacros = (): Macro[] => {
+  const m = (bank: 1 | 2, key: string, name: string, element: Macro['element'], text: string, transition: Macro['transition']): Macro =>
+    ({ id: `macro-${bank}-${key}`, name, element, text, transition, bank, key });
+  return [
+    m(1, '1', 'INT', 'Scene Heading', 'INT. ', 'None'),
+    m(1, '2', 'EXT', 'Scene Heading', 'EXT. ', 'None'),
+    m(1, '3', 'I/E', 'Scene Heading', 'INT./EXT. ', 'None'),
+    m(1, '4', 'DAY', 'Scene Heading', ' - DAY', 'Action'),
+    m(1, '5', 'NIGHT', 'Scene Heading', ' - NIGHT', 'Action'),
+    m(1, '6', 'CONTINUOUS', 'Scene Heading', ' - CONTINUOUS', 'Action'),
+    m(1, '7', 'LATER', 'Scene Heading', ' - LATER', 'Action'),
+    m(1, '8', 'CONT', 'Parenthetical', '(continuing)', 'Dialogue'),
+    m(1, '9', 'BEAT', 'Parenthetical', '(beat)', 'Dialogue'),
+    m(2, '1', 'CUT TO', 'Transition', 'CUT TO:', 'Scene Heading'),
+    m(2, '2', 'FADE IN', 'Action', 'FADE IN:', 'Scene Heading'),
+    m(2, '3', 'FADE OUT', 'Transition', 'FADE OUT.', 'None'),
+    m(2, '4', 'DISSOLVE', 'Transition', 'DISSOLVE TO:', 'Scene Heading'),
+    m(2, '5', 'MATCH CUT', 'Transition', 'MATCH CUT TO:', 'Scene Heading'),
+    m(2, '6', 'SMASH CUT', 'Transition', 'SMASH CUT TO:', 'Scene Heading'),
+  ];
+};
 
 // ============================================
 // REVISIONS AND LOCKED PAGES (Production menu)
@@ -137,12 +174,19 @@ export interface ScriptVersion {
 // Script Note for collaborators
 export interface ScriptNote {
   id: string;
-  elementId: string; // Which element the note is attached to
+  elementId: string; // Which element the note is attached to ('' for a General Note)
   author: string;
   content: string;
   timestamp: Date;
   resolved: boolean;
+  kind?: 'script' | 'general'; // ScriptNote (in the text) or General Note (whole script)
+  title?: string;
+  color?: string; // marker color
+  modifiedAt?: Date;
 }
+
+// ScriptNote marker colors (our own palette)
+export const NOTE_COLORS = ['#f5c542', '#4a9eff', '#ff7a7a', '#5fd38d', '#b48cff', '#ff9f43'];
 
 // ============================================
 // OUTLINE MODE TYPES (Story Development)
@@ -270,6 +314,7 @@ export interface Screenplay {
   elements: ScreenplayElement[];
   revisions?: RevisionSettings;
   lockedPages?: LockedPage[]; // set while pages are locked
+  macros?: Macro[]; // Document > Macros (defaults until edited)
 }
 
 export interface DocumentMetadata {

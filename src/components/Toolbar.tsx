@@ -6,6 +6,8 @@ import { saveOpenProject } from '../services/saveOpenProject';
 import { getRevisionSettings, sceneHeadingIndex } from '../engine/production';
 import { RevisionsDialog, SceneNumbersDialog } from './ProductionDialogs';
 import { editSceneNumberAt, lockPagesWithPrompt, selectionIds } from './productionActions';
+import { addAltHere, insertBookmark, insertNote, removeAltHere } from './writingActions';
+import { BookmarksDialog, MacrosDialog, ReportsDialog, type ReportType } from './WritingDialogs';
 
 // Shortcut hint prefix: ⌘ on Apple platforms, Ctrl+ elsewhere
 const MOD = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+';
@@ -151,6 +153,9 @@ export const Toolbar = () => {
   const [showRevisionsDialog, setShowRevisionsDialog] = useState(false);
   const [showSceneNumbersDialog, setShowSceneNumbersDialog] = useState(false);
   const [revisedPagesOnly, setRevisedPagesOnly] = useState(false);
+  const [writingDialog, setWritingDialog] = useState<'macros' | 'bookmarks' | null>(null);
+  const [reportType, setReportType] = useState<ReportType | null>(null);
+  const openReport = (type: ReportType) => setReportType(type);
   const [exportFormat, setExportFormat] = useState<ScreenplayExportFormat>('fdx');
   const [isExporting, setIsExporting] = useState(false);
 
@@ -1025,6 +1030,133 @@ export const Toolbar = () => {
                 <span className="check-mark">{visibility.scriptNotes ? '✓' : ''}</span>
                 Script Notes
               </button>
+              <button
+                className={`dropdown-item ${visibility.alts ? 'checked' : ''}`}
+                onClick={() => toggleVisibility('alts')}
+              >
+                <span className="check-mark">{visibility.alts ? '✓' : ''}</span>
+                Alts
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Insert, Document and Tools menus (Final Draft's order and shortcuts) */}
+        <div className="dropdown-container">
+          <button
+            className={`menu-btn dropdown-trigger ${openDropdown === 'insert' ? 'active' : ''}`}
+            onClick={() => toggleDropdown('insert')}
+            title="Insert"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <path d="M12 8v8M8 12h8" />
+            </svg>
+            <span>Insert</span>
+            <svg className="dropdown-arrow" viewBox="0 0 12 12" fill="currentColor">
+              <path d="M2 4l4 4 4-4" />
+            </svg>
+          </button>
+          {openDropdown === 'insert' && (
+            <div className="dropdown-menu" onClick={closeDropdowns}>
+              <button className="dropdown-item" onClick={addAltHere}>
+                <span className="check-mark"></span>
+                Add Alt
+                <span className="dropdown-shortcut">{MOD}⇧.</span>
+              </button>
+              <button className="dropdown-item" onClick={removeAltHere}>
+                <span className="check-mark"></span>
+                Remove Alt
+                <span className="dropdown-shortcut">{MOD}⇧,</span>
+              </button>
+              <div className="dropdown-divider" />
+              <button className="dropdown-item" onClick={insertBookmark}>
+                <span className="check-mark"></span>
+                Bookmark
+                <span className="dropdown-shortcut">{MOD}\</span>
+              </button>
+              <button className="dropdown-item" onClick={() => insertNote('script')}>
+                <span className="check-mark"></span>
+                ScriptNote
+                <span className="dropdown-shortcut">{MOD}⇧K</span>
+              </button>
+              <button className="dropdown-item" onClick={() => insertNote('general')}>
+                <span className="check-mark"></span>
+                General Note
+                <span className="dropdown-shortcut">{MOD}⇧G</span>
+              </button>
+            </div>
+          )}
+        </div>
+        <div className="dropdown-container">
+          <button
+            className={`menu-btn dropdown-trigger ${openDropdown === 'document' ? 'active' : ''}`}
+            onClick={() => toggleDropdown('document')}
+            title="Document"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <path d="M8 13h8M8 17h6" />
+            </svg>
+            <span>Document</span>
+            <svg className="dropdown-arrow" viewBox="0 0 12 12" fill="currentColor">
+              <path d="M2 4l4 4 4-4" />
+            </svg>
+          </button>
+          {openDropdown === 'document' && (
+            <div className="dropdown-menu" onClick={closeDropdowns}>
+              <button className="dropdown-item" onClick={() => setWritingDialog('macros')}>
+                <span className="check-mark"></span>
+                Macros…
+              </button>
+              <button className="dropdown-item" onClick={() => setWritingDialog('bookmarks')}>
+                <span className="check-mark"></span>
+                Bookmarks…
+              </button>
+            </div>
+          )}
+        </div>
+        <div className="dropdown-container">
+          <button
+            className={`menu-btn dropdown-trigger ${openDropdown === 'tools' ? 'active' : ''}`}
+            onClick={() => toggleDropdown('tools')}
+            title="Tools (Reports, Navigator)"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 3v18h18" />
+              <path d="M7 15l4-4 3 3 5-6" />
+            </svg>
+            <span>Tools</span>
+            <svg className="dropdown-arrow" viewBox="0 0 12 12" fill="currentColor">
+              <path d="M2 4l4 4 4-4" />
+            </svg>
+          </button>
+          {openDropdown === 'tools' && (
+            <div className="dropdown-menu" onClick={closeDropdowns}>
+              <div className="dropdown-section-title">Reports</div>
+              <button className="dropdown-item" onClick={() => openReport('scene')}>
+                <span className="check-mark"></span>
+                Scene Report…
+              </button>
+              <button className="dropdown-item" onClick={() => openReport('location')}>
+                <span className="check-mark"></span>
+                Location Report…
+              </button>
+              <div className="dropdown-divider" />
+              <button className="dropdown-item" onClick={() => openReport('character')}>
+                <span className="check-mark"></span>
+                Character Report…
+              </button>
+              <button className="dropdown-item" onClick={() => openReport('cast')}>
+                <span className="check-mark"></span>
+                Cast Report…
+              </button>
+              <div className="dropdown-divider" />
+              <button className="dropdown-item" onClick={() => togglePanel('navigator')}>
+                <span className="check-mark"></span>
+                Show Navigator
+              </button>
             </div>
           )}
         </div>
@@ -1442,6 +1574,9 @@ export const Toolbar = () => {
       )}
 
       {showRevisionsDialog && <RevisionsDialog onClose={() => setShowRevisionsDialog(false)} />}
+      {writingDialog === 'macros' && <MacrosDialog onClose={() => setWritingDialog(null)} />}
+      {writingDialog === 'bookmarks' && <BookmarksDialog onClose={() => setWritingDialog(null)} />}
+      {reportType && <ReportsDialog initial={reportType} onClose={() => setReportType(null)} />}
       {showSceneNumbersDialog && <SceneNumbersDialog onClose={() => setShowSceneNumbersDialog(false)} />}
 
       {/* Export Format Modal */}
