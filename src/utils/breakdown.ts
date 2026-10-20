@@ -28,7 +28,7 @@ export const parseSceneHeading = (text: string): ParsedSceneHeading => {
     intExtMatch[1].replace(/\./g, '').toUpperCase() as 'INT' | 'EXT' | 'INT/EXT' | 'I/E' : '';
 
   // Remove INT/EXT prefix
-  let remaining = intExtMatch ? fullText.slice(intExtMatch[0].length) : fullText;
+  const remaining = intExtMatch ? fullText.slice(intExtMatch[0].length) : fullText;
 
   // Split on " - " to separate location and time of day
   const parts = remaining.split(/\s+-\s+/);
