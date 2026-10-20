@@ -32,7 +32,23 @@ interface DriveFile {
   permissions?: DrivePermission[];
 }
 
+/** Which saved version of a project file this is, and who saved it */
+export interface DriveRevision {
+  revision: string;      // headRevisionId (falls back to modifiedTime)
+  modifiedTime: string;
+  modifiedBy?: string;   // display name of whoever saved it
+  modifiedByMe?: boolean;
+}
+
 const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
+const REVISION_FIELDS = 'headRevisionId,modifiedTime,lastModifyingUser(displayName,me)';
+
+const toRevision = (file: { headRevisionId?: string; modifiedTime: string; lastModifyingUser?: { displayName?: string; me?: boolean } }): DriveRevision => ({
+  revision: file.headRevisionId || file.modifiedTime,
+  modifiedTime: file.modifiedTime,
+  modifiedBy: file.lastModifyingUser?.displayName,
+  modifiedByMe: file.lastModifyingUser?.me,
+});
 const UPLOAD_API_BASE = 'https://www.googleapis.com/upload/drive/v3';
 
 class GoogleDriveService {
@@ -223,8 +239,16 @@ class GoogleDriveService {
     return parseProjectData(await response.text());
   }
 
-  // Save/update a project
-  async saveProject(projectId: string, data: ProjectData): Promise<void> {
+  // The project file's current revision (cheap: metadata only)
+  async getRevision(projectId: string): Promise<DriveRevision> {
+    const headers = await this.getAuthHeader();
+    const response = await fetch(`${DRIVE_API_BASE}/files/${projectId}?fields=${encodeURIComponent(REVISION_FIELDS)}`, { headers });
+    if (!response.ok) throw new Error('Failed to check the project for changes');
+    return toRevision(await response.json());
+  }
+
+  // Save/update a project; returns the revision it became
+  async saveProject(projectId: string, data: ProjectData): Promise<DriveRevision> {
     const headers = await this.getAuthHeader();
 
     const content = JSON.stringify({
@@ -234,7 +258,7 @@ class GoogleDriveService {
     });
 
     const response = await fetch(
-      `${UPLOAD_API_BASE}/files/${projectId}?uploadType=media`,
+      `${UPLOAD_API_BASE}/files/${projectId}?uploadType=media&fields=${encodeURIComponent(REVISION_FIELDS)}`,
       {
         method: 'PATCH',
         headers: {
@@ -248,6 +272,8 @@ class GoogleDriveService {
     if (!response.ok) {
       throw new Error('Failed to save project');
     }
+
+    return toRevision(await response.json());
   }
 
   // Rename a project

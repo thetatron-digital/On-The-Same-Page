@@ -4,6 +4,7 @@
 // Unified interface for project management
 // Handles both cloud (Google Drive) and local storage
 
+import { clearSyncBase, loadDriveProject, saveDriveProject } from './projectSync';
 import { create } from 'zustand';
 import { googleAuth } from './googleAuth';
 import { googleDrive, localStorage_service } from './googleDrive';
@@ -190,13 +191,14 @@ export const useProjectsStore = create<ProjectsStore>((set, get) => ({
       let data: ProjectData;
 
       if (project?.isLocal) {
-        // Load from local storage
+        // Load from local storage (no collaborators to sync with)
+        clearSyncBase();
         const localData = localStorage_service.loadProject(projectId);
         if (!localData) throw new Error('Project not found');
         data = localData;
       } else {
-        // Load from Google Drive
-        data = await googleDrive.loadProject(projectId);
+        // Load from Google Drive, remembering the revision for merges
+        data = await loadDriveProject(projectId);
       }
 
       set({ isLoading: false, currentProjectId: projectId });
@@ -221,8 +223,8 @@ export const useProjectsStore = create<ProjectsStore>((set, get) => ({
         // Save to local storage
         localStorage_service.saveProject(projectId, data);
       } else {
-        // Save to Google Drive
-        await googleDrive.saveProject(projectId, data);
+        // Save to Google Drive, merging in collaborators' saves
+        await saveDriveProject(projectId, data);
       }
 
       // Update project in list

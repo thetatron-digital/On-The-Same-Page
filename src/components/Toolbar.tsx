@@ -9,6 +9,7 @@ import { downloadPDF } from '../utils/pdf';
 import { downloadOTSP, generateBreakdownXML, generateScheduleXML, generateShotListXML, generateSupervisorXML, generateArtCartCSV } from '../utils/exportFormats';
 import { detectFileType, importFDX, importBreakdownXML, importScheduleXML, importShotListXML, importMMS, importALE, importArtCartCSV } from '../utils/importFormats';
 import type { ElementType } from '../types/screenplay';
+import { SyncIndicator } from './SyncIndicator';
 import './Toolbar.css';
 
 // Export format options
@@ -1181,6 +1182,8 @@ export const Toolbar = () => {
             )}
           </button>
         )}
+
+        <SyncIndicator />
 
         {/* User Controls */}
         <div className="user-controls">

@@ -604,6 +604,7 @@ export interface SuperVisorSlice {
 export interface ProjectSlice {
   // Project Data actions (for cloud storage)
   loadFromProjectData: (data: import('../types/user').ProjectData) => void;
+  applyProjectData: (data: import('../types/user').ProjectData) => void;
   resetToNew: () => void;
   getProjectData: () => import('../types/user').ProjectData;
 }

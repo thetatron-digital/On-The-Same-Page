@@ -12,8 +12,9 @@ import SuperVisor from './components/SuperVisor';
 import { Home } from './components/Home';
 import { useScreenplayStore } from './store/screenplayStore';
 import { useShallow } from 'zustand/react/shallow';
-import { useAuthStore } from './services/projectService';
+import { useAuthStore, useProjectsStore } from './services/projectService';
 import { startAutoSave } from './services/autoSave';
+import { startRemoteSync } from './services/projectSync';
 import { useUrlSync } from './routing/useUrlSync';
 import './App.css';
 
@@ -62,6 +63,8 @@ function App() {
 
   // Save the open project 30 s after the last change
   useEffect(() => startAutoSave(), []);
+  // Shared Drive projects: pull collaborators' saves while open
+  useEffect(() => startRemoteSync(() => useProjectsStore.getState().currentProjectId), []);
 
   // Initialize auth on mount
   useEffect(() => {
