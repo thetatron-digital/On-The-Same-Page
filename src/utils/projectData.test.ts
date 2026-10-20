@@ -58,3 +58,25 @@ describe('parseProjectData', () => {
     expect(data.pageLocks?.[0].lockedAt).toEqual(lockedAt);
   });
 });
+
+describe('v2 -> v3 migration', () => {
+  it('renames old breakdown categories to Movie Magic names', () => {
+    const v2 = {
+      screenplay: createNewScreenplay(),
+      version: 2,
+      savedAt: new Date(),
+      breakdown: {
+        elements: [{ id: 't1', category: 'Extras' }, { id: 't2', category: 'Props' }, { id: 't3', category: 'Cast' }],
+        elementList: [{ id: 'e1', category: 'SFX' }],
+      },
+      schedule: { doodSettings: { codes: {}, categoryOptions: { Cast: { allowHold: true } }, elementOptions: {} } },
+    };
+    const data = migrateProjectData(v2) as unknown as {
+      breakdown: { elements: { category: string }[]; elementList: { category: string }[] };
+      schedule: { doodSettings: { categoryOptions: Record<string, unknown> } };
+    };
+    expect(data.breakdown.elements.map((e) => e.category)).toEqual(['Background Actors', 'Props', 'Cast Members']);
+    expect(data.breakdown.elementList[0].category).toBe('Special Effects');
+    expect(Object.keys(data.schedule.doodSettings.categoryOptions)).toEqual(['Cast Members']);
+  });
+});

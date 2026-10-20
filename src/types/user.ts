@@ -141,5 +141,6 @@ export interface ProjectData {
 }
 
 // Current data format version
-// v2: added productionData (see MIGRATIONS in src/utils/projectData.ts)
-export const PROJECT_DATA_VERSION = 2;
+// v2: added productionData; v3: Movie Magic category names
+// (see MIGRATIONS in src/utils/projectData.ts)
+export const PROJECT_DATA_VERSION = 3;

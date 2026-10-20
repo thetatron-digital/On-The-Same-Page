@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useScreenplayStore } from '../store/screenplayStore';
 import { useShallow } from 'zustand/react/shallow';
 import { BREAKDOWN_CATEGORY_INFO } from '../types/screenplay';
@@ -7,24 +7,12 @@ import { getPlainText } from '../utils/fdx';
 import { formatEighths } from '../utils/breakdown';
 import './Breakdown.css';
 import { ElementManager } from './breakdown/ElementManager';
+import { SheetFields } from './breakdown/SheetFields';
 
 // Category colors as CSS variables for consistent styling
-const CATEGORY_COLORS: Record<BreakdownCategory, string> = {
-  'Cast': '#EF4444',
-  'Extras': '#22C55E',
-  'Stunts': '#F97316',
-  'SFX': '#3B82F6',
-  'Props': '#8B5CF6',
-  'Vehicles': '#EC4899',
-  'Animals': '#EAB308',
-  'Wardrobe': '#92400E',
-  'Makeup': '#D97706',
-  'Sound': '#78350F',
-  'Set Dressing': '#7C3AED',
-  'Greenery': '#15803D',
-  'Special Equipment': '#64748B',
-  'VFX': '#06B6D4',
-};
+const CATEGORY_COLORS = Object.fromEntries(
+  Object.entries(BREAKDOWN_CATEGORY_INFO).map(([category, info]) => [category, info.color])
+) as Record<BreakdownCategory, string>;
 
 export const Breakdown = () => {
   const {
@@ -84,6 +72,10 @@ export const Breakdown = () => {
 
   // Get current scene
   const currentScene = breakdownScenes.find(s => s.id === selectedBreakdownSceneId);
+  const elementRecords = useMemo(
+    () => new Map((breakdown?.elementList ?? []).map(e => [e.id, e])),
+    [breakdown]
+  );
 
   // Get elements for current scene
   const sceneElements = currentScene
@@ -102,6 +94,10 @@ export const Breakdown = () => {
     : [];
 
   // Group breakdown elements by category
+  // Master element (Element Manager) for a tag, for its name and Board ID
+  const recordOf = (el: BreakdownElement) =>
+    el.elementRefId ? elementRecords.get(el.elementRefId) : undefined;
+
   const elementsByCategory = breakdownElements.reduce((acc, el) => {
     const category = el.category as BreakdownCategory;
     if (!acc[category]) acc[category] = [];
@@ -331,29 +327,7 @@ export const Breakdown = () => {
 
         {currentScene ? (
           <div className="sheet-content">
-            <div className="sheet-section">
-              <h4>Scene Info</h4>
-              <div className="info-grid">
-                <div className="info-item">
-                  <label>INT/EXT</label>
-                  <span>{currentScene.intExt}</span>
-                </div>
-                <div className="info-item">
-                  <label>Day/Night</label>
-                  <span>{currentScene.dayNight}</span>
-                </div>
-                <div className="info-item">
-                  <label>Location</label>
-                  <span>{currentScene.location}</span>
-                </div>
-                <div className="info-item">
-                  <label>Pages</label>
-                  <span>{currentScene.pageStart === currentScene.pageEnd
-                    ? currentScene.pageStart
-                    : `${currentScene.pageStart}-${currentScene.pageEnd}`}</span>
-                </div>
-              </div>
-            </div>
+            <SheetFields scene={currentScene} sheetIndex={breakdownScenes.indexOf(currentScene)} />
 
             {/* Elements by category */}
             {(Object.keys(BREAKDOWN_CATEGORY_INFO) as BreakdownCategory[]).map(category => {
@@ -366,7 +340,10 @@ export const Breakdown = () => {
                   <ul className="element-list">
                     {categoryElements.map(el => (
                       <li key={el.id}>
-                        <span>{el.text}</span>
+                        <span>
+                          {recordOf(el)?.boardId && <span className="element-board-id">{recordOf(el)!.boardId}.</span>}
+                          {recordOf(el)?.name ?? el.text}
+                        </span>
                         <button
                           className="remove-btn"
                           onClick={() => deleteBreakdownElement(el.id)}

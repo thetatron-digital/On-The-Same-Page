@@ -94,7 +94,7 @@ describe('Day Out of Days report', () => {
   it('builds Cast rows from the board, ordered by cast number', () => {
     store().autoAssignDayBreaks({ maxPagesPerDay: 5 }); // days: [a b] [c] [d e]
     store().setScheduleCalendar(createCalendar('2026-03-02'));
-    const report = buildScheduleDOOD(store().schedule!, 'Cast', { breakdown: null, people: [] });
+    const report = buildScheduleDOOD(store().schedule!, 'Cast Members', { breakdown: null, people: [] });
     expect(report.rows.map((r) => [r.boardId, r.cells.map((c) => c.code)])).toEqual([
       ['1', ['SW', 'H', 'WF']],
       ['2', ['SW', 'WF', '']],
@@ -110,7 +110,7 @@ describe('Day Out of Days report', () => {
         strips: s.schedule!.strips.map((st) => (st.id === 'e' ? { ...st, castIds: ['cast-2'], castNumbers: [2] } : st.id === 'c' ? { ...st, castIds: [], castNumbers: [] } : st)),
       },
     }));
-    const row = () => buildScheduleDOOD(store().schedule!, 'Cast', { breakdown: null, people: [] }).rows.find((r) => r.boardId === '2')!;
+    const row = () => buildScheduleDOOD(store().schedule!, 'Cast Members', { breakdown: null, people: [] }).rows.find((r) => r.boardId === '2')!;
     expect(row().cells.map((c) => c.code)).toEqual(['SW', 'H', 'WF']);
     store().updateDOODSettings({ elementOptions: { 'cast-2': { allowHold: false } } });
     expect(row().cells.map((c) => c.code)).toEqual(['SW', '', 'WF']);
@@ -119,11 +119,73 @@ describe('Day Out of Days report', () => {
   it('exports CSV with the Movie Magic header rows and totals', () => {
     store().autoAssignDayBreaks({ maxPagesPerDay: 5 });
     store().setScheduleCalendar(createCalendar('2026-03-02'));
-    const csv = doodToCsv(buildScheduleDOOD(store().schedule!, 'Cast', { breakdown: null, people: [] }));
+    const csv = doodToCsv(buildScheduleDOOD(store().schedule!, 'Cast Members', { breakdown: null, people: [] }));
     const lines = csv.trim().split('\n');
     expect(lines[0]).toMatch(/^Month,Mar,Mar,Mar/);
     expect(lines[2]).toMatch(/^Day of Week,Mon,Tue,Wed/);
     expect(lines[3]).toBe('Shooting Day,1,2,3,Co. Travel,Work,Hold,Holiday,Start,Finish,TOTAL');
     expect(lines[4]).toBe('1. cast-1,SW,H,WF,0,2,1,0,2026-03-02,2026-03-04,3');
+  });
+});
+
+describe('Import from Breakdown', () => {
+  const bScene = (id: string, n: string, tod = 'DAY') => ({
+    id, sceneNumber: n, intExt: 'INT' as const, location: 'KITCHEN', timeOfDay: tod, dayNight: (tod === 'NIGHT' ? 'Night' : 'Day') as 'Day' | 'Night',
+    eighths: 12, pageStart: 1, pageEnd: 1, description: 'They talk.', elements: [], castIds: [],
+  });
+  const btag = (id: string, text: string, category: string, sceneId: string) => ({
+    id, text, category, sceneId, sourceElementId: 'x', startOffset: 0, endOffset: text.length,
+  });
+
+  beforeEach(() => {
+    store().resetToNew();
+    const scenes = [bScene('k1', '1'), bScene('k2', '2', 'NIGHT')];
+    useScreenplayStore.setState({
+      breakdownScenes: scenes,
+      breakdown: {
+        id: 'b', name: 'B', scriptVersionId: 'main',
+        versionInfo: { scriptVersionId: 'main', scriptVersionName: 'Current', createdAt: new Date(), lastSyncedAt: new Date(), missingElements: [], newScenes: [], syncStatus: 'current' },
+        elements: [btag('t1', 'Ada', 'Cast Members', 'k1'), btag('t2', 'Grace', 'Cast Members', 'k1'), btag('t3', 'ada', 'Cast Members', 'k2'), btag('t4', 'harness', 'Stunts', 'k2')],
+        scenes, customCategories: [], castList: [], locationsList: [], createdAt: new Date(), updatedAt: new Date(),
+        sheets: { k1: { set: "ADA'S KITCHEN", synopsis: 'Breakfast argument' } },
+      },
+    });
+    store().syncElements();
+    useScreenplayStore.setState((s) => ({
+      breakdown: { ...s.breakdown!, elementList: s.breakdown!.elementList!.map((e) => ({ ...e, boardId: e.name === 'ADA' ? '1' : '2' })) },
+    }));
+  });
+
+  it('makes one strip per sheet with cast Board IDs, Set, Synopsis and flags', () => {
+    store().importStripsFromBreakdown();
+    const [s1, s2] = store().schedule!.strips;
+    expect(s1).toMatchObject({ sceneId: 'k1', location: "ADA'S KITCHEN", description: 'Breakfast argument', castNumbers: [1, 2], color: 'White' });
+    expect(s2).toMatchObject({ sceneId: 'k2', location: 'KITCHEN', castNumbers: [1], hasStunts: true, color: 'DarkGreen' });
+    expect(store().schedule!.unscheduledStrips).toEqual([s1.id, s2.id]);
+  });
+
+  it('re-importing keeps existing strips, their days and locks', () => {
+    store().importStripsFromBreakdown();
+    const dayId = store().addShootDay();
+    const first = store().schedule!.strips[0];
+    store().assignStripToDay(first.id, dayId);
+    store().lockStrip(first.id, true);
+    store().updateBreakdownSheet('k1', { synopsis: 'Breakfast argument, take two' });
+
+    store().importStripsFromBreakdown();
+    const schedule = store().schedule!;
+    expect(schedule.strips).toHaveLength(2);
+    const again = schedule.strips.find((s) => s.sceneId === 'k1')!;
+    expect(again).toMatchObject({ id: first.id, isLocked: true, scheduledDayId: dayId, description: 'Breakfast argument, take two' });
+    expect(schedule.shootDays[0].strips).toEqual([first.id]);
+    expect(schedule.unscheduledStrips).not.toContain(first.id);
+  });
+
+  it('feeds Cast Members elements into the DOOD with their names and Board IDs', () => {
+    store().importStripsFromBreakdown();
+    const dayId = store().addShootDay();
+    store().schedule!.strips.forEach((s) => store().assignStripToDay(s.id, dayId));
+    const rows = buildScheduleDOOD(store().schedule!, 'Cast Members', { breakdown: store().breakdown, people: [] }).rows;
+    expect(rows.map((r) => `${r.boardId}. ${r.name}`)).toEqual(['1. ADA', '2. GRACE']);
   });
 });

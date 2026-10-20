@@ -7,6 +7,7 @@
 //   2. Older files are upgraded to the current format version
 
 import { PROJECT_DATA_VERSION, type ProjectData } from '../types/user';
+import { LEGACY_CATEGORY_NAMES } from '../types/screenplay';
 
 // Fields declared as `Date` in src/types. Only these keys are revived.
 // Some same-named fields are plain strings (e.g. CallSheet.date,
@@ -39,7 +40,34 @@ const MIGRATIONS: Record<number, (data: RawProjectData) => RawProjectData> = {
   // v1 -> v2: BaseCamp `productionData` added to the saved file.
   // v1 files simply don't have it; the loader falls back to defaults.
   1: (data) => data,
+  // v2 -> v3: breakdown categories take Movie Magic's names
+  // (Cast -> Cast Members, Extras -> Background Actors, SFX, Makeup, VFX)
+  2: (data) => renameLegacyCategories(data),
 };
+
+const renameCategory = (category: unknown) =>
+  typeof category === 'string' ? (LEGACY_CATEGORY_NAMES[category] ?? category) : category;
+
+type Rec = Record<string, unknown>;
+
+function renameLegacyCategories(data: RawProjectData): RawProjectData {
+  const breakdown = data.breakdown as Rec | undefined;
+  const schedule = data.schedule as Rec | undefined;
+  const next: RawProjectData = { ...data };
+  if (breakdown) {
+    const withCategory = (items: unknown) =>
+      Array.isArray(items) ? items.map((item: Rec) => ({ ...item, category: renameCategory(item.category) })) : items;
+    next.breakdown = { ...breakdown, elements: withCategory(breakdown.elements), elementList: withCategory(breakdown.elementList) };
+  }
+  const dood = schedule?.doodSettings as Rec | undefined;
+  if (schedule && dood?.categoryOptions) {
+    const options = Object.fromEntries(
+      Object.entries(dood.categoryOptions as Rec).map(([k, v]) => [renameCategory(k) as string, v])
+    );
+    next.schedule = { ...schedule, doodSettings: { ...dood, categoryOptions: options } };
+  }
+  return next;
+}
 
 export function migrateProjectData(raw: unknown): ProjectData {
   if (!raw || typeof raw !== 'object' || !('screenplay' in raw)) {

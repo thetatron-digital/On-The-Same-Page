@@ -112,44 +112,57 @@ export const createScheduleSlice: StateCreator<ScreenplayState, [], [], Schedule
     set({ schedule, isDirty: true });
   },
 
+  // Movie Magic model: one strip per breakdown sheet. Re-importing updates
+  // existing strips in place (keeping their day and lock) and adds new
+  // sheets to the Unscheduled area.
   importStripsFromBreakdown: () => {
     const state = get();
     if (!state.schedule) {
       get().initializeSchedule();
     }
+    get().syncElements();
+    const breakdown = get().breakdown;
+    const schedule = get().schedule!;
+    const records = new Map((breakdown?.elementList ?? []).map((e) => [e.id, e]));
+    const existing = new Map(schedule.strips.map((s) => [s.sceneId, s]));
 
-    // Convert breakdown scenes to strips
-    const strips: SceneStrip[] = state.breakdownScenes.map(scene => {
-      const color = stripColorFor(scene.intExt, scene.timeOfDay || scene.dayNight);
-
-      return {
-        id: generateId(),
-        sceneId: scene.id,
+    const fromSheets = state.breakdownScenes.map((scene) => {
+      const sheet = breakdown?.sheets?.[scene.id] ?? {};
+      const tags = (breakdown?.elements ?? []).filter((t) => t.sceneId === scene.id);
+      const cast = [...new Map(
+        tags
+          .filter((t) => t.category === 'Cast Members' && t.elementRefId && records.has(t.elementRefId))
+          .map((t) => [t.elementRefId!, records.get(t.elementRefId!)!])
+      ).values()].sort((a, b) => (Number(a.boardId) || Infinity) - (Number(b.boardId) || Infinity));
+      const has = (category: string) => tags.some((t) => t.category === category);
+      const fields = {
         sceneNumber: scene.sceneNumber,
         intExt: scene.intExt,
-        location: scene.location,
+        location: sheet.set || scene.location,
         timeOfDay: scene.timeOfDay,
-        description: scene.description.substring(0, 50),
+        description: (sheet.synopsis || scene.description).substring(0, 80),
         pageCount: scene.eighths / 8,
-        color: color as StripColor,
-        castIds: scene.castIds,
-        castNumbers: [],
-        isLocked: false,
-        hasStunts: false,
-        hasVFX: false,
-        hasSpecialEquipment: false,
+        color: stripColorFor(scene.intExt, scene.timeOfDay || scene.dayNight),
+        castIds: cast.map((c) => c.id),
+        castNumbers: cast.map((c) => Number(c.boardId)).filter((n) => !Number.isNaN(n)),
+        hasStunts: has('Stunts'),
+        hasVFX: has('Visual Effects'),
+        hasSpecialEquipment: has('Special Equipment'),
       };
+      const old = existing.get(scene.id);
+      return old ? { ...old, ...fields } : { id: generateId(), sceneId: scene.id, isLocked: false, ...fields } as SceneStrip;
     });
 
-    const stripIds = strips.map(s => s.id);
+    const sheetSceneIds = new Set(fromSheets.map((s) => s.sceneId));
+    const strips = [...schedule.strips.filter((s) => !sheetSceneIds.has(s.sceneId)), ...fromSheets];
+    const scheduled = new Set(schedule.shootDays.flatMap((d) => d.strips));
+    const unscheduledStrips = [
+      ...schedule.unscheduledStrips.filter((id) => strips.some((s) => s.id === id)),
+      ...fromSheets.filter((s) => !scheduled.has(s.id) && !schedule.unscheduledStrips.includes(s.id)).map((s) => s.id),
+    ];
 
     set({
-      schedule: {
-        ...state.schedule!,
-        strips,
-        unscheduledStrips: stripIds,
-        updatedAt: new Date(),
-      },
+      schedule: { ...schedule, strips, unscheduledStrips, updatedAt: new Date() },
       isDirty: true,
     });
   },
