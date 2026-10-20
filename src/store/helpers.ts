@@ -1,7 +1,8 @@
 // Shared helpers used by more than one store slice
 import type { Screenplay, ProductionData } from '../types/screenplay';
-import { DEFAULT_DEPARTMENTS, DEFAULT_DISCLAIMER, LINES_PER_PAGE } from '../types/screenplay';
+import { DEFAULT_DEPARTMENTS, DEFAULT_DISCLAIMER } from '../types/screenplay';
 import { getPlainText } from '../utils/fdx';
+import { paginateScript } from '../engine/paginate';
 import type { WritingStats } from './types';
 
 // Fresh BaseCamp production data for a new or pre-v2 project
@@ -25,7 +26,6 @@ export const calculateWritingStats = (screenplay: Screenplay): WritingStats => {
   let characterCount = 0;
   let sceneCount = 0;
   let dialogueCount = 0;
-  let totalLines = 0;
 
   screenplay.elements.forEach((element) => {
     const text = getPlainText(element.content);
@@ -39,13 +39,9 @@ export const calculateWritingStats = (screenplay: Screenplay): WritingStats => {
     if (element.type === 'Dialogue') {
       dialogueCount++;
     }
-
-    // Estimate lines (rough calculation based on 60 chars per line)
-    const lineCount = Math.max(1, Math.ceil(text.length / 60));
-    totalLines += lineCount;
   });
 
-  const pageCount = Math.max(1, Math.ceil(totalLines / LINES_PER_PAGE));
+  const { pageCount } = paginateScript(screenplay.elements);
 
   // 1 page ≈ 1 minute of screen time
   const totalMinutes = pageCount;

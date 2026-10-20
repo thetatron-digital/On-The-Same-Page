@@ -1,18 +1,59 @@
 import { useRef, useCallback, useEffect } from 'react';
 import type { ScreenplayElement, ElementType } from '../types/screenplay';
+import { ELEMENT_FORMATTING, MARGIN_LEFT } from '../types/screenplay';
+import { CHARS_PER_INCH, elementWidthChars, paginateScript, type PageBreak, type Pagination } from '../engine/paginate';
 import { useScreenplayStore } from '../store/screenplayStore';
 import { useShallow } from 'zustand/react/shallow';
 import { generateId, createTextRuns } from '../utils/fdx';
 import { detectAutoCompleteTrigger } from '../utils/scriptParser';
 import { AutoComplete } from './AutoComplete';
+import { DECORATION_ATTR, editableText, offsetInElement, offsetTopWithin, positionAt } from './editorDom';
+import { LINE_HEIGHT_PX, PAGE_STRIDE } from './pageLayout';
 import './ScriptEditor.css';
 
-// Page layout constants (must match Editor.tsx)
-const PAGE_HEIGHT = 1056;    // 11 inches at 96 DPI
-const PAGE_GAP = 48;         // Gap between pages
-const TOP_MARGIN = 96;       // 1 inch top margin
-const BOTTOM_MARGIN = 96;    // 1 inch bottom margin
-const CONTENT_HEIGHT = PAGE_HEIGHT - TOP_MARGIN - BOTTOM_MARGIN; // 864px usable per page
+// Characters from the left margin to an element type's left edge
+const indentChars = (type: ElementType): number =>
+  Math.round((ELEMENT_FORMATTING[type].leftEdge - MARGIN_LEFT) * CHARS_PER_INCH);
+
+// Position an element div exactly as the pagination engine lays it out, so the
+// browser wraps it at the same character count
+const applyElementLayout = (div: HTMLElement, type: ElementType, spaceBefore?: number) => {
+  div.style.marginLeft = `${indentChars(type)}ch`;
+  div.style.width = `${elementWidthChars(type)}ch`;
+  div.style.textAlign = ELEMENT_FORMATTING[type].alignment;
+  if (spaceBefore !== undefined) {
+    div.style.marginTop = `${spaceBefore * LINE_HEIGHT_PX}px`;
+  }
+};
+
+// Non-editable page break: (MORE) at the foot of the page, a gap sized later by
+// alignPageBreaks, then the speaker's (CONT'D) at the head of the next page
+const makePageBreak = (brk: PageBreak, tag: 'div' | 'span', indent: number): HTMLElement => {
+  const box = document.createElement(tag);
+  box.className = 'page-break-spacer';
+  box.setAttribute(DECORATION_ATTR, '');
+  box.setAttribute('contenteditable', 'false');
+  box.dataset.page = String(brk.page);
+
+  const line = (text: string) => {
+    const span = document.createElement('span');
+    span.className = 'page-break-line';
+    span.style.marginLeft = `${indent}ch`;
+    span.textContent = text;
+    return span;
+  };
+
+  if (brk.more) box.appendChild(line(brk.more));
+  const gap = document.createElement('span');
+  gap.className = 'page-break-gap';
+  box.appendChild(gap);
+  if (brk.contd) box.appendChild(line(brk.contd));
+  return box;
+};
+
+// Identifies where pages break, to tell whether the DOM needs rebuilding
+const layoutKey = (p: Pagination): string =>
+  p.breaks.map((b) => [b.elementId, b.line, b.offset, b.more, b.contd].join(':')).join('|');
 
 // Element type formatting info
 const ELEMENT_FORMAT: Record<ElementType, {
@@ -63,6 +104,7 @@ export const ScriptEditor = () => {
   const editorRef = useRef<HTMLDivElement>(null);
   const isUpdatingRef = useRef(false);
   const lastElementsRef = useRef<string>('');
+  const renderedLayoutRef = useRef<string>('');
 
   const {
     screenplay,
@@ -87,27 +129,21 @@ export const ScriptEditor = () => {
   );
 
   // Get the text offset within an element from a node
-  const getTextOffset = useCallback((container: HTMLElement, node: Node, offset: number): number => {
-    if (node === container) {
-      let textPos = 0;
-      for (let i = 0; i < offset && i < container.childNodes.length; i++) {
-        textPos += container.childNodes[i].textContent?.length || 0;
-      }
-      return textPos;
-    }
+  const getTextOffset = useCallback(
+    (container: HTMLElement, node: Node, offset: number): number => offsetInElement(container, node, offset),
+    []
+  );
 
-    if (node.nodeType === Node.TEXT_NODE && node.parentNode === container) {
-      let textPos = 0;
-      for (const child of Array.from(container.childNodes)) {
-        if (child === node) {
-          return textPos + offset;
-        }
-        textPos += child.textContent?.length || 0;
-      }
-      return offset;
-    }
-
-    return offset;
+  // Size each page-break gap so the next page's text starts at the top of its page
+  const alignPageBreaks = useCallback(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.querySelectorAll<HTMLElement>('.page-break-spacer').forEach((box) => {
+      const gap = box.querySelector<HTMLElement>('.page-break-gap');
+      if (!gap) return;
+      const target = (Number(box.dataset.page) - 1) * PAGE_STRIDE;
+      gap.style.height = `${Math.max(0, target - offsetTopWithin(gap, editor))}px`;
+    });
   }, []);
 
   // Render content into the contenteditable - only when elements actually change
@@ -177,9 +213,18 @@ export const ScriptEditor = () => {
     // Clear and rebuild content
     editor.innerHTML = '';
 
-    // Track content used on current page for page break calculation
-    let currentPageContentUsed = 0;
-    const PAGE_BREAK_SPACER_HEIGHT = BOTTOM_MARGIN + PAGE_GAP + TOP_MARGIN; // 240px
+    // Page breaks and spacing come from the shared pagination engine (same as the PDF)
+    const pagination = paginateScript(screenplay.elements);
+    const breaksByElement = new Map<string, PageBreak[]>();
+    pagination.breaks.forEach((brk) => {
+      breaksByElement.set(brk.elementId, [...(breaksByElement.get(brk.elementId) || []), brk]);
+    });
+    const spaceBefore = new Map<string, number>();
+    pagination.pages.forEach((page) => page.items.forEach((item) => {
+      if (item.kind === 'element' && !item.continued) spaceBefore.set(item.elementId, item.spaceBefore);
+      if (item.kind === 'dual') spaceBefore.set(item.left[0].elementId, item.spaceBefore);
+    }));
+    const characterIndent = indentChars('Character');
 
     screenplay.elements.forEach((element) => {
       const text = getPlainText(element.content);
@@ -189,6 +234,7 @@ export const ScriptEditor = () => {
       div.setAttribute('data-element-id', element.id);
       div.setAttribute('data-element-type', element.type);
       div.className = `script-element ${getElementClass(element.type)}`;
+      applyElementLayout(div, element.type, spaceBefore.get(element.id));
 
       if (!text && format.placeholder) {
         div.setAttribute('data-placeholder', format.placeholder);
@@ -200,12 +246,14 @@ export const ScriptEditor = () => {
         leftNum.className = 'scene-number';
         leftNum.textContent = element.sceneNumber;
         leftNum.setAttribute('contenteditable', 'false');
+        leftNum.setAttribute(DECORATION_ATTR, '');
         div.appendChild(leftNum);
 
         const rightNum = document.createElement('span');
         rightNum.className = 'scene-number-right';
         rightNum.textContent = element.sceneNumber;
         rightNum.setAttribute('contenteditable', 'false');
+        rightNum.setAttribute(DECORATION_ATTR, '');
         div.appendChild(rightNum);
       }
 
@@ -216,28 +264,26 @@ export const ScriptEditor = () => {
         div.appendChild(document.createElement('br'));
       }
 
+      const breaks = breaksByElement.get(element.id) || [];
+
+      // A page that starts with this element: break before it
+      breaks.filter((brk) => brk.line === 0).forEach((brk) => {
+        editor.appendChild(makePageBreak(brk, 'div', characterIndent));
+      });
+
+      // A page that starts partway through this element: break inside its text
+      breaks.filter((brk) => brk.line > 0).forEach((brk) => {
+        const pos = positionAt(div, brk.offset);
+        if (pos.node.nodeType !== Node.TEXT_NODE) return;
+        const after = (pos.node as Text).splitText(pos.offset);
+        div.insertBefore(makePageBreak(brk, 'span', characterIndent - indentChars(element.type)), after);
+      });
+
       editor.appendChild(div);
-
-      // Measure element height after adding to DOM
-      const elementHeight = div.offsetHeight;
-      const marginTop = parseFloat(getComputedStyle(div).marginTop) || 0;
-      const totalElementHeight = elementHeight + marginTop;
-
-      // Check if this element would cross a page boundary
-      if (currentPageContentUsed + totalElementHeight > CONTENT_HEIGHT && currentPageContentUsed > 0) {
-        // Insert page break spacer before this element
-        const spacer = document.createElement('div');
-        spacer.className = 'page-break-spacer';
-        spacer.style.height = `${PAGE_BREAK_SPACER_HEIGHT}px`;
-        spacer.setAttribute('contenteditable', 'false'); // Prevent editing
-        editor.insertBefore(spacer, div);
-
-        // Reset page content tracking for new page
-        currentPageContentUsed = totalElementHeight;
-      } else {
-        currentPageContentUsed += totalElementHeight;
-      }
     });
+
+    alignPageBreaks();
+    renderedLayoutRef.current = layoutKey(pagination);
 
     // Restore selection
     if (savedSelection && selection) {
@@ -248,28 +294,10 @@ export const ScriptEditor = () => {
         try {
           const range = document.createRange();
 
-          // Set start position
-          const startTextNode = startDiv.firstChild;
-          if (startTextNode && startTextNode.nodeType === Node.TEXT_NODE) {
-            const maxLen = startTextNode.textContent?.length || 0;
-            range.setStart(startTextNode, Math.min(savedSelection.startOffset, maxLen));
-          } else {
-            range.setStart(startDiv, 0);
-          }
-
-          // Set end position
-          if (endDiv && endDiv !== startDiv) {
-            const endTextNode = endDiv.firstChild;
-            if (endTextNode && endTextNode.nodeType === Node.TEXT_NODE) {
-              const maxLen = endTextNode.textContent?.length || 0;
-              range.setEnd(endTextNode, Math.min(savedSelection.endOffset, maxLen));
-            } else {
-              range.setEnd(endDiv, 0);
-            }
-          } else if (startDiv.firstChild && startDiv.firstChild.nodeType === Node.TEXT_NODE) {
-            const maxLen = startDiv.firstChild.textContent?.length || 0;
-            range.setEnd(startDiv.firstChild, Math.min(savedSelection.endOffset, maxLen));
-          }
+          const start = positionAt(startDiv, savedSelection.startOffset);
+          range.setStart(start.node, start.offset);
+          const end = positionAt(endDiv || startDiv, savedSelection.endOffset);
+          range.setEnd(end.node, end.offset);
 
           selection.removeAllRanges();
           selection.addRange(range);
@@ -280,12 +308,32 @@ export const ScriptEditor = () => {
     }
 
     isUpdatingRef.current = false;
-  }, [screenplay.elements, getTextOffset, showSceneNumbers]);
+  }, [screenplay.elements, getTextOffset, showSceneNumbers, alignPageBreaks]);
 
-  // Re-render only when elements change (not selection)
+  // Re-render only when elements change (not selection). While typing the DOM is
+  // left alone; once typing pauses, rebuild if the page breaks moved, otherwise
+  // just re-align the page-break gaps to the reflowed text.
   useEffect(() => {
     renderContent();
-  }, [screenplay.elements, renderContent]);
+    const timer = window.setTimeout(() => {
+      const editor = editorRef.current;
+      if (!editor || isUpdatingRef.current) return;
+      const pagination = paginateScript(screenplay.elements);
+      const shown = editor.querySelectorAll('.page-break-spacer').length;
+      if (layoutKey(pagination) !== renderedLayoutRef.current || shown !== pagination.breaks.length) {
+        lastElementsRef.current = '';
+        renderContent();
+      } else {
+        alignPageBreaks();
+      }
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [screenplay.elements, renderContent, alignPageBreaks]);
+
+  // Line wrapping can change once the script font loads
+  useEffect(() => {
+    document.fonts?.ready.then(alignPageBreaks);
+  }, [alignPageBreaks]);
 
   // Find element containing the cursor
   const getCurrentElement = useCallback((): { element: ScreenplayElement; div: HTMLElement; offset: number } | null => {
@@ -385,7 +433,7 @@ export const ScriptEditor = () => {
 
       const elementId = div.getAttribute('data-element-id');
       const elementType = div.getAttribute('data-element-type') as ElementType;
-      const text = div.textContent || '';
+      const text = editableText(div);
 
       if (elementId) {
         const format = ELEMENT_FORMAT[elementType];
@@ -421,20 +469,13 @@ export const ScriptEditor = () => {
     setTimeout(() => {
       const targetDiv = editor.querySelector(`[data-element-id="${elementId}"]`);
       if (targetDiv) {
-        const textNode = targetDiv.firstChild;
         const selection = window.getSelection();
         const range = document.createRange();
 
         try {
-          if (textNode && textNode.nodeType === Node.TEXT_NODE) {
-            const maxLen = textNode.textContent?.length || 0;
-            const actualOffset = Math.min(offset, maxLen);
-            range.setStart(textNode, actualOffset);
-            range.collapse(true);
-          } else {
-            range.setStart(targetDiv, 0);
-            range.collapse(true);
-          }
+          const pos = positionAt(targetDiv, offset);
+          range.setStart(pos.node, pos.offset);
+          range.collapse(true);
           selection?.removeAllRanges();
           selection?.addRange(range);
           targetDiv.scrollIntoView({ block: 'nearest' });

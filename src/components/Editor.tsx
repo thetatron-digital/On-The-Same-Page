@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useScreenplayStore } from '../store/screenplayStore';
 import { useShallow } from 'zustand/react/shallow';
 import { ScriptEditor } from './ScriptEditor';
@@ -9,15 +9,9 @@ import { SceneNavigator } from './SceneNavigator';
 import { BeatBoard } from './BeatBoard';
 import { SplitView } from './SplitView';
 import { StoryMode } from './StoryMode';
+import { paginateScript } from '../engine/paginate';
+import { PAGE_GAP, PAGE_HEIGHT } from './pageLayout';
 import './Editor.css';
-
-// Page dimensions at 96 DPI
-const PAGE_HEIGHT = 1056; // 11 inches at 96 DPI
-const PAGE_GAP = 48; // Gap between pages for page break visual
-
-// Content margins per Final Draft standard (in pixels at 96 DPI)
-const TOP_MARGIN = 96;     // 1 inch top margin
-const BOTTOM_MARGIN = 96;  // 1 inch bottom margin
 
 // Element type hints for the status bar (Tab cycles through this order)
 const ELEMENT_HINTS: Record<string, { tab: string; enter: string }> = {
@@ -35,11 +29,11 @@ export const Editor = () => {
   const editorRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const scriptEditorRef = useRef<HTMLDivElement>(null);
-  const [contentHeight, setContentHeight] = useState(PAGE_HEIGHT);
 
   const {
     screenplay,
     currentElementType,
+    selectedElementId,
     selectElement,
     addElement,
     panels,
@@ -52,6 +46,7 @@ export const Editor = () => {
     useShallow((s) => ({
       screenplay: s.screenplay,
       currentElementType: s.currentElementType,
+      selectedElementId: s.selectedElementId,
       selectElement: s.selectElement,
       addElement: s.addElement,
       panels: s.panels,
@@ -63,33 +58,11 @@ export const Editor = () => {
     }))
   );
 
-  // Monitor content height to determine page count
-  useEffect(() => {
-    const checkContentHeight = () => {
-      const scriptContent = scriptEditorRef.current?.querySelector('.script-editor-content');
-      if (scriptContent) {
-        // Get actual content height
-        const height = scriptContent.scrollHeight;
-        setContentHeight(height);
-      }
-    };
-
-    checkContentHeight();
-
-    // Also observe for mutations
-    const observer = new MutationObserver(checkContentHeight);
-    const scriptContent = scriptEditorRef.current?.querySelector('.script-editor-content');
-    if (scriptContent) {
-      observer.observe(scriptContent, { childList: true, subtree: true, characterData: true });
-    }
-
-    return () => observer.disconnect();
-  }, [screenplay.elements]);
-
-  // Calculate page count from content height
-  // Content height includes page break spacers, so divide by PAGE_HEIGHT
-  const totalContentWithPadding = contentHeight + TOP_MARGIN + BOTTOM_MARGIN;
-  const pageCount = Math.max(1, Math.ceil(totalContentWithPadding / PAGE_HEIGHT));
+  // Page count and page numbers come from the shared pagination engine (same as the PDF)
+  const pagination = paginateScript(screenplay.elements);
+  const pageCount = pagination.pageCount;
+  const selectedIndex = screenplay.elements.findIndex((el) => el.id === selectedElementId);
+  const currentPage = selectedIndex >= 0 ? pagination.elementPages[selectedIndex] : 1;
 
   // Calculate total container height including gaps
   const totalHeight = pageCount * PAGE_HEIGHT + (pageCount - 1) * PAGE_GAP;
@@ -320,7 +293,7 @@ export const Editor = () => {
         {/* Status bar */}
         <div className="status-bar">
           <div className="status-left">
-            <span className="status-page">{pageCount} of {pageCount}</span>
+            <span className="status-page">{currentPage} of {pageCount}</span>
             <span className="status-scene">{currentSceneHeading.substring(0, 40)}</span>
           </div>
           <div className="status-center">
