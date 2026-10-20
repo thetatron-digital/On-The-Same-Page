@@ -10,18 +10,23 @@ import { scheduleGlobals } from '../../engine/budget/scheduleLink';
 import { AccountLevel, CategoryLevel, Topsheet } from './BudgetLevels';
 import { BudgetSetup, type SetupTab } from './BudgetSetup';
 import { budgetCsv, topsheetPdf } from './budgetExport';
+import { makeComparison } from './comparison';
+import { takeSnapshot } from '../../engine/budget/actuals';
+import { newBudgetId } from '../../engine/budget/edit';
 import './bottomline.css';
 
 export type Level = { kind: 'topsheet' } | { kind: 'category'; id: string } | { kind: 'account'; id: string };
 
 export default function BottomLine() {
-  const { budget, schedule, darkMode, initializeBudget, updateBudget } = useScreenplayStore(
-    useShallow((s) => ({ budget: s.budget, schedule: s.schedule, darkMode: s.darkMode, initializeBudget: s.initializeBudget, updateBudget: s.updateBudget }))
+  const { budget, schedule, darkMode, initializeBudget, updateBudget, artCart } = useScreenplayStore(
+    useShallow((s) => ({ budget: s.budget, schedule: s.schedule, darkMode: s.darkMode, initializeBudget: s.initializeBudget, updateBudget: s.updateBudget, artCart: s.artCart }))
   );
+  const [compareKey, setCompareKey] = useState('');
   const [level, setLevel] = useState<Level>({ kind: 'topsheet' });
   const [setup, setSetup] = useState<SetupTab | null>(null);
   const extra = useMemo(() => scheduleGlobals(schedule), [schedule]);
   const totals = useMemo(() => (budget ? budgetTotals(budget, extra) : null), [budget, extra]);
+  const comparison = useMemo(() => (budget && compareKey ? makeComparison(budget, compareKey, artCart?.items ?? []) : null), [budget, compareKey, artCart]);
 
   if (!budget || !totals) {
     return (
@@ -57,6 +62,18 @@ export default function BottomLine() {
           {account && <><span>›</span><button className="current">{account.number} {account.name}</button></>}
         </nav>
         <div className="bl-header-end">
+          <select value={comparison ? compareKey : ''} onChange={(e) => setCompareKey(e.target.value)} aria-label="Compare with" title="Add columns to compare the budget with">
+            <option value="">Compare…</option>
+            <option value="actuals">Actuals (money spent)</option>
+            {(budget.snapshots ?? []).map((s) => <option key={s.id} value={s.id}>Version: {s.name}</option>)}
+          </select>
+          <button className="bl-btn" title="Keep these totals to compare against later" onClick={() => {
+            const name = prompt('Name this version', `Version ${(budget.snapshots?.length ?? 0) + 1} · ${new Date().toLocaleDateString()}`);
+            if (!name) return;
+            const snapshot = takeSnapshot(totals, name, newBudgetId('v'));
+            updateBudget((b) => ({ ...b, snapshots: [...(b.snapshots ?? []), snapshot] }));
+            setCompareKey(snapshot.id);
+          }}>Save Version</button>
           {(['globals', 'fringes', 'groups', 'contractuals'] as SetupTab[]).map((t) => (
             <button key={t} className={`bl-btn ${setup === t ? 'on' : ''}`} onClick={() => setSetup(setup === t ? null : t)}>
               {t === 'contractuals' ? 'Contractual Charges' : t.charAt(0).toUpperCase() + t.slice(1)}
@@ -69,8 +86,8 @@ export default function BottomLine() {
 
       <div className="bl-body">
         <main className="bl-main">
-          {level.kind === 'topsheet' && <Topsheet budget={budget} totals={totals} onOpen={(id) => setLevel({ kind: 'category', id })} onChange={updateBudget} />}
-          {level.kind === 'category' && category && <CategoryLevel budget={budget} category={category} totals={totals} onOpen={(id) => setLevel({ kind: 'account', id })} onChange={updateBudget} />}
+          {level.kind === 'topsheet' && <Topsheet budget={budget} totals={totals} compare={comparison} onOpen={(id) => setLevel({ kind: 'category', id })} onChange={updateBudget} />}
+          {level.kind === 'category' && category && <CategoryLevel budget={budget} category={category} totals={totals} compare={comparison} onOpen={(id) => setLevel({ kind: 'account', id })} onChange={updateBudget} />}
           {level.kind === 'account' && account && category && <AccountLevel budget={budget} category={category} account={account} totals={totals} onChange={updateBudget} />}
           {level.kind !== 'topsheet' && !category && <p className="bl-muted">That part of the budget was removed. <button className="bl-link" onClick={() => setLevel({ kind: 'topsheet' })}>Back to the Topsheet</button></p>}
         </main>

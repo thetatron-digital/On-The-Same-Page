@@ -10,8 +10,25 @@ import {
 } from '../../engine/budget/edit';
 import { castLinesFromDood } from '../../engine/budget/scheduleLink';
 import { buildScheduleDOOD, CAST_CATEGORY } from '../../utils/doodReport';
+import type { Comparison } from './comparison';
+import { artCartSpend } from '../../engine/budget/actuals';
 
 type Change = (fn: (b: Budget) => Budget) => void;
+
+// Extra columns when comparing: the compared figure and the variance
+function CompareCells({ compare, budgeted, compared, currency }: { compare: Comparison | null; budgeted: number; compared: number; currency: string }) {
+  if (!compare) return null;
+  const v = compare.variance(budgeted, compared);
+  const bad = compare.kind === 'actuals' ? v < 0 : v > 0;
+  return (
+    <>
+      <td className="money bl-compare">{money(compared, currency)}</td>
+      <td className={`money ${v === 0 ? 'bl-muted' : bad ? 'bl-over' : 'bl-under'}`}>{v > 0 && compare.kind === 'version' ? '+' : ''}{money(v, currency)}</td>
+    </>
+  );
+}
+const CompareHeads = ({ compare }: { compare: Comparison | null }) =>
+  compare ? <><th className="money bl-compare">{compare.label}</th><th className="money">{compare.varianceLabel}</th></> : null;
 
 const SECTION_TITLES: Record<BudgetSection, string> = { ATL: 'Above-the-Line', Production: 'Production', Post: 'Post Production', Other: 'Other' };
 
@@ -38,7 +55,7 @@ function AddRow({ cols, onAdd, numberLabel, nameLabel, withSection }: { cols: nu
   );
 }
 
-export function Topsheet({ budget, totals, onOpen, onChange }: { budget: Budget; totals: BudgetTotals; onOpen: (id: string) => void; onChange: Change }) {
+export function Topsheet({ budget, totals, compare, onOpen, onChange }: { budget: Budget; totals: BudgetTotals; compare: Comparison | null; onOpen: (id: string) => void; onChange: Change }) {
   const c = budget.currency;
   const pct = (cents: number) => (totals.grandTotal ? `${((cents / totals.grandTotal) * 100).toFixed(1)}%` : '');
   return (
@@ -48,39 +65,46 @@ export function Topsheet({ budget, totals, onOpen, onChange }: { budget: Budget;
         <span className="bl-grand">{money(totals.grandTotal, c)}</span>
       </div>
       <table className="bl-table">
-        <thead><tr><th className="num">Acct #</th><th>Category</th><th className="money">Total</th><th className="money">%</th><th></th></tr></thead>
+        <thead><tr><th className="num">Acct #</th><th>Category</th><th className="money">Total</th><CompareHeads compare={compare} /><th className="money">%</th><th></th></tr></thead>
         <tbody>
           {SECTIONS.map((section) => {
             const cats = budget.categories.filter((cat) => cat.section === section);
             return [
-              <tr key={`${section}-h`} className="bl-section-head"><td colSpan={5}>{SECTION_TITLES[section]}</td></tr>,
+              <tr key={`${section}-h`} className="bl-section-head"><td colSpan={compare ? 7 : 5}>{SECTION_TITLES[section]}</td></tr>,
               ...cats.map((cat) => (
                 <tr key={cat.id} className="bl-row" onDoubleClick={() => onOpen(cat.id)}>
                   <td className="num">{cat.number}</td>
                   <td><button className="bl-open" onClick={() => onOpen(cat.id)}>{cat.name}</button></td>
                   <td className="money">{money(totals.categories.get(cat.id) ?? 0, c)}</td>
+                  <CompareCells compare={compare} budgeted={totals.categories.get(cat.id) ?? 0} compared={compare?.category(cat.id) ?? 0} currency={c} />
                   <td className="money bl-muted">{pct(totals.categories.get(cat.id) ?? 0)}</td>
                   <td className="bl-row-actions"><button className="bl-x" title="Delete category" aria-label={`Delete ${cat.name}`} onClick={() => { if (confirm(`Delete ${cat.number} ${cat.name} and all its accounts?`)) onChange((b) => deleteCategory(b, cat.id)); }}>×</button></td>
                 </tr>
               )),
-              <tr key={`${section}-t`} className="bl-subtotal"><td></td><td>{SECTION_LABELS[section]}</td><td className="money">{money(totals.sections[section], c)}</td><td className="money bl-muted">{pct(totals.sections[section])}</td><td></td></tr>,
-              ...(section === 'ATL' ? [] : section === 'Other' ? [<tr key="btl" className="bl-total"><td></td><td>Total Below-the-Line</td><td className="money">{money(totals.belowTheLine, c)}</td><td className="money bl-muted">{pct(totals.belowTheLine)}</td><td></td></tr>] : []),
+              <tr key={`${section}-t`} className="bl-subtotal"><td></td><td>{SECTION_LABELS[section]}</td><td className="money">{money(totals.sections[section], c)}</td><CompareCells compare={compare} budgeted={totals.sections[section]} compared={compare?.sections[section] ?? 0} currency={c} /><td className="money bl-muted">{pct(totals.sections[section])}</td><td></td></tr>,
+              ...(section === 'ATL' ? [] : section === 'Other' ? [<tr key="btl" className="bl-total"><td></td><td>Total Below-the-Line</td><td className="money">{money(totals.belowTheLine, c)}</td><CompareCells compare={compare} budgeted={totals.belowTheLine} compared={compare ? compare.sections.Production + compare.sections.Post + compare.sections.Other : 0} currency={c} /><td className="money bl-muted">{pct(totals.belowTheLine)}</td><td></td></tr>] : []),
             ];
           })}
-          <tr className="bl-total"><td></td><td>Total Above and Below-the-Line</td><td className="money">{money(totals.direct, c)}</td><td className="money bl-muted">{pct(totals.direct)}</td><td></td></tr>
+          <tr className="bl-total"><td></td><td>Total Above and Below-the-Line</td><td className="money">{money(totals.direct, c)}</td><CompareCells compare={compare} budgeted={totals.direct} compared={compare ? Object.values(compare.sections).reduce((a, b) => a + b, 0) : 0} currency={c} /><td className="money bl-muted">{pct(totals.direct)}</td><td></td></tr>
           {totals.contractuals.map((k) => {
             const def = budget.contractuals.find((x) => x.id === k.id)!;
-            return <tr key={k.id} className="bl-row"><td></td><td>{k.name} <span className="bl-muted">{def.percent}% of {def.appliesTo.map((s) => SECTION_TITLES[s]).join(', ')}</span></td><td className="money">{money(k.amount, c)}</td><td className="money bl-muted">{pct(k.amount)}</td><td></td></tr>;
+            return <tr key={k.id} className="bl-row"><td></td><td>{k.name} <span className="bl-muted">{def.percent}% of {def.appliesTo.map((s) => SECTION_TITLES[s]).join(', ')}</span></td><td className="money">{money(k.amount, c)}</td>{compare && <><td></td><td></td></>}<td className="money bl-muted">{pct(k.amount)}</td><td></td></tr>;
           })}
-          <tr className="bl-grand-row"><td></td><td>Grand Total</td><td className="money">{money(totals.grandTotal, c)}</td><td></td><td></td></tr>
-          <AddRow cols={5} numberLabel="Acct #" nameLabel="New category" withSection onAdd={(number, name, section) => onChange((b) => addCategory(b, { number, name, section }))} />
+          <tr className="bl-grand-row"><td></td><td>Grand Total</td><td className="money">{money(totals.grandTotal, c)}</td><CompareCells compare={compare} budgeted={totals.grandTotal} compared={compare?.total ?? 0} currency={c} /><td></td><td></td></tr>
+          <AddRow cols={compare ? 7 : 5} numberLabel="Acct #" nameLabel="New category" withSection onAdd={(number, name, section) => onChange((b) => addCategory(b, { number, name, section }))} />
         </tbody>
       </table>
+      {compare?.kind === 'actuals' && (
+        <label className="bl-check">
+          <input type="checkbox" checked={!!budget.artCartActuals} onChange={(e) => onChange((b) => ({ ...b, artCartActuals: e.target.checked }))} />
+          Count ArtCart purchases and rentals (actual cost × quantity) as spent, in the matching art, props, wardrobe and makeup accounts
+        </label>
+      )}
     </div>
   );
 }
 
-export function CategoryLevel({ budget, category, totals, onOpen, onChange }: { budget: Budget; category: BudgetCategory; totals: BudgetTotals; onOpen: (id: string) => void; onChange: Change }) {
+export function CategoryLevel({ budget, category, totals, compare, onOpen, onChange }: { budget: Budget; category: BudgetCategory; totals: BudgetTotals; compare: Comparison | null; onOpen: (id: string) => void; onChange: Change }) {
   const c = budget.currency;
   return (
     <div className="bl-sheet">
@@ -95,7 +119,7 @@ export function CategoryLevel({ budget, category, totals, onOpen, onChange }: { 
         <span className="bl-grand">{money(totals.categories.get(category.id) ?? 0, c)}</span>
       </div>
       <table className="bl-table">
-        <thead><tr><th className="num">Acct #</th><th>Account</th><th className="money">Lines</th><th className="money">Total</th><th></th></tr></thead>
+        <thead><tr><th className="num">Acct #</th><th>Account</th><th className="money">Lines</th><th className="money">Total</th><CompareHeads compare={compare} /><th></th></tr></thead>
         <tbody>
           {category.accounts.map((acc) => (
             <tr key={acc.id} className="bl-row" onDoubleClick={() => onOpen(acc.id)}>
@@ -103,11 +127,12 @@ export function CategoryLevel({ budget, category, totals, onOpen, onChange }: { 
               <td><button className="bl-open" onClick={() => onOpen(acc.id)}>{acc.name}</button></td>
               <td className="money bl-muted">{acc.details.length || ''}</td>
               <td className="money">{money(totals.accounts.get(acc.id) ?? 0, c)}</td>
+              <CompareCells compare={compare} budgeted={totals.accounts.get(acc.id) ?? 0} compared={compare?.account(acc.id) ?? 0} currency={c} />
               <td className="bl-row-actions"><button className="bl-x" aria-label={`Delete ${acc.name}`} onClick={() => { if (!acc.details.length || confirm(`Delete ${acc.number} ${acc.name} and its ${acc.details.length} lines?`)) onChange((b) => deleteAccount(b, acc.id)); }}>×</button></td>
             </tr>
           ))}
-          <tr className="bl-subtotal"><td></td><td>Total {category.number} {category.name}</td><td></td><td className="money">{money(totals.categories.get(category.id) ?? 0, c)}</td><td></td></tr>
-          <AddRow cols={5} numberLabel="Acct #" nameLabel="New account" onAdd={(number, name) => onChange((b) => addAccount(b, category.id, number, name))} />
+          <tr className="bl-subtotal"><td></td><td>Total {category.number} {category.name}</td><td></td><td className="money">{money(totals.categories.get(category.id) ?? 0, c)}</td><CompareCells compare={compare} budgeted={totals.categories.get(category.id) ?? 0} compared={compare?.category(category.id) ?? 0} currency={c} /><td></td></tr>
+          <AddRow cols={compare ? 7 : 5} numberLabel="Acct #" nameLabel="New account" onAdd={(number, name) => onChange((b) => addAccount(b, category.id, number, name))} />
         </tbody>
       </table>
     </div>
@@ -116,7 +141,8 @@ export function CategoryLevel({ budget, category, totals, onOpen, onChange }: { 
 
 export function AccountLevel({ budget, category, account, totals, onChange }: { budget: Budget; category: BudgetCategory; account: BudgetAccount; totals: BudgetTotals; onChange: Change }) {
   const c = budget.currency;
-  const { schedule, breakdown, people } = useScreenplayStore(useShallow((s) => ({ schedule: s.schedule, breakdown: s.breakdown, people: s.productionData.people })));
+  const { schedule, breakdown, people, artItems } = useScreenplayStore(useShallow((s) => ({ schedule: s.schedule, breakdown: s.breakdown, people: s.productionData.people, artItems: s.artCart?.items })));
+  const artSpend = budget.artCartActuals ? artCartSpend(budget, artItems ?? []).get(account.id) ?? 0 : 0;
   const dood = useMemo(() => (schedule?.shootDays.length ? buildScheduleDOOD(schedule, CAST_CATEGORY, { breakdown, people }) : null), [schedule, breakdown, people]);
   const [fringeMenu, setFringeMenu] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -150,6 +176,14 @@ export function AccountLevel({ budget, category, account, totals, onChange }: { 
           <input className="bl-title" value={account.name} onChange={(e) => onChange((b) => updateAccount(b, account.id, { name: e.target.value }))} aria-label="Account name" />
         </span>
         <span className="bl-grand">{money(totals.accounts.get(account.id) ?? 0, c)}</span>
+      </div>
+      <div className="bl-callout">
+        <label className="bl-mini">Actual spent
+          <input className="bl-cell" type="number" step="0.01" min={0} value={budget.actuals?.[account.id] !== undefined ? budget.actuals[account.id] / 100 : ''} placeholder="0"
+            onChange={(e) => onChange((b) => ({ ...b, actuals: { ...b.actuals, [account.id]: Math.round(Number(e.target.value || 0) * 100) } }))} />
+        </label>
+        {artSpend > 0 && <span className="bl-muted">+ {money(artSpend, c, true)} from ArtCart</span>}
+        <span className="bl-muted">Remaining {money((totals.accounts.get(account.id) ?? 0) - (budget.actuals?.[account.id] ?? 0) - artSpend, c)}</span>
       </div>
       {(isCast || linked) && dood && (
         <div className="bl-callout">

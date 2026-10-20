@@ -66,3 +66,6 @@
   .bl-body { flex-direction: column; }
   .bl-setup { width: auto; border-left: none; border-top: 1px solid var(--bl-border); }
 }
+.bl-compare { color: var(--bl-muted); }
+.bl-over { color: #ef4444; text-align: right; }
+.bl-under { color: var(--bl-accent); text-align: right; }
