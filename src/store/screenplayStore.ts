@@ -11,6 +11,7 @@ import { createProductionSlice } from './slices/production';
 import { createOnSetSlice } from './slices/onSet';
 import { createSuperVisorSlice } from './slices/superVisor';
 import { createDailiesSlice } from './slices/dailies';
+import { createReferencesSlice } from './slices/references';
 import { createProjectSlice } from './slices/project';
 
 export type { ScreenplayState } from './types';
@@ -29,5 +30,6 @@ export const useScreenplayStore = create<ScreenplayState>()((...a) => ({
   ...createOnSetSlice(...a),
   ...createSuperVisorSlice(...a),
   ...createDailiesSlice(...a),
+  ...createReferencesSlice(...a),
   ...createProjectSlice(...a),
 }));

@@ -571,6 +571,18 @@ export interface OnSetSlice {
   getQuickStatus: () => { currentScene: string; currentSetup: string; estimatedWrap: string; aheadBehind: string; nextUp: string; isOnLunch: boolean; lunchCountdown?: string } | null;
 }
 
+// Reference library (ShotDeck-style) for the production's own images
+export interface ReferencesSlice {
+  references: import('../types/references').References | null;
+  addReferenceImage: (image: Omit<import('../types/references').ReferenceImage, 'id'>) => string;
+  updateReferenceImage: (id: string, updates: Partial<import('../types/references').ReferenceImage>) => void;
+  deleteReferenceImage: (id: string) => void;
+  addReferenceDeck: (name: string, imageIds?: string[]) => string;
+  updateReferenceDeck: (id: string, updates: Partial<import('../types/references').ReferenceDeck>) => void;
+  deleteReferenceDeck: (id: string) => void;
+  toggleImageInDeck: (deckId: string, imageId: string) => void;
+}
+
 // Dailies: Frame.io-style review of clips
 export interface DailiesSlice {
   dailies: import('../types/dailies').Dailies | null;
@@ -635,6 +647,7 @@ export type ScreenplayState =
   OnSetSlice &
   SuperVisorSlice &
   DailiesSlice &
+  ReferencesSlice &
   ProjectSlice;
 
 // Fields a Strip Board sort level can use (Movie Magic's Sort window)
