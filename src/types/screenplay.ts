@@ -1112,19 +1112,31 @@ export interface Storyboard {
   sceneId: string;
   sceneNumber: string;
   frames: StoryboardFrame[];
+  fps?: number;                  // animatic/export frame rate (default 24)
+  defaultBoardTimingMs?: number; // board length when not set (default 2000)
+  aspectRatio?: number;          // width / height (default 16:9)
   createdAt: Date;
   updatedAt: Date;
 }
+
+// Drawing layers, bottom to top (Storyboarder-style fixed layers)
+export type StoryboardLayer = 'reference' | 'fill' | 'tone' | 'pencil' | 'ink' | 'notes';
 
 export interface StoryboardFrame {
   id: string;
   shotId?: string;           // Link to shot if applicable
   order: number;             // Frame sequence
-  image?: string;            // Base64 or URL
+  image?: string;            // Composite PNG data URL (thumbnail / exports)
   description: string;
-  actionNotes?: string;
-  audioNotes?: string;       // Dialogue, sound effects, music
-  duration?: number;         // Estimated seconds
+  actionNotes?: string;      // Action
+  audioNotes?: string;       // Sound effects, music
+  duration?: number;         // Estimated seconds (legacy; see durationMs)
+  newShot?: boolean;         // this board starts a new shot (1A, 1B -> 2A)
+  dialogue?: string;
+  notes?: string;
+  durationMs?: number;       // board length; default from the storyboard
+  layers?: Partial<Record<StoryboardLayer, string>>; // PNG data URLs
+  referenceOpacity?: number; // 0-1, light-box strength of the reference layer
 }
 
 // Shot list for a scene (printable format)

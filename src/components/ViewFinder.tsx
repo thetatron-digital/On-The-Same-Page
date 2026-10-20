@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { StoryboardEditor } from './viewfinder/StoryboardEditor';
 import { useScreenplayStore } from '../store/screenplayStore';
 import { useShallow } from 'zustand/react/shallow';
 import type { Shot, ShotSize, CameraAngle, CameraMovement, ShotStatus } from '../types/screenplay';
@@ -79,6 +80,7 @@ const ViewFinder: React.FC = () => {
 
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showStoryboard, setShowStoryboard] = useState(false);
   const [editingShot, setEditingShot] = useState<Shot | null>(null);
   const [showCameraModal, setShowCameraModal] = useState(false);
 
@@ -192,6 +194,14 @@ const ViewFinder: React.FC = () => {
     totalDuration: viewFinder?.shots.reduce((sum, s) => sum + (s.duration || 0), 0) || 0,
     scenesWithShots: new Set(viewFinder?.shots.map(s => s.sceneId) || []).size,
   };
+
+  if (showStoryboard) {
+    return (
+      <div className={`viewfinder-container ${darkMode ? 'dark' : 'light'}`}>
+        <StoryboardEditor onClose={() => setShowStoryboard(false)} />
+      </div>
+    );
+  }
 
   return (
     <div className={`viewfinder-container ${darkMode ? 'dark' : 'light'}`}>
@@ -309,6 +319,9 @@ const ViewFinder: React.FC = () => {
             <span className="shot-count">{filteredShots.length} shots</span>
           </div>
           <div className="header-right">
+            <button className="add-shot-btn" onClick={() => setShowStoryboard(true)} title="Draw boards, time an animatic, export PDF">
+              Storyboard
+            </button>
             {selectedViewFinderSceneId && (
               <>
                 <button
