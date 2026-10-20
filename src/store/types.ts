@@ -505,6 +505,7 @@ export interface ScheduleSlice {
   moveAllStripsToBoneyard: () => void;
   setStripLayout: (layout: 'standard' | 'detailed' | 'thin') => void;
   addRedFlag: (flag: Omit<RedFlag, 'id'>) => string | null;
+  updateProductionReport: (dayId: string, patch: Partial<Omit<import('../engine/schedule/productionReport').ProductionReportEntry, 'dayId'>>) => void;
   updateRedFlag: (id: string, updates: Partial<Omit<RedFlag, 'id'>>) => string | null;
   deleteRedFlag: (id: string) => void;
   addRedFlagName: (name: string) => void;
@@ -519,7 +520,7 @@ export interface ScheduleSlice {
 export interface ProductionSlice {
   // Production Management State (shared)
   productionData: ProductionData;
-  basecampView: 'dashboard' | 'callsheets' | 'people' | 'scenes' | 'locations' | 'settings' | 'stripboard' | 'calendar' | 'dood' | 'reports' | 'redflags' | 'productioninfo';
+  basecampView: 'dashboard' | 'callsheets' | 'people' | 'scenes' | 'locations' | 'settings' | 'stripboard' | 'calendar' | 'dood' | 'reports' | 'redflags' | 'productioninfo' | 'productionreport';
   // Production Management actions
   setBasecampView: (view: ScreenplayState['basecampView']) => void;
   initializeProductionData: () => void;

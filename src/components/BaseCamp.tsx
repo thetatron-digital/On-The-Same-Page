@@ -16,6 +16,7 @@ import { ProductionCalendar } from './basecamp/ProductionCalendar';
 import { ScheduleReports } from './basecamp/ScheduleReports';
 import { RedFlags } from './basecamp/RedFlags';
 import { ProductionInfoView } from './basecamp/ProductionInfoView';
+import { ProductionReportView } from './basecamp/ProductionReportView';
 import { findConflicts } from '../engine/schedule/redFlags';
 import { scheduledElementDays } from '../utils/doodReport';
 
@@ -261,6 +262,8 @@ const BaseCamp: React.FC = () => {
         return <ScheduleReports />;
       case 'redflags':
         return <RedFlags />;
+      case 'productionreport':
+        return <ProductionReportView />;
       case 'productioninfo':
         return <ProductionInfoView />;
       default:
@@ -278,6 +281,7 @@ const BaseCamp: React.FC = () => {
     { id: 'calendar', label: 'Calendar', icon: '▦' },
     { id: 'dood', label: 'Day Out of Days', icon: '▤' },
     { id: 'reports', label: 'Reports', icon: '▧' },
+    { id: 'productionreport', label: 'Production Report', icon: '✎' },
     { id: 'redflags', label: 'Red Flags', icon: '⚑' },
     { id: 'productioninfo', label: 'Production Info', icon: 'ⓘ' },
     { id: 'callsheets', label: 'Call Sheets', icon: '▤' },

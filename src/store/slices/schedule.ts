@@ -998,6 +998,24 @@ export const createScheduleSlice: StateCreator<ScreenplayState, [], [], Schedule
     set({ schedule: assignStripDays(next), isDirty: true });
   },
 
+  // Daily Production Report: merge the AD's edits for a day
+  updateProductionReport: (dayId, patch) => {
+    const schedule = get().schedule;
+    if (!schedule) return;
+    const reports = schedule.productionReports ?? [];
+    const current = reports.find((r) => r.dayId === dayId) ?? { dayId, times: {}, sceneStatus: {} };
+    const next = {
+      ...current,
+      ...patch,
+      times: { ...current.times, ...patch.times },
+      sceneStatus: { ...current.sceneStatus, ...patch.sceneStatus },
+    };
+    set({
+      schedule: { ...schedule, productionReports: [...reports.filter((r) => r.dayId !== dayId), next], updatedAt: new Date() },
+      isDirty: true,
+    });
+  },
+
   addRedFlag: (flag) => {
     if (!get().schedule) get().initializeSchedule();
     const schedule = get().schedule!;
