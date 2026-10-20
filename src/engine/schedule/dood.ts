@@ -191,6 +191,8 @@ export function buildDOODRow(
     const i = columns.findIndex((c) => c.date === event.date);
     if (i < 0 || cells[i].kind === 'work') continue;
     if (cells[i].kind === 'hold') totals.hold--;
+    if (cells[i].kind === 'holiday') totals.holiday--;
+    if (cells[i].kind === 'companyTravel') totals.companyTravel--;
     cells[i] = { code: codes[event.kind], kind: event.kind };
   }
 

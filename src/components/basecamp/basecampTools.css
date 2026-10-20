@@ -313,3 +313,19 @@
 .bct-report-lists h5 { margin: 0 0 2px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.7; }
 .bct-report-daybreak { background: rgba(127, 140, 141, 0.18); font-weight: 700; padding: 5px 10px; border-radius: 3px; margin-top: 4px; }
 .bct-report-total { font-weight: 700; margin-top: 8px; }
+
+/* Red Flags */
+.bct-flag-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 8px; }
+.bct-flag-form input,
+.bct-flag-names input { padding: 6px 8px; border-radius: 6px; border: 1px solid #D5DBE3; background: transparent; color: inherit; }
+.basecamp-container.dark .bct-flag-form input,
+.basecamp-container.dark .bct-flag-form select,
+.basecamp-container.dark .bct-flag-names input { border-color: #2d3548; background: #1e2538; }
+.bct-grow { flex: 1; min-width: 200px; }
+.bct-grow input { flex: 1; }
+.bct-flag-names { display: flex; gap: 8px; margin-bottom: 8px; }
+.bct-flag-names input { flex: 1; max-width: 520px; }
+.bct-section-title { margin: 20px 0 8px; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+.bct-count { background: #E74C3C; color: #fff; border-radius: 10px; padding: 0 8px; font-size: 12px; }
+.bct-conflict-row td:nth-child(4) { color: #E74C3C; font-weight: 600; }
+.strip-flag-conflict { color: #E74C3C; font-weight: 700; }

@@ -1417,6 +1417,10 @@ export interface Schedule {
   // Day Out of Days preferences (codes, hold/drop rules)
   doodSettings?: import('../engine/schedule/dood').DOODSettings;
 
+  // Red Flags (dated notes on elements) and the flag name list
+  redFlags?: import('../engine/schedule/redFlags').RedFlag[];
+  redFlagNames?: string[];
+
   // Settings
   defaultCallTime: string;
   defaultLunchDuration: number;
