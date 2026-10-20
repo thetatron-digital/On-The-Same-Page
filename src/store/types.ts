@@ -336,6 +336,7 @@ export interface BreakdownSlice {
   deleteElementRecord: (id: string) => void;
   addLinkedElementsToScene: (sceneId: string, recordId: string) => number;
   setElementLinkMode: (mode: 'auto' | 'confirm' | 'never') => void;
+  importFinalDraftTags: (fdxXml: string) => { tags: number; elements: number; sheets: number; unmatched: number } | string;
 }
 
 // ArtCart: items, options/approvals, vendors, shopping lists, budget
