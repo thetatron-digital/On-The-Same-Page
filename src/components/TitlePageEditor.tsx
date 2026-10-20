@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { useScreenplayStore } from '../store/screenplayStore';
+import { useShallow } from 'zustand/react/shallow';
 import { downloadPDF } from '../utils/pdf';
 import './TitlePageEditor.css';
 
@@ -12,7 +13,13 @@ interface TextStyle {
 }
 
 export const TitlePageEditor = () => {
-  const { screenplay, updateTitlePage, togglePanel } = useScreenplayStore();
+  const { screenplay, updateTitlePage, togglePanel } = useScreenplayStore(
+    useShallow((s) => ({
+      screenplay: s.screenplay,
+      updateTitlePage: s.updateTitlePage,
+      togglePanel: s.togglePanel,
+    }))
+  );
   const { titlePage } = screenplay;
   const fileInputRef = useRef<HTMLInputElement>(null);
 

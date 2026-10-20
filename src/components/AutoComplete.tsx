@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { useScreenplayStore } from '../store/screenplayStore';
+import { useShallow } from 'zustand/react/shallow';
 import type { AutoCompleteSuggestion } from '../types/screenplay';
 import './AutoComplete.css';
 
@@ -11,11 +12,13 @@ interface AutoCompleteProps {
 
 export const AutoComplete = ({ onSelect, onClose }: AutoCompleteProps) => {
   const listRef = useRef<HTMLDivElement>(null);
-  const {
-    autoComplete,
-    moveAutoCompleteSelection,
-    closeAutoComplete,
-  } = useScreenplayStore();
+  const { autoComplete, moveAutoCompleteSelection, closeAutoComplete } = useScreenplayStore(
+    useShallow((s) => ({
+      autoComplete: s.autoComplete,
+      moveAutoCompleteSelection: s.moveAutoCompleteSelection,
+      closeAutoComplete: s.closeAutoComplete,
+    }))
+  );
 
   const { isOpen, suggestions, selectedIndex, position, triggerType } = autoComplete;
 

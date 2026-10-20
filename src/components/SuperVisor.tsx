@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useScreenplayStore } from '../store/screenplayStore';
+import { useShallow } from 'zustand/react/shallow';
 import type { TakeEntry } from '../types/screenplay';
 import './SuperVisor.css';
 
@@ -25,7 +26,28 @@ const SuperVisor: React.FC = () => {
     setSuperVisorCameraFilter,
     getTakesForScene,
     getCircledTakes,
-  } = useScreenplayStore();
+  } = useScreenplayStore(
+    useShallow((s) => ({
+      darkMode: s.darkMode,
+      schedule: s.schedule,
+      breakdownScenes: s.breakdownScenes,
+      superVisor: s.superVisor,
+      initializeSuperVisor: s.initializeSuperVisor,
+      startSupervisorSession: s.startSupervisorSession,
+      endSupervisorSession: s.endSupervisorSession,
+      logTake: s.logTake,
+      updateTake: s.updateTake,
+      deleteTake: s.deleteTake,
+      circleTake: s.circleTake,
+      addContinuityLog: s.addContinuityLog,
+      updateContinuityLog: s.updateContinuityLog,
+      generateDailyReport: s.generateDailyReport,
+      selectSuperVisorScene: s.selectSuperVisorScene,
+      setSuperVisorCameraFilter: s.setSuperVisorCameraFilter,
+      getTakesForScene: s.getTakesForScene,
+      getCircledTakes: s.getCircledTakes,
+    }))
+  );
 
   // Local state
   const [activeTab, setActiveTab] = useState<ViewTab>('takes');

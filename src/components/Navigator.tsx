@@ -1,9 +1,22 @@
 import { useScreenplayStore } from '../store/screenplayStore';
+import { useShallow } from 'zustand/react/shallow';
 import { getPlainText } from '../utils/fdx';
 import './Navigator.css';
 
 export const Navigator = () => {
-  const { screenplay, selectedElementId, selectElement, togglePanel } = useScreenplayStore();
+  const {
+    screenplay,
+    selectedElementId,
+    selectElement,
+    togglePanel,
+  } = useScreenplayStore(
+    useShallow((s) => ({
+      screenplay: s.screenplay,
+      selectedElementId: s.selectedElementId,
+      selectElement: s.selectElement,
+      togglePanel: s.togglePanel,
+    }))
+  );
 
   // Get all scene headings for navigation
   const scenes = screenplay.elements

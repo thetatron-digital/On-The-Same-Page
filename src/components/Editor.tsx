@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useScreenplayStore } from '../store/screenplayStore';
+import { useShallow } from 'zustand/react/shallow';
 import { ScriptEditor } from './ScriptEditor';
 import { Navigator } from './Navigator';
 import { WritingStats } from './WritingStats';
@@ -47,7 +48,20 @@ export const Editor = () => {
     viewMode,
     stats,
     zoom,
-  } = useScreenplayStore();
+  } = useScreenplayStore(
+    useShallow((s) => ({
+      screenplay: s.screenplay,
+      currentElementType: s.currentElementType,
+      selectElement: s.selectElement,
+      addElement: s.addElement,
+      panels: s.panels,
+      visibility: s.visibility,
+      activeApp: s.activeApp,
+      viewMode: s.viewMode,
+      stats: s.stats,
+      zoom: s.zoom,
+    }))
+  );
 
   // Monitor content height to determine page count
   useEffect(() => {

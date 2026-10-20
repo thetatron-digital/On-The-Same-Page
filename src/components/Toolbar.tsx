@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { useScreenplayStore } from '../store/screenplayStore';
+import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore, useProjectsStore } from '../services/projectService';
 import { googleAuth } from '../services/googleAuth';
 import { downloadPDF } from '../utils/pdf';
@@ -213,7 +214,46 @@ export const Toolbar = () => {
     setWatermarkSettings,
     toggleWatermark,
     getProjectData,
-  } = useScreenplayStore();
+  } = useScreenplayStore(
+    useShallow((s) => ({
+      screenplay: s.screenplay,
+      currentElementType: s.currentElementType,
+      isDirty: s.isDirty,
+      fileName: s.fileName,
+      darkMode: s.darkMode,
+      panels: s.panels,
+      visibility: s.visibility,
+      stats: s.stats,
+      activeApp: s.activeApp,
+      viewMode: s.viewMode,
+      versions: s.versions,
+      activeVersionId: s.activeVersionId,
+      showSceneNumbers: s.showSceneNumbers,
+      watermarkSettings: s.watermarkSettings,
+      newScreenplay: s.newScreenplay,
+      loadFromFDX: s.loadFromFDX,
+      exportToFDX: s.exportToFDX,
+      setFileName: s.setFileName,
+      setDirty: s.setDirty,
+      setCurrentElementType: s.setCurrentElementType,
+      selectedElementId: s.selectedElementId,
+      updateElementType: s.updateElementType,
+      toggleDarkMode: s.toggleDarkMode,
+      togglePanel: s.togglePanel,
+      toggleVisibility: s.toggleVisibility,
+      setActiveApp: s.setActiveApp,
+      setViewMode: s.setViewMode,
+      createVersion: s.createVersion,
+      switchVersion: s.switchVersion,
+      deleteVersion: s.deleteVersion,
+      toggleSceneNumbers: s.toggleSceneNumbers,
+      generateSceneNumbers: s.generateSceneNumbers,
+      clearSceneNumbers: s.clearSceneNumbers,
+      setWatermarkSettings: s.setWatermarkSettings,
+      toggleWatermark: s.toggleWatermark,
+      getProjectData: s.getProjectData,
+    }))
+  );
 
   // Auth and projects state
   const { user, signIn, signOut } = useAuthStore();

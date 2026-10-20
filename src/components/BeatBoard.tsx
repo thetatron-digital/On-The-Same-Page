@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useScreenplayStore } from '../store/screenplayStore';
+import { useShallow } from 'zustand/react/shallow';
 import type { Beat, StoryBeat } from '../types/screenplay';
 import './BeatBoard.css';
 
@@ -58,7 +59,23 @@ export const BeatBoard = () => {
     storyOutline,
     initializeBeats,
     updateBeatContent,
-  } = useScreenplayStore();
+  } = useScreenplayStore(
+    useShallow((s) => ({
+      beatBoards: s.beatBoards,
+      activeBeatBoardId: s.activeBeatBoardId,
+      createBeatBoard: s.createBeatBoard,
+      deleteBeatBoard: s.deleteBeatBoard,
+      setActiveBeatBoard: s.setActiveBeatBoard,
+      addBeat: s.addBeat,
+      updateBeat: s.updateBeat,
+      deleteBeat: s.deleteBeat,
+      sendBeatToScript: s.sendBeatToScript,
+      setViewMode: s.setViewMode,
+      storyOutline: s.storyOutline,
+      initializeBeats: s.initializeBeats,
+      updateBeatContent: s.updateBeatContent,
+    }))
+  );
 
   const [editingBeat, setEditingBeat] = useState<string | null>(null);
   const [newBoardName, setNewBoardName] = useState('');

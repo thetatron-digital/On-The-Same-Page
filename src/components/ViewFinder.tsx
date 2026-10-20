@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useScreenplayStore } from '../store/screenplayStore';
+import { useShallow } from 'zustand/react/shallow';
 import type { Shot, ShotSize, CameraAngle, CameraMovement, ShotStatus } from '../types/screenplay';
 import { SHOT_SIZE_INFO } from '../types/screenplay';
 import './ViewFinder.css';
@@ -53,7 +54,28 @@ const ViewFinder: React.FC = () => {
     setViewFinderFilterStatus,
     getShotsByScene,
     markSceneCoverageComplete,
-  } = useScreenplayStore();
+  } = useScreenplayStore(
+    useShallow((s) => ({
+      darkMode: s.darkMode,
+      viewFinder: s.viewFinder,
+      breakdownScenes: s.breakdownScenes,
+      selectedViewFinderSceneId: s.selectedViewFinderSceneId,
+      selectedShotId: s.selectedShotId,
+      viewFinderFilterStatus: s.viewFinderFilterStatus,
+      initializeViewFinder: s.initializeViewFinder,
+      importScenesForViewFinder: s.importScenesForViewFinder,
+      addShot: s.addShot,
+      updateShot: s.updateShot,
+      deleteShot: s.deleteShot,
+      setShotStatus: s.setShotStatus,
+      duplicateShot: s.duplicateShot,
+      selectViewFinderScene: s.selectViewFinderScene,
+      selectShot: s.selectShot,
+      setViewFinderFilterStatus: s.setViewFinderFilterStatus,
+      getShotsByScene: s.getShotsByScene,
+      markSceneCoverageComplete: s.markSceneCoverageComplete,
+    }))
+  );
 
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);

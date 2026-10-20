@@ -1,4 +1,5 @@
 import { useScreenplayStore } from '../store/screenplayStore';
+import { useShallow } from 'zustand/react/shallow';
 import { getPlainText } from '../utils/fdx';
 import './SplitView.css';
 
@@ -24,7 +25,17 @@ export const SplitView = () => {
     updateSplitEntry,
     addSplitEntry,
     deleteSplitEntry,
-  } = useScreenplayStore();
+  } = useScreenplayStore(
+    useShallow((s) => ({
+      screenplay: s.screenplay,
+      splitContent: s.splitContent,
+      toggleSplitIndependent: s.toggleSplitIndependent,
+      toggleSplitSwapped: s.toggleSplitSwapped,
+      updateSplitEntry: s.updateSplitEntry,
+      addSplitEntry: s.addSplitEntry,
+      deleteSplitEntry: s.deleteSplitEntry,
+    }))
+  );
 
   // Get content based on mode
   const getSyncedContent = () => {

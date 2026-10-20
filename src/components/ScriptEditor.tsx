@@ -1,6 +1,7 @@
 import { useRef, useCallback, useEffect } from 'react';
 import type { ScreenplayElement, ElementType } from '../types/screenplay';
 import { useScreenplayStore } from '../store/screenplayStore';
+import { useShallow } from 'zustand/react/shallow';
 import { generateId, createTextRuns } from '../utils/fdx';
 import { detectAutoCompleteTrigger } from '../utils/scriptParser';
 import { AutoComplete } from './AutoComplete';
@@ -72,7 +73,18 @@ export const ScriptEditor = () => {
     closeAutoComplete,
     refreshScriptData,
     showSceneNumbers,
-  } = useScreenplayStore();
+  } = useScreenplayStore(
+    useShallow((s) => ({
+      screenplay: s.screenplay,
+      selectElement: s.selectElement,
+      setCurrentElementType: s.setCurrentElementType,
+      autoComplete: s.autoComplete,
+      openAutoComplete: s.openAutoComplete,
+      closeAutoComplete: s.closeAutoComplete,
+      refreshScriptData: s.refreshScriptData,
+      showSceneNumbers: s.showSceneNumbers,
+    }))
+  );
 
   // Get the text offset within an element from a node
   const getTextOffset = useCallback((container: HTMLElement, node: Node, offset: number): number => {

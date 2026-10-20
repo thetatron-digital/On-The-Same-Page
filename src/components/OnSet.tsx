@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useScreenplayStore } from '../store/screenplayStore';
+import { useShallow } from 'zustand/react/shallow';
 import type { OnSetViewMode } from '../types/screenplay';
 import { STRIP_COLOR_HEX } from '../types/screenplay';
 import './OnSet.css';
@@ -22,7 +23,26 @@ const OnSet: React.FC = () => {
     goLive,
     goOffline,
     getQuickStatus,
-  } = useScreenplayStore();
+  } = useScreenplayStore(
+    useShallow((s) => ({
+      darkMode: s.darkMode,
+      schedule: s.schedule,
+      onSet: s.onSet,
+      initializeOnSet: s.initializeOnSet,
+      setOnSetViewMode: s.setOnSetViewMode,
+      updateOnSetDisplaySettings: s.updateOnSetDisplaySettings,
+      startProductionDay: s.startProductionDay,
+      markStripComplete: s.markStripComplete,
+      markStripInProgress: s.markStripInProgress,
+      startLunch: s.startLunch,
+      endLunch: s.endLunch,
+      addDelay: s.addDelay,
+      endDelay: s.endDelay,
+      goLive: s.goLive,
+      goOffline: s.goOffline,
+      getQuickStatus: s.getQuickStatus,
+    }))
+  );
 
   // Local state
   const [showDelayModal, setShowDelayModal] = useState(false);
