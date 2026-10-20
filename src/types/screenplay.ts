@@ -265,17 +265,15 @@ export const DEFAULT_ZOOM = 100;
 export interface ElementFormatting {
   leftEdge: number;      // inches from left edge of page
   rightEdge: number;     // inches from left edge for right boundary
+  firstIndent?: number;  // extra indent of the first line in inches (negative = hanging)
   alignment: 'left' | 'center' | 'right';
   allCaps: boolean;
-  spaceBeforeLines: number;  // blank lines before element
-  spaceAfterLines: number;   // blank lines after element
+  spaceBeforeLines: number;  // blank lines before element (none at the top of a page)
 }
 
-// Industry standard element positioning
-// Character names: 3.7" from left edge (appears centered)
-// Dialogue: 2.5" from left edge, ~3.5" wide
-// Parenthetical: 3.1" from left edge
-// Transitions: 6" from left edge (right-aligned)
+// Element positions and spacing match Final Draft's default screenplay
+// settings as observed in findings/final-draft-13.md (indents, space before,
+// hanging parenthetical). Spacing is space-before only, as in Final Draft.
 export const ELEMENT_FORMATTING: Record<ElementType, ElementFormatting> = {
   'Scene Heading': {
     leftEdge: 1.5,        // At left margin
@@ -283,7 +281,6 @@ export const ELEMENT_FORMATTING: Record<ElementType, ElementFormatting> = {
     alignment: 'left',
     allCaps: true,
     spaceBeforeLines: 2,  // Double space before new scene
-    spaceAfterLines: 1,
   },
   'Action': {
     leftEdge: 1.5,        // At left margin
@@ -291,39 +288,35 @@ export const ELEMENT_FORMATTING: Record<ElementType, ElementFormatting> = {
     alignment: 'left',
     allCaps: false,
     spaceBeforeLines: 1,
-    spaceAfterLines: 1,
   },
   'Character': {
-    leftEdge: 3.7,        // 3.7" from left edge (industry standard)
-    rightEdge: 7.5,
+    leftEdge: 3.5,
+    rightEdge: 7.25,
     alignment: 'left',    // Left-aligned at its indented position
     allCaps: true,
     spaceBeforeLines: 1,
-    spaceAfterLines: 0,   // No space before dialogue
   },
   'Dialogue': {
-    leftEdge: 2.5,        // 2.5" from left edge
-    rightEdge: 6.0,       // Creates ~3.5" wide dialogue block
+    leftEdge: 2.5,
+    rightEdge: 6.0,       // 3.5" wide dialogue block
     alignment: 'left',
     allCaps: false,
     spaceBeforeLines: 0,
-    spaceAfterLines: 1,
   },
   'Parenthetical': {
-    leftEdge: 3.1,        // 3.1" from left edge
+    leftEdge: 3.0,
     rightEdge: 5.5,       // Narrower than dialogue
+    firstIndent: -0.1,    // "(" hangs one character left of the wrapped lines
     alignment: 'left',
     allCaps: false,
     spaceBeforeLines: 0,
-    spaceAfterLines: 0,
   },
   'Transition': {
-    leftEdge: 6.0,        // 6" from left edge
-    rightEdge: 7.5,       // To right margin
+    leftEdge: 5.5,
+    rightEdge: 7.1,
     alignment: 'right',
     allCaps: true,
     spaceBeforeLines: 1,
-    spaceAfterLines: 1,
   },
   'Shot': {
     leftEdge: 1.5,
@@ -331,15 +324,13 @@ export const ELEMENT_FORMATTING: Record<ElementType, ElementFormatting> = {
     alignment: 'left',
     allCaps: true,
     spaceBeforeLines: 1,
-    spaceAfterLines: 1,
   },
   'General': {
     leftEdge: 1.5,
     rightEdge: 7.5,
     alignment: 'left',
     allCaps: false,
-    spaceBeforeLines: 1,
-    spaceAfterLines: 1,
+    spaceBeforeLines: 0,
   },
 };
 

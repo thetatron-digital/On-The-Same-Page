@@ -12,6 +12,11 @@
   -ms-user-select: text;
 }
 
+/* Automatic (CONT'D) after a character who speaks again in the scene */
+.auto-contd {
+  user-select: none;
+}
+
 /* Page break spacer - (MORE), a gap to the next page, then CHARACTER (CONT'D).
    Placed by the pagination engine; the gap height is set by alignPageBreaks. */
 .page-break-spacer {
@@ -161,7 +166,7 @@
 
 .script-element.scene-heading .scene-number {
   position: absolute;
-  left: -80px;
+  left: -72px; /* 0.75" from the page edge, as in Final Draft */
   font-weight: 700;
   text-transform: none;
   user-select: none;
@@ -170,7 +175,7 @@
 
 .script-element.scene-heading .scene-number-right {
   position: absolute;
-  right: -80px;
+  left: 564px; /* starts 7.38" from the page edge, as in Final Draft */
   font-weight: 700;
   text-transform: none;
   user-select: none;

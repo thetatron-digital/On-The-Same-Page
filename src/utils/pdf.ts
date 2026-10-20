@@ -8,11 +8,12 @@ const PAGE_WIDTH = 612; // 8.5 inches
 const PAGE_HEIGHT = 792; // 11 inches
 const TOP_MARGIN = 72; // 1 inch
 const BOTTOM_MARGIN = 72; // 1 inch
-const LEFT_MARGIN = 108; // 1.5 inches
-const RIGHT_MARGIN = 72; // 1 inch
 const LINE_HEIGHT = 12; // 12 points for Courier 12pt
 const FONT_SIZE = 12;
-const SCENE_NUMBER_OFFSET = 36; // Distance from margin for scene numbers
+const HEADER_MARGIN = 36; // 0.5 inch: page number baseline
+const PAGE_NUMBER_RIGHT = 522; // 7.25 inches: page numbers are right-aligned here
+const SCENE_NUMBER_LEFT = 54; // 0.75 inch
+const SCENE_NUMBER_RIGHT = 531; // 7.38 inches
 
 // Default watermark settings
 const DEFAULT_WATERMARK: WatermarkSettings = {
@@ -123,15 +124,16 @@ export const generatePDF = (screenplay: Screenplay, options: PDFOptions = {}): j
   }
 
   // Draws one wrapped line of an element at its margin and alignment
-  const drawLine = (type: ElementType, text: string, y: number) => {
+  const drawLine = (type: ElementType, text: string, y: number, isFirstLine: boolean) => {
     const formatting = ELEMENT_FORMATTING[type];
+    const hang = isFirstLine ? inchesToPoints(formatting.firstIndent ?? 0) : 0;
     if (formatting.alignment === 'right') {
       doc.text(text, inchesToPoints(formatting.rightEdge), y, { align: 'right' });
     } else if (formatting.alignment === 'center') {
       const centerX = (inchesToPoints(formatting.leftEdge) + inchesToPoints(formatting.rightEdge)) / 2;
       doc.text(text, centerX, y, { align: 'center' });
     } else {
-      doc.text(text, getXPosition(type), y);
+      doc.text(text, getXPosition(type) + hang, y);
     }
   };
 
@@ -145,7 +147,7 @@ export const generatePDF = (screenplay: Screenplay, options: PDFOptions = {}): j
 
     // Page number top right (script page 1 is unnumbered)
     if (page.number > 1) {
-      doc.text(`${page.number}.`, PAGE_WIDTH - RIGHT_MARGIN, 36, { align: 'right' });
+      doc.text(`${page.number}.`, PAGE_NUMBER_RIGHT, HEADER_MARGIN, { align: 'right' });
     }
 
     page.items.forEach((item) => {
@@ -162,8 +164,9 @@ export const generatePDF = (screenplay: Screenplay, options: PDFOptions = {}): j
           .forEach(({ p, start }) => {
             const xPos = p.type === 'Character' ? start + DUAL_CHAR_OFFSET :
                          p.type === 'Parenthetical' ? start + 30 : start;
+            const hang = inchesToPoints(ELEMENT_FORMATTING[p.type].firstIndent ?? 0);
             p.lines.forEach((line, li) => {
-              doc.text(line.text, xPos, y + (p.top + li) * LINE_HEIGHT);
+              doc.text(line.text, xPos + (li === 0 ? hang : 0), y + (p.top + li) * LINE_HEIGHT);
             });
           });
         return;
@@ -173,12 +176,12 @@ export const generatePDF = (screenplay: Screenplay, options: PDFOptions = {}): j
       if (item.type === 'Scene Heading' && showSceneNumbers && !item.continued) {
         const sceneNumber = screenplay.elements[item.elementIndex].sceneNumber;
         if (sceneNumber) {
-          doc.text(sceneNumber, LEFT_MARGIN - SCENE_NUMBER_OFFSET, y);
-          doc.text(sceneNumber, PAGE_WIDTH - RIGHT_MARGIN + SCENE_NUMBER_OFFSET, y, { align: 'right' });
+          doc.text(sceneNumber, SCENE_NUMBER_LEFT, y);
+          doc.text(sceneNumber, SCENE_NUMBER_RIGHT, y);
         }
       }
 
-      item.lines.forEach((line, li) => drawLine(item.type, line.text, y + li * LINE_HEIGHT));
+      item.lines.forEach((line, li) => drawLine(item.type, line.text, y + li * LINE_HEIGHT, !item.continued && li === 0));
     });
   });
 
