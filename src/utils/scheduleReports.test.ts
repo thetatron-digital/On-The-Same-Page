@@ -85,3 +85,41 @@ describe('schedule report PDF', () => {
     expect(scheduleReportPdf(long, 'shooting').getNumberOfPages()).toBeGreaterThan(1);
   });
 });
+
+describe('list reports', () => {
+  it('Cast List and Prop List: one row per element with scenes and shoot days', async () => {
+    const { buildElementListReport } = await import('./scheduleReports');
+    const cast = buildElementListReport(schedule, { breakdown, people: [] }, 'Cast Members');
+    expect(cast.title).toBe('Cast List');
+    expect(cast.sections[0].rows).toEqual([['1', 'ADA', '', '1', '1', '1']]);
+    const props = buildElementListReport(schedule, { breakdown, people: [] }, 'Props');
+    expect(props.title).toBe('Prop List');
+    expect(props.sections[0].rows).toEqual([['', 'REVOLVER', '1', '1', '1']]);
+  });
+
+  it('Location List groups scenes by Set with pages and days', async () => {
+    const { buildLocationListReport } = await import('./scheduleReports');
+    const report = buildLocationListReport(schedule, { breakdown, people: [] });
+    expect(report.sections[0].rows).toEqual([
+      ['KITCHEN', '', 'INT', '1, 3', '4', '1, 2'],
+      ['PARK', '', 'EXT', '2', '4/8', '1'],
+    ]);
+  });
+
+  it('Category By Day lists what each shoot day needs, as CSV too', async () => {
+    const { buildCategoryByDayReport, tableReportToCsv } = await import('./scheduleReports');
+    const report = buildCategoryByDayReport(schedule, { breakdown, people: [] }, 'Vehicles');
+    expect(report.sections.map((s) => [s.heading, s.rows])).toEqual([
+      ['Shoot Day # 1 -- Mon, Mar 2, 2026', [['', 'POLICE CAR', '1']]],
+      ['Shoot Day # 2', []],
+    ]);
+    expect(tableReportToCsv(report).split('\n')[1]).toBe('"Shoot Day # 1 -- Mon, Mar 2, 2026",,POLICE CAR,1');
+  });
+
+  it('renders list reports to PDF', async () => {
+    const { buildCategoryByDayReport } = await import('./scheduleReports');
+    const { tableReportPdf } = await import('./scheduleReportPdf');
+    const doc = tableReportPdf(buildCategoryByDayReport(schedule, { breakdown, people: [] }, 'Vehicles'), 'Test Film', 'Thetatron Pictures');
+    expect(doc.output()).toContain('Vehicles By Day');
+  });
+});
