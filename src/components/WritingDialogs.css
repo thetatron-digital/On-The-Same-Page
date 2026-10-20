@@ -1,0 +1,76 @@
+/* Macros, Bookmarks and Reports dialogs (shares ProductionDialogs.css) */
+.writing-dialog {
+  max-width: 760px;
+}
+
+.modal-content .revisions-table select {
+  padding: 3px 4px;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.shortcut-cell {
+  white-space: nowrap;
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.row-delete {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.dialog-empty {
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.bookmark-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+}
+
+.bookmark-list li {
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.bookmark-list li span {
+  color: var(--text-secondary);
+}
+
+.bookmark-list li.selected {
+  background: var(--hover-bg);
+}
+
+.reports-dialog {
+  width: min(860px, 92vw);
+  max-width: none;
+}
+
+.report-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+
+.report-subtitle {
+  margin: 6px 0;
+  color: var(--text-secondary);
+}
+
+.report-table td {
+  vertical-align: top;
+  padding: 4px 8px;
+}

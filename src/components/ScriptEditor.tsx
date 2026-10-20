@@ -1,6 +1,7 @@
 import { useRef, useCallback, useEffect } from 'react';
 import type { ScreenplayElement, ElementType } from '../types/screenplay';
-import { ELEMENT_BEHAVIOR, ELEMENT_FORMATTING, ELEMENT_SHORTCUTS, MARGIN_LEFT } from '../types/screenplay';
+import { ELEMENT_BEHAVIOR, ELEMENT_FORMATTING, ELEMENT_SHORTCUTS, MARGIN_LEFT, NOTE_COLORS } from '../types/screenplay';
+import { applyMacro, findMacro, getMacros, macroBank } from '../engine/scriptTools';
 import { getRevisionSettings, showsRevisionMark } from '../engine/production';
 import { CHARS_PER_INCH, elementWidthChars, firstLineWidthChars, paginateScript, wrapElement, type PageBreak, type Pagination } from '../engine/paginate';
 import { useScreenplayStore } from '../store/screenplayStore';
@@ -9,6 +10,7 @@ import { generateId, createTextRuns } from '../utils/fdx';
 import { detectAutoCompleteTrigger } from '../utils/scriptParser';
 import { AutoComplete } from './AutoComplete';
 import { editSceneNumberAt } from './productionActions';
+import { addAltHere, insertBookmark, insertNote, isMac, removeAltHere } from './writingActions';
 import { DECORATION_ATTR, editableText, offsetInElement, offsetTopWithin, positionAt, setSelectedElementIds } from './editorDom';
 import { LINE_HEIGHT_PX, PAGE_STRIDE } from './pageLayout';
 import './ScriptEditor.css';
@@ -103,6 +105,9 @@ export const ScriptEditor = () => {
     closeAutoComplete,
     refreshScriptData,
     showSceneNumbers,
+    scriptNotes,
+    showNotes,
+    showAlts,
   } = useScreenplayStore(
     useShallow((s) => ({
       screenplay: s.screenplay,
@@ -113,6 +118,9 @@ export const ScriptEditor = () => {
       closeAutoComplete: s.closeAutoComplete,
       refreshScriptData: s.refreshScriptData,
       showSceneNumbers: s.showSceneNumbers,
+      scriptNotes: s.scriptNotes,
+      showNotes: s.visibility.scriptNotes,
+      showAlts: s.visibility.alts,
     }))
   );
 
@@ -141,8 +149,10 @@ export const ScriptEditor = () => {
 
     // Check if elements actually changed (not just selection)
     const revisions = getRevisionSettings(screenplay);
-    const elementsKey = screenplay.elements.map(e => `${e.id}:${e.type}:${getPlainText(e.content)}:${e.revisionId ?? ''}:${e.omitted ? 'o' : ''}`).join('|') +
-      `#${revisions.activeSetId}:${revisions.marksShown}:${JSON.stringify(screenplay.lockedPages ?? [])}`;
+    const openNotes = showNotes ? scriptNotes.filter((n) => !n.resolved && n.elementId) : [];
+    const elementsKey = screenplay.elements.map(e => `${e.id}:${e.type}:${getPlainText(e.content)}:${e.revisionId ?? ''}:${e.omitted ? 'o' : ''}:${e.bookmark ?? ''}:${showAlts ? e.alts?.length ?? 0 : ''}`).join('|') +
+      `#${revisions.activeSetId}:${revisions.marksShown}:${JSON.stringify(screenplay.lockedPages ?? [])}` +
+      `#${openNotes.map((n) => `${n.id}:${n.elementId}:${n.color}`).join(',')}`;
     if (elementsKey === lastElementsRef.current) {
       return; // No actual content change, skip re-render to preserve selection
     }
@@ -261,6 +271,42 @@ export const ScriptEditor = () => {
         div.classList.add('omitted-scene');
       }
 
+      // ScriptNote markers and a bookmark flag in the left margin
+      openNotes.filter((n) => n.elementId === element.id).forEach((note, i) => {
+        const marker = document.createElement('span');
+        marker.className = 'note-marker';
+        marker.dataset.noteId = note.id;
+        marker.setAttribute('contenteditable', 'false');
+        marker.setAttribute(DECORATION_ATTR, '');
+        marker.title = note.title || note.content.slice(0, 60) || 'ScriptNote';
+        marker.style.left = `${-indentChars(element.type) - 3 - i * 1.5}ch`;
+        marker.style.background = note.color ?? NOTE_COLORS[0];
+        div.appendChild(marker);
+      });
+      if (element.bookmark) {
+        const flag = document.createElement('span');
+        flag.className = 'bookmark-flag';
+        flag.setAttribute('contenteditable', 'false');
+        flag.setAttribute(DECORATION_ATTR, '');
+        flag.title = `Bookmark: ${element.bookmark}`;
+        flag.style.left = `${-indentChars(element.type) - 6}ch`;
+        flag.textContent = '\u25B8';
+        div.appendChild(flag);
+      }
+
+      // Alts: which version is showing; click to show the next
+      if (showAlts && element.alts?.length) {
+        const badge = document.createElement('span');
+        badge.className = 'alt-badge';
+        badge.dataset.altFor = element.id;
+        badge.setAttribute('contenteditable', 'false');
+        badge.setAttribute(DECORATION_ATTR, '');
+        badge.title = 'Show the next alt';
+        badge.style.left = `${64 - indentChars(element.type)}ch`;
+        badge.textContent = `Alt 1/${element.alts.length + 1}`;
+        div.appendChild(badge);
+      }
+
       // Revision mark (*) in the right margin, one per line
       if (showsRevisionMark(element.revisionId, revisions)) {
         const set = revisions.sets.find((r) => r.id === element.revisionId);
@@ -327,7 +373,7 @@ export const ScriptEditor = () => {
     }
 
     isUpdatingRef.current = false;
-  }, [screenplay, getTextOffset, showSceneNumbers, alignPageBreaks]);
+  }, [screenplay, getTextOffset, showSceneNumbers, alignPageBreaks, scriptNotes, showNotes, showAlts]);
 
   // Re-render only when elements change (not selection). While typing the DOM is
   // left alone; once typing pauses, rebuild if the page breaks moved, otherwise
@@ -562,11 +608,57 @@ export const ScriptEditor = () => {
       }
     }
 
-    const mod = e.metaKey || e.ctrlKey;
+    const mod = isMac ? e.metaKey : e.ctrlKey;
+    const digit = /^Digit(\d)$/.exec(e.code)?.[1];
+
+    // Macros: Ctrl+Opt+digit (Mac) or Alt+Shift+digit; bank 2 adds Shift / Ctrl
+    const bank = digit ? macroBank(e, isMac) : 0;
+    if (bank && digit) {
+      const macro = findMacro(getMacros(state.screenplay), bank, digit);
+      if (macro) {
+        e.preventDefault();
+        if (!current) return;
+        const result = applyMacro(state.screenplay.elements, current.element.id, current.offset, macro);
+        state.setScreenplay({ ...state.screenplay, elements: result.elements });
+        const caretType = result.elements.find((el) => el.id === result.caret.id)?.type;
+        if (caretType) setCurrentElementType(caretType);
+        selectElement(result.caret.id);
+        setCursorPosition(result.caret.id, result.caret.offset);
+        return;
+      }
+    }
+
+    // Insert > ScriptNote (Mod+Shift+K), General Note (Mod+Shift+G), Bookmark (Mod+\)
+    if (mod && e.shiftKey && !e.altKey && (e.code === 'KeyK' || e.key.toLowerCase() === 'k')) {
+      e.preventDefault();
+      insertNote('script');
+      return;
+    }
+    if (mod && e.shiftKey && !e.altKey && (e.code === 'KeyG' || e.key.toLowerCase() === 'g')) {
+      e.preventDefault();
+      insertNote('general');
+      return;
+    }
+    if (mod && !e.shiftKey && !e.altKey && (e.code === 'Backslash' || e.key === '\\')) {
+      e.preventDefault();
+      insertBookmark();
+      return;
+    }
+
+    // Insert > Add Alt (Mod+Shift+.) and Remove Alt (Mod+Shift+,)
+    if (mod && e.shiftKey && !e.altKey && (e.code === 'Period' || e.key === '>' || e.key === '.')) {
+      e.preventDefault();
+      addAltHere();
+      return;
+    }
+    if (mod && e.shiftKey && !e.altKey && (e.code === 'Comma' || e.key === '<' || e.key === ',')) {
+      e.preventDefault();
+      removeAltHere();
+      return;
+    }
 
     // Mod+Alt+digit - change element (Final Draft's numbering; browsers keep Mod+digit)
-    const digit = /^Digit(\d)$/.exec(e.code)?.[1];
-    if (mod && e.altKey && digit && ELEMENT_SHORTCUTS[digit]) {
+    if (mod && e.altKey && !e.shiftKey && digit && ELEMENT_SHORTCUTS[digit]) {
       e.preventDefault();
       if (!current) return;
       const type = ELEMENT_SHORTCUTS[digit];
@@ -812,6 +904,18 @@ export const ScriptEditor = () => {
     if (!editor) return;
 
     const target = e.target as HTMLElement;
+
+    // A ScriptNote marker opens its note; an alt badge shows the next alt
+    const marker = target.closest<HTMLElement>('.note-marker');
+    if (marker?.dataset.noteId) {
+      useScreenplayStore.getState().setActiveNote(marker.dataset.noteId);
+      return;
+    }
+    const badge = target.closest<HTMLElement>('.alt-badge');
+    if (badge?.dataset.altFor) {
+      useScreenplayStore.getState().cycleAlt(badge.dataset.altFor, 1);
+      return;
+    }
 
     if (target === editor || !target.closest('[data-element-id]')) {
       const elements = screenplay.elements;

@@ -23,6 +23,7 @@ export const createUiSlice: StateCreator<ScreenplayState, [], [], UiSlice> = (se
     ruler: true,
     sceneNavigator: true,
     scriptNotes: true,
+    alts: false,
   },
   stats: {
     pageCount: 1,

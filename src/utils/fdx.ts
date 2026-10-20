@@ -155,6 +155,8 @@ const parseParagraphNode = (node: Element): ScreenplayElement[] => {
   };
   const sceneNumber = node.getAttribute('Number');
   if (sceneNumber) element.sceneNumber = sceneNumber;
+  const bookmark = node.getAttribute('Bookmark');
+  if (bookmark) element.bookmark = bookmark;
   const revised = Math.max(0, ...runs.map((r) => r.revisionId ?? 0));
   if (revised > 0) element.revisionId = revised;
   if (omittedNode) {
@@ -266,7 +268,8 @@ export const generateFDX = (screenplay: Screenplay): string => {
   // Add script content
   const paragraph = (element: ScreenplayElement): string => {
     const sceneNumAttr = element.sceneNumber ? ` Number="${escapeXml(element.sceneNumber)}"` : '';
-    let out = `<Paragraph Type="${element.type}"${sceneNumAttr}>\n`;
+    const bookmarkAttr = element.bookmark ? ` Bookmark="${escapeXml(element.bookmark)}"` : '';
+    let out = `<Paragraph Type="${element.type}"${sceneNumAttr}${bookmarkAttr}>\n`;
     element.content.forEach((run) => {
       const styleAttr = run.style ? ` Style="${run.style}"` : '';
       const revisionId = run.revisionId ?? element.revisionId;

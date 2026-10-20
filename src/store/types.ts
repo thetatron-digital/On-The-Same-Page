@@ -24,6 +24,7 @@ import type {
   PageLock,
   RevisionSettings,
   RevisionSet,
+  Macro,
   WatermarkSettings,
   Breakdown,
   BreakdownElement,
@@ -84,6 +85,7 @@ export interface VisibilityState {
   ruler: boolean;
   sceneNavigator: boolean;
   scriptNotes: boolean;
+  alts: boolean; // View > Document > Show Alts.
 }
 
 // View modes (within Re-writer app)
@@ -213,6 +215,12 @@ export interface ScriptSlice {
   removeSceneNumbers: () => void;
   editSceneNumber: (elementId: string, sceneNumber: string) => void;
   toggleOmitScene: (elementId: string) => void;
+  // Insert / Document menus: bookmarks, alts, macros
+  setBookmark: (elementId: string, name: string | null) => void;
+  addAlt: (elementId: string) => void;
+  removeAlt: (elementId: string) => void;
+  cycleAlt: (elementId: string, direction: 1 | -1) => void;
+  setMacros: (macros: Macro[]) => void;
 }
 
 // App shell: active app, zoom, panels, theme, writing stats
@@ -252,6 +260,7 @@ export interface StorySlice {
   activeVersionId: string | null;
   // Script Notes
   scriptNotes: ScriptNote[];
+  activeNoteId: string | null; // note open in the editor's note popover
   // Split View
   splitContent: SplitContent;
   // Story Outline
@@ -270,10 +279,12 @@ export interface StorySlice {
   deleteVersion: (versionId: string) => void;
   renameVersion: (versionId: string, name: string) => void;
   // Script Notes actions
-  addNote: (elementId: string, content: string, author?: string) => string;
+  addNote: (elementId: string, content: string, author?: string, fields?: Partial<ScriptNote>) => string;
   updateNote: (noteId: string, content: string) => void;
+  updateNoteFields: (noteId: string, changes: Partial<ScriptNote>) => void;
   deleteNote: (noteId: string) => void;
   resolveNote: (noteId: string) => void;
+  setActiveNote: (noteId: string | null) => void;
   // Split View actions
   toggleSplitIndependent: () => void;
   toggleSplitSwapped: () => void;

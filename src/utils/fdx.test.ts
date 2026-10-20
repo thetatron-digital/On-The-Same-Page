@@ -46,6 +46,11 @@ describe('FDX round-trip', () => {
     expect(back.elements[0].omitted?.map((e) => e.content[0].text)).toEqual(['INT. B - DAY', 'b.']);
   });
 
+  it('keeps bookmarks', () => {
+    const back = roundTrip(script([{ id: 'a', type: 'Action', content: [{ text: 'x' }], bookmark: 'Midpoint & "twist"' }]));
+    expect(back.elements[0].bookmark).toBe('Midpoint & "twist"');
+  });
+
   it('keeps dual dialogue side by side', () => {
     const original = script([
       { id: '1', type: 'Character', content: [{ text: 'ALEX' }], isDualDialogue: true, dualDialoguePosition: 'left' },
