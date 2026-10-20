@@ -1,5 +1,6 @@
 /* Script Editor - Single contenteditable for cross-element selection */
 .script-editor-content {
+  position: relative; /* page-break gaps are measured from here */
   min-height: 100%;
   outline: none;
   cursor: text;
@@ -11,12 +12,29 @@
   -ms-user-select: text;
 }
 
-/* Page break spacer - invisible space to align content with page backgrounds */
+/* Page break spacer - (MORE), a gap to the next page, then CHARACTER (CONT'D).
+   Placed by the pagination engine; the gap height is set by alignPageBreaks. */
 .page-break-spacer {
   display: block;
   width: 100%;
   pointer-events: none;
   user-select: none;
+}
+
+.page-break-gap,
+.page-break-line {
+  display: block;
+}
+
+.page-break-line {
+  font-family: 'Courier New', 'Courier Prime', Courier, monospace;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1.0;
+  text-transform: uppercase;
+  white-space: pre;
+  color: var(--script-text);
 }
 
 /* Ensure the editor can receive focus */
@@ -64,6 +82,9 @@
 
 /* ============================================
    ELEMENT TYPE SPECIFIC STYLES
+   Indents, widths and spacing are set inline from ELEMENT_FORMATTING via the
+   pagination engine (ScriptEditor applyElementLayout); these margin-tops are
+   fallbacks for elements the engine lays out as part of a dual dialogue block.
    ============================================ */
 
 /* Scene Heading - Bold, uppercase, at left margin */
@@ -85,8 +106,6 @@
 /* Character - Uppercase, indented */
 .script-element.character {
   margin-top: 16px;
-  margin-left: 37%;
-  width: 63%;
   font-weight: 600;
   text-transform: uppercase;
 }
@@ -94,22 +113,17 @@
 /* Dialogue - Indented, narrower width */
 .script-element.dialogue {
   margin-top: 0;
-  margin-left: 17%;
-  width: 58%;
 }
 
 /* Parenthetical - Indented more than dialogue */
 .script-element.parenthetical {
   margin-top: 0;
-  margin-left: 27%;
-  width: 38%;
   font-style: italic;
 }
 
 /* Transition - Right-aligned, uppercase */
 .script-element.transition {
   margin-top: 16px;
-  text-align: right;
   text-transform: uppercase;
 }
 

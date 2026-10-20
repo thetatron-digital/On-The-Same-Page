@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import type { Screenplay, ElementType, WatermarkSettings } from '../types/screenplay';
 import { ELEMENT_FORMATTING } from '../types/screenplay';
-import { getPlainText } from './fdx';
+import { paginateScript } from '../engine/paginate';
 
 // PDF constants (in points, 72 points = 1 inch)
 const PAGE_WIDTH = 612; // 8.5 inches
@@ -33,49 +33,15 @@ const getXPosition = (elementType: ElementType): number => {
   return inchesToPoints(formatting.leftEdge);
 };
 
-// Get max width for element type
-const getMaxWidth = (elementType: ElementType): number => {
-  const formatting = ELEMENT_FORMATTING[elementType];
-  const leftPos = inchesToPoints(formatting.leftEdge);
-  const rightPos = inchesToPoints(formatting.rightEdge);
-  return rightPos - leftPos;
-};
-
-// Word wrap text to fit within max width
-const wrapText = (doc: jsPDF, text: string, maxWidth: number): string[] => {
-  const words = text.split(' ');
-  const lines: string[] = [];
-  let currentLine = '';
-
-  words.forEach((word) => {
-    const testLine = currentLine ? `${currentLine} ${word}` : word;
-    const testWidth = doc.getTextWidth(testLine);
-
-    if (testWidth > maxWidth && currentLine) {
-      lines.push(currentLine);
-      currentLine = word;
-    } else {
-      currentLine = testLine;
-    }
-  });
-
-  if (currentLine) {
-    lines.push(currentLine);
-  }
-
-  return lines.length > 0 ? lines : [''];
-};
-
 export interface PDFOptions {
   showSceneNumbers?: boolean;
   watermark?: WatermarkSettings;
 }
 
-// Dual dialogue positioning
+// Dual dialogue positioning (column width is DUAL_COLUMN_CHARS in the engine)
 const DUAL_LEFT_START = 108; // 1.5 inches
 const DUAL_RIGHT_START = 324; // 4.5 inches
 const DUAL_CHAR_OFFSET = 54; // Offset for character name
-const DUAL_WIDTH = 180; // Width for each column
 
 // Add watermark to a page
 const addWatermark = (doc: jsPDF, watermark: WatermarkSettings) => {
@@ -120,6 +86,7 @@ const addWatermark = (doc: jsPDF, watermark: WatermarkSettings) => {
 
 export const generatePDF = (screenplay: Screenplay, options: PDFOptions = {}): jsPDF => {
   const { showSceneNumbers = false, watermark = DEFAULT_WATERMARK } = options;
+  const { pages } = paginateScript(screenplay.elements);
 
   const doc = new jsPDF({
     unit: 'pt',
@@ -129,23 +96,6 @@ export const generatePDF = (screenplay: Screenplay, options: PDFOptions = {}): j
   // Set Courier font
   doc.setFont('Courier', 'normal');
   doc.setFontSize(FONT_SIZE);
-
-  let currentY = TOP_MARGIN;
-  let pageNumber = 1;
-
-  // Helper function to add a new page
-  const addNewPage = () => {
-    doc.addPage();
-    pageNumber++;
-    currentY = TOP_MARGIN;
-
-    // Add page number (except first page)
-    doc.setFont('Courier', 'normal');
-    doc.text(`${pageNumber}.`, PAGE_WIDTH - RIGHT_MARGIN, 36, { align: 'right' });
-
-    // Add watermark to new page
-    addWatermark(doc, watermark);
-  };
 
   // Add title page
   if (screenplay.title) {
@@ -170,204 +120,67 @@ export const generatePDF = (screenplay: Screenplay, options: PDFOptions = {}): j
         contactY += LINE_HEIGHT;
       });
     }
-
-    addNewPage();
   }
 
-  // Add watermark to first content page
-  addWatermark(doc, watermark);
-
-  // Track current character for MORE/CONT'D handling
-  let currentCharacter = '';
-  let inDialogueBlock = false;
-
-  // Helper to add MORE marker
-  const addMoreMarker = () => {
-    const moreFormatting = ELEMENT_FORMATTING['Dialogue'];
-    const moreX = (inchesToPoints(moreFormatting.leftEdge) + inchesToPoints(moreFormatting.rightEdge)) / 2;
-    doc.text('(MORE)', moreX, currentY, { align: 'center' });
-    currentY += LINE_HEIGHT;
-  };
-
-  // Helper to add CONT'D character name
-  const addContdMarker = (characterName: string) => {
-    const charX = getXPosition('Character');
-    doc.text(`${characterName} (CONT'D)`, charX, currentY);
-    currentY += LINE_HEIGHT;
-  };
-
-  // Helper for page break with dialogue handling
-  const checkPageBreakWithDialogue = (neededSpace: number, isDialogue: boolean): boolean => {
-    if (currentY + neededSpace > PAGE_HEIGHT - BOTTOM_MARGIN) {
-      // Add MORE if breaking during dialogue
-      if (isDialogue && inDialogueBlock && currentCharacter) {
-        addMoreMarker();
-      }
-
-      addNewPage();
-
-      // Add CONT'D if continuing dialogue after page break
-      if (isDialogue && inDialogueBlock && currentCharacter) {
-        addContdMarker(currentCharacter);
-      }
-
-      return true;
+  // Draws one wrapped line of an element at its margin and alignment
+  const drawLine = (type: ElementType, text: string, y: number) => {
+    const formatting = ELEMENT_FORMATTING[type];
+    if (formatting.alignment === 'right') {
+      doc.text(text, inchesToPoints(formatting.rightEdge), y, { align: 'right' });
+    } else if (formatting.alignment === 'center') {
+      const centerX = (inchesToPoints(formatting.leftEdge) + inchesToPoints(formatting.rightEdge)) / 2;
+      doc.text(text, centerX, y, { align: 'center' });
+    } else {
+      doc.text(text, getXPosition(type), y);
     }
-    return false;
   };
 
-  // Helper to render dual dialogue side by side
-  const renderDualDialogue = (leftElements: typeof screenplay.elements, rightElements: typeof screenplay.elements) => {
-    if (currentY > TOP_MARGIN) {
-      currentY += LINE_HEIGHT; // Space before dual dialogue block
+  // Lay out every page exactly as the pagination engine placed it
+  pages.forEach((page, pageIndex) => {
+    if (pageIndex > 0 || screenplay.title) {
+      doc.addPage();
+    }
+    addWatermark(doc, watermark);
+    doc.setFont('Courier', 'normal');
+
+    // Page number top right (script page 1 is unnumbered)
+    if (page.number > 1) {
+      doc.text(`${page.number}.`, PAGE_WIDTH - RIGHT_MARGIN, 36, { align: 'right' });
     }
 
-    const startY = currentY;
-    let leftY = startY;
-    let rightY = startY;
+    page.items.forEach((item) => {
+      const y = TOP_MARGIN + item.top * LINE_HEIGHT;
 
-    // Render left column
-    leftElements.forEach((el) => {
-      const text = getPlainText(el.content);
-      if (!text.trim()) return;
+      // (MORE) and the CONT'D speaker line sit at the Character indent
+      if (item.kind !== 'element' && item.kind !== 'dual') {
+        doc.text(item.text, getXPosition('Character'), y);
+        return;
+      }
 
-      const displayText = ELEMENT_FORMATTING[el.type].allCaps ? text.toUpperCase() : text;
-      const lines = wrapText(doc, displayText, DUAL_WIDTH);
+      if (item.kind === 'dual') {
+        [...item.left.map((p) => ({ p, start: DUAL_LEFT_START })), ...item.right.map((p) => ({ p, start: DUAL_RIGHT_START }))]
+          .forEach(({ p, start }) => {
+            const xPos = p.type === 'Character' ? start + DUAL_CHAR_OFFSET :
+                         p.type === 'Parenthetical' ? start + 30 : start;
+            p.lines.forEach((line, li) => {
+              doc.text(line.text, xPos, y + (p.top + li) * LINE_HEIGHT);
+            });
+          });
+        return;
+      }
 
-      const xPos = el.type === 'Character' ? DUAL_LEFT_START + DUAL_CHAR_OFFSET :
-                   el.type === 'Parenthetical' ? DUAL_LEFT_START + 30 : DUAL_LEFT_START;
+      // Scene numbers beside the first line of a Scene Heading
+      if (item.type === 'Scene Heading' && showSceneNumbers && !item.continued) {
+        const sceneNumber = screenplay.elements[item.elementIndex].sceneNumber;
+        if (sceneNumber) {
+          doc.text(sceneNumber, LEFT_MARGIN - SCENE_NUMBER_OFFSET, y);
+          doc.text(sceneNumber, PAGE_WIDTH - RIGHT_MARGIN + SCENE_NUMBER_OFFSET, y, { align: 'right' });
+        }
+      }
 
-      lines.forEach((line) => {
-        doc.text(line, xPos, leftY);
-        leftY += LINE_HEIGHT;
-      });
+      item.lines.forEach((line, li) => drawLine(item.type, line.text, y + li * LINE_HEIGHT));
     });
-
-    // Render right column
-    rightElements.forEach((el) => {
-      const text = getPlainText(el.content);
-      if (!text.trim()) return;
-
-      const displayText = ELEMENT_FORMATTING[el.type].allCaps ? text.toUpperCase() : text;
-      const lines = wrapText(doc, displayText, DUAL_WIDTH);
-
-      const xPos = el.type === 'Character' ? DUAL_RIGHT_START + DUAL_CHAR_OFFSET :
-                   el.type === 'Parenthetical' ? DUAL_RIGHT_START + 30 : DUAL_RIGHT_START;
-
-      lines.forEach((line) => {
-        doc.text(line, xPos, rightY);
-        rightY += LINE_HEIGHT;
-      });
-    });
-
-    // Move Y to after both columns
-    currentY = Math.max(leftY, rightY) + LINE_HEIGHT;
-  };
-
-  // Process each element
-  let i = 0;
-  while (i < screenplay.elements.length) {
-    const element = screenplay.elements[i];
-    const formatting = ELEMENT_FORMATTING[element.type];
-    const text = getPlainText(element.content);
-
-    // Check for dual dialogue block
-    if (element.isDualDialogue && element.dualDialoguePosition === 'left') {
-      // Collect left block
-      const leftBlock: typeof screenplay.elements = [];
-      let j = i;
-      while (j < screenplay.elements.length &&
-             screenplay.elements[j].isDualDialogue &&
-             screenplay.elements[j].dualDialoguePosition === 'left') {
-        leftBlock.push(screenplay.elements[j]);
-        j++;
-      }
-
-      // Collect right block
-      const rightBlock: typeof screenplay.elements = [];
-      while (j < screenplay.elements.length &&
-             screenplay.elements[j].isDualDialogue &&
-             screenplay.elements[j].dualDialoguePosition === 'right') {
-        rightBlock.push(screenplay.elements[j]);
-        j++;
-      }
-
-      // Render dual dialogue
-      if (leftBlock.length > 0 && rightBlock.length > 0) {
-        renderDualDialogue(leftBlock, rightBlock);
-        i = j;
-        continue;
-      }
-    }
-
-    if (!text.trim()) {
-      i++;
-      continue;
-    }
-
-    // Track character for dialogue blocks
-    if (element.type === 'Character') {
-      // Extract character name without extensions
-      currentCharacter = text.replace(/\s*\([^)]*\)\s*$/, '').trim().toUpperCase();
-      inDialogueBlock = true;
-    } else if (element.type !== 'Dialogue' && element.type !== 'Parenthetical') {
-      // Reset when we leave dialogue block
-      inDialogueBlock = false;
-      currentCharacter = '';
-    }
-
-    // Add space before (except at top of page)
-    if (currentY > TOP_MARGIN) {
-      currentY += formatting.spaceBeforeLines * LINE_HEIGHT;
-    }
-
-    // Get positioning
-    const xPos = getXPosition(element.type);
-    const maxWidth = getMaxWidth(element.type);
-
-    // Format text based on element type
-    const displayText = formatting.allCaps ? text.toUpperCase() : text;
-
-    // Word wrap the text
-    const lines = wrapText(doc, displayText, maxWidth);
-
-    // Check if we need to break to a new page
-    const isDialogueElement = element.type === 'Dialogue' || element.type === 'Parenthetical';
-    checkPageBreakWithDialogue(lines.length * LINE_HEIGHT, isDialogueElement);
-
-    // Add scene numbers for Scene Heading elements
-    if (element.type === 'Scene Heading' && showSceneNumbers && element.sceneNumber) {
-      // Left scene number
-      doc.text(element.sceneNumber, LEFT_MARGIN - SCENE_NUMBER_OFFSET, currentY);
-      // Right scene number
-      doc.text(element.sceneNumber, PAGE_WIDTH - RIGHT_MARGIN + SCENE_NUMBER_OFFSET, currentY, { align: 'right' });
-    }
-
-    // Render each line
-    lines.forEach((line, lineIndex) => {
-      if (formatting.alignment === 'right') {
-        doc.text(line, inchesToPoints(formatting.rightEdge), currentY, { align: 'right' });
-      } else if (formatting.alignment === 'center') {
-        const centerX = (inchesToPoints(formatting.leftEdge) + inchesToPoints(formatting.rightEdge)) / 2;
-        doc.text(line, centerX, currentY, { align: 'center' });
-      } else {
-        doc.text(line, xPos, currentY);
-      }
-      currentY += LINE_HEIGHT;
-
-      // Check for page break within multi-line text
-      if (lineIndex < lines.length - 1) {
-        checkPageBreakWithDialogue(LINE_HEIGHT, isDialogueElement);
-      }
-    });
-
-    // Add space after
-    if (formatting.spaceAfterLines > 0) {
-      currentY += formatting.spaceAfterLines * LINE_HEIGHT;
-    }
-
-    i++;
-  }
+  });
 
   return doc;
 };
