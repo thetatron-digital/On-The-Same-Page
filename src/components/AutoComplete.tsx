@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { useScreenplayStore } from '../store/screenplayStore';
 import { useShallow } from 'zustand/react/shallow';
-import type { AutoCompleteSuggestion } from '../types/screenplay';
+import type { AutoCompleteSuggestion, AutoCompleteTrigger } from '../types/screenplay';
 import './AutoComplete.css';
 
 interface AutoCompleteProps {
@@ -151,7 +151,7 @@ export const AutoComplete = ({ onSelect, onClose }: AutoCompleteProps) => {
     );
   };
 
-  const getTypeIcon = (type: 'character' | 'location' | 'extension' | 'timeofday') => {
+  const getTypeIcon = (type: AutoCompleteTrigger) => {
     if (type === 'character') {
       return (
         <span className="suggestion-type character" title="Character">

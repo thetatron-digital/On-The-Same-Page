@@ -1,0 +1,122 @@
+/* Production > Tags Mode panel (right side, over the script) */
+.tags-panel {
+  position: fixed;
+  top: 110px;
+  right: 24px;
+  bottom: 48px;
+  z-index: 1350;
+  width: 270px;
+  display: flex;
+  flex-direction: column;
+  padding: 10px 12px;
+  background: var(--panel-bg, var(--toolbar-bg));
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.tags-header {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+}
+
+.tags-hint,
+.tags-message,
+.tags-empty {
+  margin: 6px 0;
+  color: var(--text-secondary);
+}
+
+.tags-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-height: 40%;
+  overflow-y: auto;
+}
+
+.tag-category {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 7px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--toolbar-bg);
+  color: var(--text-primary);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.tag-category:hover {
+  background: var(--hover-bg);
+}
+
+.tag-swatch {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.tags-actions {
+  margin-top: 8px;
+}
+
+.tags-actions button {
+  padding: 4px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--toolbar-bg);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.tags-scene {
+  flex: 1;
+  margin-top: 8px;
+  overflow-y: auto;
+  border-top: 1px solid var(--border-color);
+  padding-top: 8px;
+}
+
+.tags-scene-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.tags-scene ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tags-scene li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+}
+
+.tag-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag-cat {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.tags-scene li button {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}

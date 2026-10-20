@@ -9,7 +9,9 @@ import { COMMANDS, MENUS, labelOf, type MenuEntry } from '../commands/registry';
 import { formatBinding } from '../commands/keys';
 import { downloadPDF } from '../utils/pdf';
 import { RevisionsDialog, SceneNumbersDialog } from './ProductionDialogs';
-import { BookmarksDialog, MacrosDialog, ReportsDialog, SidesDialog } from './WritingDialogs';
+import { AutoCompleteListsDialog, BookmarksDialog, MacrosDialog, ReportsDialog, SidesDialog } from './WritingDialogs';
+import { FindPanel } from './FindReplace';
+import { AssignVoicesDialog } from './TableRead';
 import './ProductionDialogs.css';
 
 interface DialogProps {
@@ -133,7 +135,7 @@ const AboutDialog = ({ onClose }: DialogProps) => (
 );
 
 export const DialogHost = () => {
-  const { open, reportType, close } = useDialogs();
+  const { open, reportType, findTab, close } = useDialogs();
   switch (open) {
     case 'revisions': return <RevisionsDialog onClose={close} />;
     case 'sceneNumbers': return <SceneNumbersDialog onClose={close} />;
@@ -145,6 +147,9 @@ export const DialogHost = () => {
     case 'watermark': return <WatermarkDialog onClose={close} />;
     case 'shortcuts': return <ShortcutsDialog onClose={close} />;
     case 'about': return <AboutDialog onClose={close} />;
+    case 'autoComplete': return <AutoCompleteListsDialog onClose={close} />;
+    case 'voices': return <AssignVoicesDialog onClose={close} />;
+    case 'find': return <FindPanel key={findTab} tab={findTab} onClose={close} />;
     default: return null;
   }
 };

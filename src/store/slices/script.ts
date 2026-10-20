@@ -1,17 +1,16 @@
 // ReWriter document: elements, undo/redo, file I/O, SmartType, scene numbers, page locks, watermark
 import type { StateCreator } from 'zustand';
-import type { ScreenplayElement, AutoCompleteSuggestion, PageLock } from '../../types/screenplay';
+import type { ScreenplayElement, AutoCompleteSuggestion, AutoCompleteTrigger, PageLock } from '../../types/screenplay';
 import { NOTE_COLORS } from '../../types/screenplay';
 import { createNewScreenplay, generateId, parseFDX, generateFDX } from '../../utils/fdx';
 import { parseFountain } from '../../utils/fountain';
+import { getAutoCompleteLists, listSuggestions } from '../../utils/autoCompleteLists';
 import {
   extractCharactersFromScript,
   extractLocationsFromScript,
   mergeCharacterSources,
   getCharacterSuggestions,
   getLocationSuggestions,
-  getExtensionSuggestions,
-  getTimeOfDaySuggestions,
 } from '../../utils/scriptParser';
 import { calculateWritingStats, MAX_HISTORY } from '../helpers';
 import { paginateScript } from '../../engine/paginate';
@@ -28,6 +27,31 @@ import {
 } from '../../engine/production';
 import { addAlt, cycleAlt, removeAlt, setBookmark } from '../../engine/scriptTools';
 import type { HistoryEntry, ScreenplayState, ScriptSlice } from '../types';
+
+// Auto-Complete suggestions: script characters and locations plus the
+// Auto-Complete Lists (Document > Auto-Complete Lists…)
+const suggestionsFor = (state: ScreenplayState, triggerType: AutoCompleteTrigger, searchText: string): AutoCompleteSuggestion[] => {
+  const lists = getAutoCompleteLists(state.screenplay);
+  switch (triggerType) {
+    case 'character': {
+      const characters = new Map(state.scriptCharacters);
+      lists.characters.forEach((name) => {
+        if (!characters.has(name)) characters.set(name, { name, occurrences: 0, dialogueCount: 0, firstAppearance: -1, sceneIds: [], isFromBlueprint: false });
+      });
+      return getCharacterSuggestions(characters, searchText);
+    }
+    case 'location': {
+      const known = new Set(state.scriptLocations.map((l) => l.name));
+      const extra = lists.locations.filter((name) => !known.has(name))
+        .map((name) => ({ name, intExt: 'INT' as const, occurrences: 0, sceneIds: [] }));
+      return getLocationSuggestions([...state.scriptLocations, ...extra], searchText);
+    }
+    case 'extension': return listSuggestions(lists.extensions, searchText, 'extension');
+    case 'timeofday': return listSuggestions(lists.times, searchText, 'timeofday');
+    case 'intro': return listSuggestions(lists.sceneIntros, searchText, 'intro');
+    case 'transition': return listSuggestions(lists.transitions, searchText, 'transition');
+  }
+};
 
 export const createScriptSlice: StateCreator<ScreenplayState, [], [], ScriptSlice> = (set, get) => ({
   screenplay: createNewScreenplay(),
@@ -431,22 +455,10 @@ export const createScriptSlice: StateCreator<ScreenplayState, [], [], ScriptSlic
 
   openAutoComplete: (triggerType, searchText, position) => {
     const state = get();
-    // Generate suggestions based on trigger type
-    let suggestions: AutoCompleteSuggestion[] = [];
-
-    if (triggerType === 'character') {
-      suggestions = getCharacterSuggestions(state.scriptCharacters, searchText);
-    } else if (triggerType === 'location') {
-      suggestions = getLocationSuggestions(state.scriptLocations, searchText);
-    } else if (triggerType === 'extension') {
-      suggestions = getExtensionSuggestions(searchText);
-    } else if (triggerType === 'timeofday') {
-      suggestions = getTimeOfDaySuggestions(searchText);
-    }
-
+    const suggestions = suggestionsFor(state, triggerType, searchText);
     set({
       autoComplete: {
-        isOpen: suggestions.length > 0,
+        isOpen: suggestions.length > 0 && getAutoCompleteLists(state.screenplay).enabled,
         suggestions,
         selectedIndex: 0,
         triggerType,
@@ -471,28 +483,15 @@ export const createScriptSlice: StateCreator<ScreenplayState, [], [], ScriptSlic
   updateAutoCompleteSearch: (searchText) => {
     const state = get();
     const { triggerType } = state.autoComplete;
-
     if (!triggerType) return;
-
-    let suggestions: AutoCompleteSuggestion[] = [];
-
-    if (triggerType === 'character') {
-      suggestions = getCharacterSuggestions(state.scriptCharacters, searchText);
-    } else if (triggerType === 'location') {
-      suggestions = getLocationSuggestions(state.scriptLocations, searchText);
-    } else if (triggerType === 'extension') {
-      suggestions = getExtensionSuggestions(searchText);
-    } else if (triggerType === 'timeofday') {
-      suggestions = getTimeOfDaySuggestions(searchText);
-    }
-
+    const suggestions = suggestionsFor(state, triggerType, searchText);
     set({
       autoComplete: {
         ...state.autoComplete,
         suggestions,
         selectedIndex: 0,
         searchText,
-        isOpen: suggestions.length > 0,
+        isOpen: suggestions.length > 0 && getAutoCompleteLists(state.screenplay).enabled,
       },
     });
   },
@@ -806,4 +805,10 @@ export const createScriptSlice: StateCreator<ScreenplayState, [], [], ScriptSlic
 
   setMacros: (macros) =>
     set((state) => ({ screenplay: { ...state.screenplay, macros }, isDirty: true })),
+
+  setAutoCompleteLists: (lists) =>
+    set((state) => ({ screenplay: { ...state.screenplay, autoCompleteLists: lists }, isDirty: true })),
+
+  setTableReadSettings: (settings) =>
+    set((state) => ({ screenplay: { ...state.screenplay, tableRead: settings }, isDirty: true })),
 });

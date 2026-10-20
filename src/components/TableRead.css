@@ -1,0 +1,87 @@
+/* Tools > Table Read bar (bottom of the script) */
+.table-read-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 44px;
+  transform: translateX(-50%);
+  z-index: 1350;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  background: var(--panel-bg, var(--toolbar-bg));
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.table-read-bar button {
+  min-width: 32px;
+  padding: 4px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--toolbar-bg);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.table-read-bar button.primary {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  color: #fff;
+}
+
+.table-read-bar button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.table-read-bar label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.table-read-now {
+  min-width: 140px;
+  color: var(--text-secondary);
+}
+
+.table-read-bar .table-read-close {
+  border: none;
+  background: transparent;
+  font-size: 16px;
+}
+
+/* The paragraph being read */
+.script-element.reading {
+  background: var(--accent-color-alpha, rgba(74, 158, 255, 0.18));
+}
+
+.voices-dialog select {
+  max-width: 220px;
+  padding: 3px 4px;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+}
+
+.voices-dialog td button {
+  padding: 3px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--toolbar-bg);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.modal-content.voices-dialog {
+  width: min(720px, 94vw);
+  max-width: none;
+}

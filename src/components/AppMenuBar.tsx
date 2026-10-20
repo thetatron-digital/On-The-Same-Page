@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useScreenplayStore } from '../store/screenplayStore';
 import { COMMAND_BY_ID, MENUS, labelOf, type MenuEntry } from '../commands/registry';
 import { formatBinding } from '../commands/keys';
+import { useTagging } from '../commands/tagging';
 import './AppMenuBar.css';
 
 const MenuItems = ({ items, onDone }: { items: MenuEntry[]; onDone: () => void }) => (
@@ -53,6 +54,7 @@ export const AppMenuBar = () => {
   useScreenplayStore((s) => s.visibility);
   useScreenplayStore((s) => s.panels);
   useScreenplayStore((s) => s.selectedElementId);
+  useTagging((s) => s.on);
 
   useEffect(() => {
     if (!open) return;

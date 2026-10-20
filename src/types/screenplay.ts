@@ -326,7 +326,32 @@ export interface Screenplay {
   revisions?: RevisionSettings;
   lockedPages?: LockedPage[]; // set while pages are locked
   macros?: Macro[]; // Document > Macros (defaults until edited)
+  autoCompleteLists?: AutoCompleteLists; // Document > Auto-Complete Lists (defaults until edited)
+  tableRead?: TableReadSettings; // Tools > Assign Voices
 }
+
+// Tools > Table Read / Assign Voices: the browser's own speech voices
+export interface VoiceSetting {
+  voiceName?: string; // a SpeechSynthesisVoice name; unset = picked automatically
+  pitch: number; // 0-2
+  rate: number; // 0.5-2
+}
+
+export interface TableReadSettings {
+  narrator: VoiceSetting; // reads scene headings and action
+  characters: Record<string, VoiceSetting>; // by character name
+  readNarration: boolean;
+  readCharacterNames: boolean;
+  readParentheticals: boolean;
+}
+
+export const createDefaultTableReadSettings = (): TableReadSettings => ({
+  narrator: { pitch: 1, rate: 1 },
+  characters: {},
+  readNarration: true,
+  readCharacterNames: false,
+  readParentheticals: false,
+});
 
 export interface DocumentMetadata {
   fileName: string;
@@ -537,9 +562,12 @@ export interface ScriptCharacter {
 }
 
 // Auto-complete suggestion
+// What the Auto-Complete popup is suggesting
+export type AutoCompleteTrigger = 'character' | 'location' | 'extension' | 'timeofday' | 'intro' | 'transition';
+
 export interface AutoCompleteSuggestion {
   value: string;
-  type: 'character' | 'location' | 'extension' | 'timeofday';
+  type: AutoCompleteTrigger;
   source: 'blueprint' | 'script';
   occurrences?: number;
 }
@@ -549,7 +577,7 @@ export interface AutoCompleteState {
   isOpen: boolean;
   suggestions: AutoCompleteSuggestion[];
   selectedIndex: number;
-  triggerType: 'character' | 'location' | 'extension' | 'timeofday' | null;
+  triggerType: AutoCompleteTrigger | null;
   searchText: string;
   position: { x: number; y: number };
 }
@@ -578,6 +606,31 @@ export const TIME_OF_DAY_OPTIONS = [
   'SAME',
   'MOMENTS LATER',
 ];
+
+// Document > Auto-Complete Lists… (Final Draft's SmartType lists)
+export interface AutoCompleteLists {
+  enabled: boolean; // show the Auto-Complete popup while typing
+  characters: string[];
+  extensions: string[];
+  sceneIntros: string[];
+  sceneIntroSeparator: string; // between the intro and the location, e.g. "INT. HOUSE"
+  locations: string[];
+  times: string[];
+  timeSeparator: string; // between the location and the time, e.g. "HOUSE - DAY"
+  transitions: string[];
+}
+
+export const createDefaultAutoCompleteLists = (): AutoCompleteLists => ({
+  enabled: true,
+  characters: [],
+  extensions: [...CHARACTER_EXTENSIONS],
+  sceneIntros: ['INT', 'EXT', 'INT./EXT', 'EXT./INT', 'I/E', 'EST'],
+  sceneIntroSeparator: '. ',
+  locations: [],
+  times: [...TIME_OF_DAY_OPTIONS],
+  timeSeparator: ' - ',
+  transitions: ['CUT TO:', 'DISSOLVE TO:', 'FADE IN:', 'FADE OUT.', 'FADE TO BLACK.', 'MATCH CUT TO:', 'SMASH CUT TO:', 'JUMP CUT TO:', 'BACK TO:'],
+});
 
 // ============================================
 // BREAKDOWN APP TYPES

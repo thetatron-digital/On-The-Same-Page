@@ -11,6 +11,7 @@ import {
 } from '../utils/reports';
 import { generatePDF } from '../utils/pdf';
 import type { SidesHeader } from '../engine/sides';
+import { getAutoCompleteLists, rebuildAutoCompleteLists } from '../utils/autoCompleteLists';
 import { goToElement, isMac } from './writingActions';
 import './ProductionDialogs.css';
 import './WritingDialogs.css';
@@ -325,6 +326,85 @@ export const SidesDialog = ({ onClose }: DialogProps) => {
         <div className="modal-buttons">
           <button onClick={onClose}>Cancel</button>
           <button className="primary" disabled={chosen.size === 0} onClick={save}>Save PDF</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Document > Auto-Complete Lists… (Final Draft's SmartType dialog): the lists
+// the Auto-Complete popup offers, with New, Delete, Alphabetize and Rebuild
+type ListKey = 'characters' | 'extensions' | 'sceneIntros' | 'locations' | 'times' | 'transitions';
+const LIST_NAMES: [ListKey, string][] = [
+  ['characters', 'Characters'], ['extensions', 'Extensions'], ['sceneIntros', 'Scene Intros'],
+  ['locations', 'Locations'], ['times', 'Times'], ['transitions', 'Transitions'],
+];
+
+export const AutoCompleteListsDialog = ({ onClose }: DialogProps) => {
+  const { screenplay, setAutoCompleteLists } = useScreenplayStore(
+    useShallow((s) => ({ screenplay: s.screenplay, setAutoCompleteLists: s.setAutoCompleteLists }))
+  );
+  const lists = getAutoCompleteLists(screenplay);
+  const [listKey, setListKey] = useState<ListKey>('characters');
+  const [selected, setSelected] = useState<string | null>(null);
+  const [entry, setEntry] = useState('');
+  const items = lists[listKey];
+  const setItems = (values: string[]) => setAutoCompleteLists({ ...lists, [listKey]: values });
+  const add = () => {
+    const value = entry.trim().toUpperCase();
+    if (value && !items.includes(value)) setItems([...items, value]);
+    setEntry('');
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content production-dialog writing-dialog autocomplete-dialog" onClick={(e) => e.stopPropagation()}>
+        <h3>Auto-Complete Lists</h3>
+        <div className="autocomplete-columns">
+          <ul className="bookmark-list" role="listbox" aria-label="Lists">
+            {LIST_NAMES.map(([key, name]) => (
+              <li key={key} role="option" aria-selected={listKey === key} className={listKey === key ? 'selected' : ''}
+                onClick={() => { setListKey(key); setSelected(null); }}>
+                {name} <span>({lists[key].length})</span>
+              </li>
+            ))}
+          </ul>
+          <div>
+            <ul className="bookmark-list autocomplete-items" role="listbox" aria-label={LIST_NAMES.find(([k]) => k === listKey)?.[1]}>
+              {items.length === 0 ? <li className="dialog-empty">Empty. Use Rebuild to fill it from the script.</li> : items.map((item) => (
+                <li key={item} role="option" aria-selected={selected === item} className={selected === item ? 'selected' : ''} onClick={() => setSelected(item)}>
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <div className="production-row">
+              <input type="text" value={entry} placeholder="New entry" aria-label="New entry"
+                onChange={(e) => setEntry(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && add()} />
+              <button onClick={add} disabled={!entry.trim()}>New</button>
+              <button onClick={() => { setItems(items.filter((i) => i !== selected)); setSelected(null); }} disabled={!selected}>Delete</button>
+              <button onClick={() => setItems([...items].sort((a, b) => a.localeCompare(b)))}>Alphabetize</button>
+            </div>
+            {listKey === 'sceneIntros' && (
+              <label className="production-field">
+                Separator:
+                <input type="text" value={lists.sceneIntroSeparator} onChange={(e) => setAutoCompleteLists({ ...lists, sceneIntroSeparator: e.target.value })} />
+              </label>
+            )}
+            {listKey === 'times' && (
+              <label className="production-field">
+                Separator:
+                <input type="text" value={lists.timeSeparator} onChange={(e) => setAutoCompleteLists({ ...lists, timeSeparator: e.target.value })} />
+              </label>
+            )}
+          </div>
+        </div>
+        <label className="production-check">
+          <input type="checkbox" checked={lists.enabled} onChange={(e) => setAutoCompleteLists({ ...lists, enabled: e.target.checked })} />
+          Show Auto-Complete while typing
+        </label>
+        <div className="modal-buttons">
+          <button onClick={() => setAutoCompleteLists(rebuildAutoCompleteLists(screenplay.elements, lists))}>Rebuild</button>
+          <button className="primary" onClick={onClose}>Done</button>
         </div>
       </div>
     </div>
