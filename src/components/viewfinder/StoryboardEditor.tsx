@@ -1,6 +1,7 @@
 // ViewFinder Storyboard: a Storyboarder-style board editor per scene.
 // Board strip, drawing canvas, board metadata, the scene's script lines,
-// Storyboarder's single-key shortcuts, animatic playback and PDF export.
+// Storyboarder's single-key shortcuts, timeline mode, animatic playback and
+// exports (PDF, GIF, video, editing-app timelines).
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useScreenplayStore } from '../../store/screenplayStore';
@@ -11,7 +12,8 @@ import { boardAtTime, boardPositions, formatTime, suggestDurationMs } from '../.
 import { StoryboardCanvas, type StoryboardCanvasHandle } from './StoryboardCanvas';
 import { LAYERS, TOOLS, type ToolId } from './storyboardTools';
 import { storyboardPdf } from './storyboardPdf';
-import { audioDurationMs, effectiveDurationMs, exportGif, exportVideo, fitImageToBoard, readFileAsDataUrl, supportedVideoType } from './storyboardMedia';
+import { audioDurationMs, effectiveDurationMs, exportGif, exportVideo, fitImageToBoard, readFileAsDataUrl, renderBoardPng, supportedVideoType } from './storyboardMedia';
+import { buildTimeline, editorPackage } from './editorExport';
 import './Storyboard.css';
 
 const BOARD_W = 1280;
@@ -71,6 +73,12 @@ export function StoryboardEditor({ onClose }: { onClose: () => void }) {
   const [busy, setBusy] = useState<{ label: string; progress: number } | null>(null);
   const [recorder, setRecorder] = useState<MediaRecorder | null>(null);
   const playerRef = useRef<HTMLAudioElement | null>(null);
+  // Timeline mode: board widths follow their durations; drag an edge to retime
+  const [timelineMode, setTimelineMode] = useState(false);
+  const [pxPerSecond, setPxPerSecond] = useState(60);
+  const [retime, setRetime] = useState<{ id: string; startX: number; startMs: number; ms: number } | null>(null);
+  const retimeRef = useRef(retime); // pointer events can outrun renders
+  const setRetimeDrag = (next: typeof retime) => { retimeRef.current = next; setRetime(next); };
 
   // Script lines of this scene: action and dialogue blocks
   const scriptLines = useMemo(() => {
@@ -177,6 +185,7 @@ export function StoryboardEditor({ onClose }: { onClose: () => void }) {
       const mod = e.metaKey || e.ctrlKey;
       const t = TOOLS.find((x) => x.key === e.key);
       if (t && !mod && !e.altKey) { setToolId(t.id); if (t.layer && t.id !== 'eraser') setEraseLayer(t.layer); return; }
+      if (mod && e.altKey && e.code === 'KeyT') { e.preventDefault(); setTimelineMode((m) => !m); return; }
       if (e.key === ' ') { e.preventDefault(); setPlaying((p) => !p); return; }
       if (e.key === 'Escape') { setPlaying(false); setPlayMs(0); return; }
       if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); canvasRef.current?.undo(); return; }
@@ -250,9 +259,21 @@ export function StoryboardEditor({ onClose }: { onClose: () => void }) {
     }
   };
 
-  const runExport = async (kind: 'gif' | 'video') => {
+  const runExport = async (kind: 'gif' | 'video' | 'editor') => {
     try {
-      if (kind === 'gif') {
+      if (kind === 'editor') {
+        setBusy({ label: 'Packing boards for editing…', progress: 0 });
+        const fps = storyboard?.fps ?? 24;
+        const name = `${s.title || 'Untitled'} - Scene ${scene?.sceneNumber ?? ''}`;
+        const timeline = buildTimeline(frames, positions, { name, fps, width: BOARD_W, height: BOARD_H });
+        let done = 0;
+        const blob = await editorPackage(frames, timeline, async (f) => {
+          const png = await renderBoardPng(f, LAYERS, BOARD_W, BOARD_H);
+          setBusy({ label: 'Packing boards for editing…', progress: ++done / frames.length });
+          return png;
+        });
+        download(blob, `${fileBase}_Edit.zip`);
+      } else if (kind === 'gif') {
         setBusy({ label: 'Making GIF…', progress: 0 });
         download(await exportGif(frames, positions), `${fileBase}.gif`);
       } else {
@@ -343,6 +364,7 @@ export function StoryboardEditor({ onClose }: { onClose: () => void }) {
           <button className="sb-btn" disabled={!frames.length} onClick={exportPdf}>Export PDF</button>
           <button className="sb-btn" disabled={!frames.length || !!busy} onClick={() => runExport('gif')}>Export GIF</button>
           <button className="sb-btn" disabled={!frames.length || !!busy || !supportedVideoType()} onClick={() => runExport('video')} title="Records the animatic with board audio in real time">Export Video</button>
+          <button className="sb-btn" disabled={!frames.length || !!busy} onClick={() => runExport('editor')} title="ZIP with board images, audio and a timeline for Premiere Pro, DaVinci Resolve and Final Cut Pro">Export for Editing</button>
           <button className="sb-btn" disabled={!frames.length} onClick={sendToShotList} title="Create or update ViewFinder shots from these boards">Send to Shot List</button>
         </div>
       </div>
@@ -495,13 +517,56 @@ export function StoryboardEditor({ onClose }: { onClose: () => void }) {
           <button className="sb-btn" disabled={!frame || index >= frames.length - 1} onClick={() => move(1)} title="Move right (Alt+→)">▶</button>
           <button className="sb-btn" disabled={!frame} onClick={remove} title="Delete (Cmd/Ctrl+Backspace)">Delete</button>
         </div>
-        <div className="sb-thumbs">
-          {frames.map((f, i) => (
-            <button key={f.id} className={`sb-thumb ${i === index ? 'active' : ''} ${f.newShot ? 'new-shot' : ''}`} onClick={() => setBoardIndex(i)}>
-              {f.image ? <img src={f.image} alt="" /> : <span className="sb-thumb-blank" />}
-              <span className="sb-thumb-label">{positions[i].shot} · {formatTime(positions[i].durationMs)}</span>
-            </button>
-          ))}
+        <div className={`sb-thumbs ${timelineMode ? 'timeline' : ''}`}>
+          {frames.map((f, i) => {
+            const ms = retime?.id === f.id ? Math.max(retime.ms, f.audio?.durationMs ?? 0) : positions[i].durationMs;
+            return (
+              <div key={f.id} className="sb-thumb-wrap" style={timelineMode ? { width: Math.max(24, (ms / 1000) * pxPerSecond) } : undefined}>
+                <button className={`sb-thumb ${i === index ? 'active' : ''} ${f.newShot ? 'new-shot' : ''} ${playing && i === playIndex ? 'playing' : ''}`} onClick={() => setBoardIndex(i)}>
+                  {f.image ? <img src={f.image} alt="" /> : <span className="sb-thumb-blank" />}
+                  <span className="sb-thumb-label">{positions[i].shot} · {formatTime(ms)}</span>
+                  {timelineMode && f.audio && (
+                    <span className="sb-thumb-audio" style={{ width: `${Math.min(100, (f.audio.durationMs / ms) * 100)}%` }} title={f.audio.name} />
+                  )}
+                </button>
+                {timelineMode && (
+                  <span
+                    className="sb-retime"
+                    role="separator"
+                    aria-label={`Drag to change the length of board ${positions[i].number}`}
+                    title={f.audio && f.audio.durationMs >= ms ? 'Board length follows its audio' : 'Drag to change the board length'}
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      (e.target as Element).setPointerCapture(e.pointerId);
+                      const startMs = f.durationMs && f.durationMs > 0 ? f.durationMs : defaultMs;
+                      setRetimeDrag({ id: f.id, startX: e.clientX, startMs, ms: startMs });
+                    }}
+                    onPointerMove={(e) => {
+                      const drag = retimeRef.current;
+                      if (drag?.id !== f.id) return;
+                      const next = Math.max(100, Math.round((drag.startMs + ((e.clientX - drag.startX) / pxPerSecond) * 1000) / 100) * 100);
+                      if (next !== drag.ms) setRetimeDrag({ ...drag, ms: next });
+                    }}
+                    onPointerUp={() => {
+                      const drag = retimeRef.current;
+                      if (drag?.id !== f.id) return;
+                      if (storyboard && drag.ms !== drag.startMs) s.updateFrame(storyboard.id, f.id, { durationMs: drag.ms });
+                      setRetimeDrag(null);
+                    }}
+                    onPointerCancel={() => setRetimeDrag(null)}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div className="sb-strip-mode">
+          <button className={`sb-btn ${timelineMode ? 'sb-primary' : ''}`} onClick={() => setTimelineMode(!timelineMode)} title="Timeline mode (Cmd/Ctrl+Alt+T)">Timeline</button>
+          {timelineMode && (
+            <label className="sb-tool-field" title="Timeline zoom">Zoom
+              <input type="range" min={15} max={240} value={pxPerSecond} onChange={(e) => setPxPerSecond(Number(e.target.value))} />
+            </label>
+          )}
         </div>
       </div>
     </div>
