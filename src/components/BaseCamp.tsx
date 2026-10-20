@@ -19,6 +19,15 @@ import { ProductionInfoView } from './basecamp/ProductionInfoView';
 import { ProductionReportView } from './basecamp/ProductionReportView';
 import { findConflicts } from '../engine/schedule/redFlags';
 import { scheduledElementDays } from '../utils/doodReport';
+import { csvToPeople, newContacts, peopleToCsv, peopleToVcf, vcfToPeople } from '../utils/contacts';
+
+const downloadFile = (text: string, name: string, type: string) => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: `${type};charset=utf-8` }));
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
 
 // ============================================
 // BASECAMP - Production Management & Call Sheets
@@ -430,7 +439,7 @@ const BaseCamp: React.FC = () => {
     const [filterGroup, setFilterGroup] = useState<'All' | 'Crew' | 'Talent' | 'Client'>('All');
     const [searchQuery, setSearchQuery] = useState('');
 
-    const { people, departments } = productionData;
+    const { people, departments, settings } = productionData;
     const crew = people.filter(p => p.group === 'Crew');
     const talent = people.filter(p => p.group === 'Talent');
     const clients = people.filter(p => p.group === 'Client');
@@ -592,6 +601,23 @@ const BaseCamp: React.FC = () => {
             <h2>All People</h2>
             <div className="bc-header-actions">
               <button className="bc-btn bc-btn-primary" onClick={openCreate}>+ New Person</button>
+              <label className="bc-btn bc-btn-outline" title="Add people from a vCard (.vcf) or spreadsheet (.csv)">
+                Import…
+                <input type="file" accept=".vcf,.vcard,.csv,text/vcard,text/csv" hidden onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = '';
+                  if (!file) return;
+                  const text = await file.text();
+                  const incoming = /\.csv$/i.test(file.name) ? csvToPeople(text) : vcfToPeople(text);
+                  const fresh = newContacts(people, incoming);
+                  fresh.forEach((p) => addPerson(p));
+                  alert(`${fresh.length} ${fresh.length === 1 ? 'person' : 'people'} added${incoming.length > fresh.length ? `; ${incoming.length - fresh.length} already in the list` : ''}.`);
+                }} />
+              </label>
+              <button className="bc-btn bc-btn-outline" disabled={!people.length} title="Contacts for phones, Google and Apple Contacts"
+                onClick={() => downloadFile(peopleToVcf(people, settings.projectName || undefined), `${settings.projectName || 'Production'} contacts.vcf`, 'text/vcard')}>Export vCard</button>
+              <button className="bc-btn bc-btn-outline" disabled={!people.length}
+                onClick={() => downloadFile(peopleToCsv(people), `${settings.projectName || 'Production'} contacts.csv`, 'text/csv')}>Export CSV</button>
               <div className="bc-search-box">
                 <input
                   type="text"
