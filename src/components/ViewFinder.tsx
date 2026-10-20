@@ -8,6 +8,7 @@ import './ViewFinder.css';
 
 // Loaded when opened
 const ReferenceLibrary = lazy(() => import('./references/ReferenceLibrary'));
+const BlockingEditor = lazy(() => import('./blocking/BlockingEditor'));
 
 // Shot size options
 const SHOT_SIZES: ShotSize[] = [
@@ -85,6 +86,7 @@ const ViewFinder: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showStoryboard, setShowStoryboard] = useState(false);
   const [showReferences, setShowReferences] = useState(false);
+  const [showBlocking, setShowBlocking] = useState(false);
   const [editingShot, setEditingShot] = useState<Shot | null>(null);
   const [showCameraModal, setShowCameraModal] = useState(false);
 
@@ -198,6 +200,16 @@ const ViewFinder: React.FC = () => {
     totalDuration: viewFinder?.shots.reduce((sum, s) => sum + (s.duration || 0), 0) || 0,
     scenesWithShots: new Set(viewFinder?.shots.map(s => s.sceneId) || []).size,
   };
+
+  if (showBlocking) {
+    return (
+      <div className={`viewfinder-container ${darkMode ? 'dark' : 'light'}`}>
+        <Suspense fallback={null}>
+          <BlockingEditor onClose={() => setShowBlocking(false)} />
+        </Suspense>
+      </div>
+    );
+  }
 
   if (showReferences) {
     return (
@@ -338,6 +350,9 @@ const ViewFinder: React.FC = () => {
             </button>
             <button className="add-shot-btn" onClick={() => setShowReferences(true)} title="Tagged reference stills, frame grabs and scout photos">
               References
+            </button>
+            <button className="add-shot-btn" onClick={() => setShowBlocking(true)} title="Top-down diagrams: set, actor moves, cameras and lights">
+              Blocking
             </button>
             {selectedViewFinderSceneId && (
               <>

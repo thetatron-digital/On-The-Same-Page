@@ -438,6 +438,9 @@ export interface ViewFinderSlice {
   reorderStoryboardFrames: (storyboardId: string, frameIds: string[]) => void;
   insertStoryboardFrame: (storyboardId: string, index: number, frame: Omit<StoryboardFrame, 'id' | 'order'>) => string;
   updateStoryboardSettings: (storyboardId: string, updates: Partial<Pick<Storyboard, 'fps' | 'defaultBoardTimingMs' | 'aspectRatio'>>) => void;
+  addBlockingDiagram: (sceneId: string, name: string) => string;
+  updateBlockingDiagram: (id: string, updates: Partial<Pick<import('../types/blocking').BlockingDiagram, 'name' | 'items'>>) => void;
+  deleteBlockingDiagram: (id: string) => void;
   linkFrameToShot: (storyboardId: string, frameId: string, shotId: string | undefined) => void;
   // Camera package actions
   addCameraPackage: (pkg: Omit<CameraPackage, 'id'>) => string;

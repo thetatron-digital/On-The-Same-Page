@@ -372,6 +372,32 @@ export const createViewFinderSlice: StateCreator<ScreenplayState, [], [], ViewFi
     return id;
   },
 
+  addBlockingDiagram: (sceneId, name) => {
+    if (!get().viewFinder) get().initializeViewFinder();
+    const vf = get().viewFinder!;
+    const id = generateId();
+    set({
+      viewFinder: { ...vf, blockingDiagrams: [...(vf.blockingDiagrams ?? []), { id, sceneId, name, items: [], updatedAt: new Date() }], updatedAt: new Date() },
+      isDirty: true,
+    });
+    return id;
+  },
+
+  updateBlockingDiagram: (id, updates) => {
+    const vf = get().viewFinder;
+    if (!vf) return;
+    set({
+      viewFinder: { ...vf, blockingDiagrams: (vf.blockingDiagrams ?? []).map((d) => (d.id === id ? { ...d, ...updates, updatedAt: new Date() } : d)), updatedAt: new Date() },
+      isDirty: true,
+    });
+  },
+
+  deleteBlockingDiagram: (id) => {
+    const vf = get().viewFinder;
+    if (!vf) return;
+    set({ viewFinder: { ...vf, blockingDiagrams: (vf.blockingDiagrams ?? []).filter((d) => d.id !== id), updatedAt: new Date() }, isDirty: true });
+  },
+
   updateStoryboardSettings: (storyboardId, updates) => {
     const state = get();
     if (!state.viewFinder) return;

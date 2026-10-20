@@ -1308,6 +1308,9 @@ export interface ViewFinder {
   // Storyboards
   storyboards: Storyboard[];
 
+  // Top-down blocking diagrams, per scene
+  blockingDiagrams?: import('./blocking').BlockingDiagram[];
+
   // Camera packages available
   cameraPackages: CameraPackage[];
 
