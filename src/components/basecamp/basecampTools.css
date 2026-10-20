@@ -297,3 +297,19 @@
 .bct-board-tools .bc-btn {
   white-space: nowrap;
 }
+
+/* Reports */
+.bct-report { max-width: 900px; font-size: 13px; }
+.bct-report-title { display: flex; justify-content: space-between; border-bottom: 2px solid #999; padding-bottom: 6px; margin-bottom: 12px; font-size: 15px; }
+.bct-report-day { margin-bottom: 16px; }
+.bct-report-dayhead { background: #2C3E50; color: #fff; font-weight: 700; padding: 6px 10px; border-radius: 4px; margin-bottom: 6px; }
+.bct-report-strip { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid #D5DBE3; }
+.basecamp-container.dark .bct-report-strip { border-bottom-color: #2d3548; }
+.bct-report-swatch { min-width: 44px; text-align: center; font-weight: 700; border-radius: 3px; padding: 2px 4px; align-self: flex-start; border: 1px solid rgba(0,0,0,0.15); }
+.bct-report-main { flex: 1; min-width: 0; }
+.bct-report-line { display: flex; gap: 14px; flex-wrap: wrap; align-items: baseline; }
+.bct-report-synopsis { opacity: 0.8; margin: 4px 0; }
+.bct-report-lists { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 6px 16px; margin-top: 4px; font-size: 12px; }
+.bct-report-lists h5 { margin: 0 0 2px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.7; }
+.bct-report-daybreak { background: rgba(127, 140, 141, 0.18); font-weight: 700; padding: 5px 10px; border-radius: 3px; margin-top: 4px; }
+.bct-report-total { font-weight: 700; margin-top: 8px; }
