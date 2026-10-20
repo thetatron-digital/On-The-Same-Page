@@ -12,6 +12,7 @@ import { useScreenplayStore } from './store/screenplayStore';
 import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore } from './services/projectService';
 import { startAutoSave } from './services/autoSave';
+import { useUrlSync } from './routing/useUrlSync';
 import './App.css';
 
 function App() {
@@ -53,6 +54,9 @@ function App() {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isDirty]);
+
+  // Keep the URL and the open app/project in step
+  useUrlSync();
 
   // Save the open project 30 s after the last change
   useEffect(() => startAutoSave(), []);
