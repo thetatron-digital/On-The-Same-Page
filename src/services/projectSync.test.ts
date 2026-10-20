@@ -3,11 +3,15 @@ import { parseProjectData } from '../utils/projectData';
 import type { ProjectData } from '../types/user';
 
 // A Drive file in memory: one JSON document with a revision counter
-const drive = vi.hoisted(() => ({ json: '', rev: 0, by: 'Me', me: true }));
+const drive = vi.hoisted(() => ({ json: '', rev: 0, by: 'Me', me: true, canEdit: true, notes: {} as Record<string, string> }));
+vi.mock('./googleAuth', () => ({ googleAuth: { getStoredUser: () => ({ id: 'me1', name: 'Me', email: 'me@example.com' }) } }));
 vi.mock('./googleDrive', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./googleDrive')>()),
   googleDrive: {
-    getRevision: vi.fn(async () => ({ revision: String(drive.rev), modifiedTime: '', modifiedBy: drive.by, modifiedByMe: drive.me })),
+    getRevision: vi.fn(async () => ({ revision: String(drive.rev), modifiedTime: '', modifiedBy: drive.by, modifiedByMe: drive.me, canEdit: drive.canEdit, presence: { ...drive.notes } })),
+    setPresence: vi.fn(async (_id: string, notes: Record<string, string | null>) => {
+      for (const [k, v] of Object.entries(notes)) { if (v === null) delete drive.notes[k]; else drive.notes[k] = v; }
+    }),
     loadProject: vi.fn(async () => parseProjectData(drive.json)),
     saveProject: vi.fn(async (_id: string, data: ProjectData) => {
       Object.assign(drive, { json: JSON.stringify(data), rev: drive.rev + 1, by: 'Me', me: true });
@@ -17,7 +21,7 @@ vi.mock('./googleDrive', async (importOriginal) => ({
 }));
 
 const { useScreenplayStore } = await import('../store/screenplayStore');
-const { loadDriveProject, pullRemoteChanges, saveDriveProject, useSyncStatus } = await import('./projectSync');
+const { ReadOnlyProjectError, isReadOnlyProject, loadDriveProject, pullRemoteChanges, saveDriveProject, useSyncStatus } = await import('./projectSync');
 
 const store = () => useScreenplayStore.getState();
 const texts = (data: ProjectData = store().getProjectData()) => data.screenplay.elements.map((e) => e.content.map((r) => r.text).join(''));
@@ -43,7 +47,7 @@ beforeEach(async () => {
     id: `e${i}`, type: (i === 0 ? 'Scene Heading' : 'Action') as 'Scene Heading' | 'Action', content: [{ text }],
   }));
   useScreenplayStore.setState({ screenplay: { ...store().screenplay, elements } });
-  Object.assign(drive, { json: JSON.stringify(store().getProjectData()), rev: 1, by: 'Me', me: true });
+  Object.assign(drive, { json: JSON.stringify(store().getProjectData()), rev: 1, by: 'Me', me: true, canEdit: true, notes: {} });
   store().loadFromProjectData(await loadDriveProject('p1'));
 });
 
@@ -88,5 +92,23 @@ describe('project sync', () => {
     await pullRemoteChanges('p1');
     expect(texts()[1]).toBe('Ada paces.');
     expect(useSyncStatus.getState().conflicts.length).toBe(1);
+  });
+
+  it('opens view-only projects without saving them', async () => {
+    drive.canEdit = false;
+    store().loadFromProjectData(await loadDriveProject('p1'));
+    expect(isReadOnlyProject('p1')).toBe(true);
+    expect(useSyncStatus.getState().readOnly).toBe(true);
+    editLocal(1, 'Ada paces.');
+    await expect(saveDriveProject('p1', store().getProjectData())).rejects.toBeInstanceOf(ReadOnlyProjectError);
+    expect(drive.rev).toBe(1);
+  });
+
+  it('shows who else is here and leaves a note for them', async () => {
+    drive.notes.p_alex = `${Math.round(Date.now() / 1000)}|basecamp|Alex`;
+    editRemote(2, 'Grace bursts in.');
+    await pullRemoteChanges('p1');
+    expect(useSyncStatus.getState().others.map((o) => `${o.name}:${o.app}`)).toEqual(['Alex:basecamp']);
+    expect(drive.notes.p_me1).toMatch(/^\d+\|[a-z]+\|Me$/);
   });
 });

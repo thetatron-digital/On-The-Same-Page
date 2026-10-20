@@ -7,3 +7,9 @@
 @keyframes sync-pulse { 50% { opacity: 0.35; } }
 .sync-text { max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 1000px) { .sync-text, .sync-conflicts { display: none; } }
+.sync-status { display: inline-flex; align-items: center; gap: 6px; }
+.sync-people { display: inline-flex; }
+.sync-person { width: 22px; height: 22px; border-radius: 50%; color: #fff; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; border: 2px solid var(--toolbar-bg, #1e1e1e); margin-left: -6px; cursor: default; }
+.sync-person:first-child { margin-left: 0; }
+.sync-person.more { background: #6B7280; font-size: 10px; }
+.sync-readonly { padding: 1px 7px; border-radius: 8px; background: rgba(107, 114, 128, 0.22); color: var(--text-primary, #ddd); font-size: 11px; }

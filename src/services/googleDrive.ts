@@ -66,16 +66,30 @@ export interface DriveRevision {
   modifiedTime: string;
   modifiedBy?: string;   // display name of whoever saved it
   modifiedByMe?: boolean;
+  canEdit?: boolean;     // false for Viewers and Commenters
+  presence?: Record<string, string>; // OTSP presence notes (appProperties)
 }
 
 const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
-const REVISION_FIELDS = 'headRevisionId,modifiedTime,lastModifyingUser(displayName,me)';
+// headRevisionId only changes when the content does, so presence notes
+// (metadata) never look like a collaborator's save
+const REVISION_FIELDS = 'headRevisionId,modifiedTime,lastModifyingUser(displayName,me),capabilities(canEdit),appProperties';
 
-const toRevision = (file: { headRevisionId?: string; modifiedTime: string; lastModifyingUser?: { displayName?: string; me?: boolean } }): DriveRevision => ({
+interface RevisionFile {
+  headRevisionId?: string;
+  modifiedTime: string;
+  lastModifyingUser?: { displayName?: string; me?: boolean };
+  capabilities?: { canEdit?: boolean };
+  appProperties?: Record<string, string>;
+}
+
+const toRevision = (file: RevisionFile): DriveRevision => ({
   revision: file.headRevisionId || file.modifiedTime,
   modifiedTime: file.modifiedTime,
   modifiedBy: file.lastModifyingUser?.displayName,
   modifiedByMe: file.lastModifyingUser?.me,
+  canEdit: file.capabilities?.canEdit,
+  presence: file.appProperties,
 });
 const UPLOAD_API_BASE = 'https://www.googleapis.com/upload/drive/v3';
 
@@ -280,6 +294,19 @@ class GoogleDriveService {
     if (response.status === 404 || response.status === 403) throw new ProjectAccessError(projectId);
     if (!response.ok) throw new Error('Failed to check the project for changes');
     return toRevision(await response.json());
+  }
+
+  // Set or clear (null) presence notes on the project file. Metadata only:
+  // no new revision. Needs edit access.
+  async setPresence(projectId: string, notes: Record<string, string | null>): Promise<void> {
+    const headers = await this.getAuthHeader();
+    const response = await fetch(`${DRIVE_API_BASE}/files/${projectId}?fields=id`, {
+      method: 'PATCH',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ appProperties: notes }),
+      keepalive: true, // still sent when the tab is closing
+    });
+    if (!response.ok) throw new Error('Could not update presence');
   }
 
   // Save/update a project; returns the revision it became
