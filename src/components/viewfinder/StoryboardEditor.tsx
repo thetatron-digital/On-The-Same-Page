@@ -11,6 +11,7 @@ import { boardAtTime, boardPositions, formatTime, suggestDurationMs } from '../.
 import { StoryboardCanvas, type StoryboardCanvasHandle } from './StoryboardCanvas';
 import { LAYERS, TOOLS, type ToolId } from './storyboardTools';
 import { storyboardPdf } from './storyboardPdf';
+import { audioDurationMs, effectiveDurationMs, exportGif, exportVideo, fitImageToBoard, readFileAsDataUrl, supportedVideoType } from './storyboardMedia';
 import './Storyboard.css';
 
 const BOARD_W = 1280;
@@ -35,6 +36,9 @@ export function StoryboardEditor({ onClose }: { onClose: () => void }) {
       updateFrame: st.updateStoryboardFrame,
       deleteFrame: st.deleteStoryboardFrame,
       reorderFrames: st.reorderStoryboardFrames,
+      shots: st.viewFinder?.shots,
+      addShot: st.addShot,
+      updateShot: st.updateShot,
     }))
   );
   const scenes = useMemo(() => generateBreakdownScenes(s.elements), [s.elements]);
@@ -43,7 +47,11 @@ export function StoryboardEditor({ onClose }: { onClose: () => void }) {
   const storyboard = s.viewFinder?.storyboards.find((sb) => sb.sceneId === sceneId);
   const frames = useMemo(() => storyboard?.frames ?? [], [storyboard]);
   const defaultMs = storyboard?.defaultBoardTimingMs ?? DEFAULT_MS;
-  const positions = useMemo(() => boardPositions(frames, defaultMs), [frames, defaultMs]);
+  // Board length in the animatic includes its audio (as Storyboarder)
+  const positions = useMemo(
+    () => boardPositions(frames.map((f) => ({ newShot: f.newShot, durationMs: effectiveDurationMs(f, defaultMs) })), defaultMs),
+    [frames, defaultMs]
+  );
 
   const [boardIndex, setBoardIndex] = useState(0);
   const index = Math.min(boardIndex, Math.max(0, frames.length - 1));
@@ -58,6 +66,11 @@ export function StoryboardEditor({ onClose }: { onClose: () => void }) {
   const [playing, setPlaying] = useState(false);
   const [playMs, setPlayMs] = useState(0);
   const canvasRef = useRef<StoryboardCanvasHandle>(null);
+  const [guides, setGuides] = useState({ grid: false, center: false, thirds: false });
+  const [captions, setCaptions] = useState(false);
+  const [busy, setBusy] = useState<{ label: string; progress: number } | null>(null);
+  const [recorder, setRecorder] = useState<MediaRecorder | null>(null);
+  const playerRef = useRef<HTMLAudioElement | null>(null);
 
   // Script lines of this scene: action and dialogue blocks
   const scriptLines = useMemo(() => {
@@ -145,6 +158,18 @@ export function StoryboardEditor({ onClose }: { onClose: () => void }) {
   }, [playing]);
   const playIndex = boardAtTime(positions, playMs);
 
+  // Board audio during the animatic
+  useEffect(() => {
+    playerRef.current?.pause();
+    if (!playing) return;
+    const clip = frames[playIndex]?.audio?.dataUrl;
+    if (!clip) return;
+    const audio = new Audio(clip);
+    playerRef.current = audio;
+    void audio.play().catch(() => {});
+    return () => audio.pause();
+  }, [playing, playIndex, frames]);
+
   // Storyboarder's single-key commands
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -166,12 +191,121 @@ export function StoryboardEditor({ onClose }: { onClose: () => void }) {
       else if (e.key === 'd') duplicate();
       else if (e.key === '/') update({ newShot: !frame?.newShot });
       else if (e.key === 'o') setOnionOn((o) => !o);
+      else if (e.key === 'c') setCaptions((c) => !c);
       else if (e.key === ']') setSizes((sz) => ({ ...sz, [toolId]: Math.min(256, Math.round(sz[toolId] * 1.2) + 1) }));
       else if (e.key === '[') setSizes((sz) => ({ ...sz, [toolId]: Math.max(1, Math.round(sz[toolId] * 0.8)) }));
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   });
+
+  const download = (blob: Blob, name: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  const fileBase = `Storyboard_Scene_${scene?.sceneNumber ?? ''}`;
+
+  const importImageToReference = async (file: File) => {
+    const fitted = await fitImageToBoard(await readFileAsDataUrl(file), BOARD_W, BOARD_H);
+    canvasRef.current?.replaceLayer('reference', fitted);
+  };
+
+  const importImagesAsBoards = async (files: File[]) => {
+    const id = ensureStoryboard();
+    if (!id) return;
+    let at = frames.length ? index + 1 : 0;
+    for (const file of files) {
+      const fitted = await fitImageToBoard(await readFileAsDataUrl(file), BOARD_W, BOARD_H);
+      s.insertFrame(id, at, blankFrame({ layers: { reference: fitted }, referenceOpacity: 1, image: fitted }));
+      at++;
+    }
+    setBoardIndex(at - 1);
+  };
+
+  const setAudio = async (dataUrl: string, name: string) => {
+    update({ audio: { dataUrl, name, durationMs: await audioDurationMs(dataUrl) } });
+  };
+
+  const toggleRecording = async () => {
+    if (recorder) { recorder.stop(); return; }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const rec = new MediaRecorder(stream);
+      const chunks: Blob[] = [];
+      rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+      rec.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        setRecorder(null);
+        const blob = new Blob(chunks, { type: rec.mimeType });
+        await setAudio(await readFileAsDataUrl(blob), `Recording ${new Date().toLocaleTimeString()}`);
+      };
+      rec.start();
+      setRecorder(rec);
+    } catch {
+      alert('Microphone access is needed to record board audio.');
+    }
+  };
+
+  const runExport = async (kind: 'gif' | 'video') => {
+    try {
+      if (kind === 'gif') {
+        setBusy({ label: 'Making GIF…', progress: 0 });
+        download(await exportGif(frames, positions), `${fileBase}.gif`);
+      } else {
+        setBusy({ label: 'Recording the animatic…', progress: 0 });
+        const { blob, extension } = await exportVideo(frames, positions, (progress) => setBusy({ label: 'Recording the animatic…', progress }));
+        download(blob, `${fileBase}.${extension}`);
+      }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Export failed.');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  // One ViewFinder shot per storyboard shot (boards that share a shot number)
+  const sendToShotList = () => {
+    if (!storyboard || !scene) return;
+    const groups = new Map<string, number[]>();
+    positions.forEach((p, i) => {
+      const shotNumber = p.shot.replace(/[A-Z]\d*$/, '');
+      groups.set(shotNumber, [...(groups.get(shotNumber) ?? []), i]);
+    });
+    let created = 0;
+    let updated = 0;
+    for (const [shotNumber, indexes] of groups) {
+      const first = frames[indexes[0]];
+      const text = indexes.map((i) => frames[i]);
+      const fields = {
+        description: first.actionNotes || first.dialogue || `Storyboard shot ${shotNumber}`,
+        actionDescription: text.map((f) => f.actionNotes).filter(Boolean).join(' '),
+        dialogueReference: text.map((f) => f.dialogue).filter(Boolean).join(' / '),
+        storyboardFrame: first.image,
+        storyboardNotes: text.map((f) => f.notes).filter(Boolean).join(' '),
+        duration: Math.round(indexes.reduce((sum, i) => sum + positions[i].durationMs, 0) / 1000),
+      };
+      const existing = first.shotId && s.shots?.find((sh) => sh.id === first.shotId);
+      let shotId: string;
+      if (existing) {
+        s.updateShot(existing.id, fields);
+        shotId = existing.id;
+        updated++;
+      } else {
+        shotId = s.addShot({
+          sceneId: scene.id, sceneNumber: scene.sceneNumber, shotNumber,
+          size: 'MS', angle: 'Eye Level', movement: 'Static', subject: '', equipment: {},
+          status: 'Storyboarded', priority: Number(shotNumber) || 0, ...fields,
+        });
+        created++;
+      }
+      indexes.forEach((i) => frames[i].shotId !== shotId && s.updateFrame(storyboard.id, frames[i].id, { shotId }));
+    }
+    alert(`Shot list updated: ${created} shot${created === 1 ? '' : 's'} added, ${updated} updated.`);
+  };
 
   const exportPdf = () => {
     if (!storyboard || !scene) return;
@@ -207,6 +341,9 @@ export function StoryboardEditor({ onClose }: { onClose: () => void }) {
         <div className="sb-header-actions">
           <button className="sb-btn" disabled={!frames.length} onClick={() => setPlaying((p) => !p)} title="Play the animatic (Space)">{playing ? '■ Stop' : '▶ Play'}</button>
           <button className="sb-btn" disabled={!frames.length} onClick={exportPdf}>Export PDF</button>
+          <button className="sb-btn" disabled={!frames.length || !!busy} onClick={() => runExport('gif')}>Export GIF</button>
+          <button className="sb-btn" disabled={!frames.length || !!busy || !supportedVideoType()} onClick={() => runExport('video')} title="Records the animatic with board audio in real time">Export Video</button>
+          <button className="sb-btn" disabled={!frames.length} onClick={sendToShotList} title="Create or update ViewFinder shots from these boards">Send to Shot List</button>
         </div>
       </div>
 
@@ -228,6 +365,20 @@ export function StoryboardEditor({ onClose }: { onClose: () => void }) {
             </label>
           )}
           <button className={`sb-tool ${onionOn ? 'active' : ''}`} onClick={() => setOnionOn(!onionOn)} title="Onion skin (O)">Onion Skin</button>
+          <button className={`sb-tool ${captions ? 'active' : ''}`} onClick={() => setCaptions(!captions)} title="Show dialogue on the board (C)">Captions</button>
+          {(['grid', 'center', 'thirds'] as const).map((g) => (
+            <button key={g} className={`sb-tool ${guides[g] ? 'active' : ''}`} onClick={() => setGuides({ ...guides, [g]: !guides[g] })}>
+              {g === 'grid' ? 'Grid' : g === 'center' ? 'Center' : 'Thirds'}
+            </button>
+          ))}
+          <label className={`sb-tool ${frame ? '' : 'disabled'}`} title="Put an image on this board's reference layer">
+            Image → Reference
+            <input type="file" accept="image/*" hidden disabled={!frame} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void importImageToReference(f); }} />
+          </label>
+          <label className="sb-tool" title="Each image becomes a new board">
+            Images → New Boards
+            <input type="file" accept="image/*" multiple hidden onChange={(e) => { const fs = [...(e.target.files ?? [])]; e.target.value = ''; if (fs.length) void importImagesAsBoards(fs); }} />
+          </label>
           <button className="sb-tool" disabled={!frame} onClick={() => canvasRef.current?.undo()} title="Undo stroke (Cmd/Ctrl+Z)">Undo</button>
           <button className="sb-tool" disabled={!frame} onClick={() => canvasRef.current?.clearLayer(tool.layer ?? eraseLayer)}>Clear Layer</button>
         </div>
@@ -256,6 +407,8 @@ export function StoryboardEditor({ onClose }: { onClose: () => void }) {
               eraseLayer={eraseLayer}
               onion={onionOn ? { prev: frames[index - 1]?.image, next: frames[index + 1]?.image } : null}
               onLayerChange={(layer, url) => update({ layers: { ...(frame.layers ?? {}), [layer]: url } })}
+              guides={guides}
+              caption={captions ? frame.dialogue : undefined}
             />
           ) : (
             <div className="sb-empty">
@@ -294,6 +447,24 @@ export function StoryboardEditor({ onClose }: { onClose: () => void }) {
               <label>Reference layer (light box)
                 <input type="range" min={0} max={1} step={0.05} value={frame.referenceOpacity ?? 0.5} onChange={(e) => update({ referenceOpacity: Number(e.target.value) })} />
               </label>
+              <div className="sb-audio">
+                <span>Audio</span>
+                {frame.audio ? (
+                  <>
+                    <audio controls src={frame.audio.dataUrl} />
+                    <span className="sb-muted">{frame.audio.name} · {formatTime(frame.audio.durationMs)}</span>
+                    <button className="sb-btn small" onClick={() => update({ audio: undefined })}>Remove Audio</button>
+                  </>
+                ) : (
+                  <span className="sb-row">
+                    <label className="sb-btn small">
+                      Add File…
+                      <input type="file" accept="audio/*" hidden onChange={async (e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) await setAudio(await readFileAsDataUrl(f), f.name); }} />
+                    </label>
+                    <button className={`sb-btn small ${recorder ? 'sb-recording' : ''}`} onClick={toggleRecording}>{recorder ? '■ Stop Recording' : '● Record'}</button>
+                  </span>
+                )}
+              </div>
             </div>
           )}
           <div className="sb-script">
@@ -308,6 +479,13 @@ export function StoryboardEditor({ onClose }: { onClose: () => void }) {
           </div>
         </aside>
       </div>
+
+      {busy && (
+        <div className="sb-progress">
+          <span>{busy.label}</span>
+          <div className="sb-progress-bar"><span style={{ width: `${Math.round(busy.progress * 100)}%` }} /></div>
+        </div>
+      )}
 
       <div className="sb-strip">
         <div className="sb-strip-actions">

@@ -11,6 +11,8 @@ export interface StoryboardCanvasHandle {
   clearLayer: (layer: StoryboardLayer) => void;
   /** Flattened board on white, as a data URL */
   composite: (type?: 'image/png' | 'image/jpeg', scale?: number) => string;
+  /** Put an image (already fitted to the board) on a layer, undoably */
+  replaceLayer: (layer: StoryboardLayer, dataUrl: string) => void;
 }
 
 interface Props {
@@ -25,6 +27,8 @@ interface Props {
   eraseLayer: StoryboardLayer;
   onion: { prev?: string; next?: string } | null;
   onLayerChange: (layer: StoryboardLayer, dataUrl: string | undefined) => void;
+  guides?: { grid?: boolean; center?: boolean; thirds?: boolean };
+  caption?: string;
 }
 
 // perfect-freehand outline -> Path2D (quadratic smoothing)
@@ -68,7 +72,7 @@ async function drawGhost(ctx: CanvasRenderingContext2D, src: string, tint: strin
 }
 
 export const StoryboardCanvas = forwardRef<StoryboardCanvasHandle, Props>(function StoryboardCanvas(props, ref) {
-  const { width, height, frameId, layers, referenceOpacity, tool, size, color, eraseLayer, onion, onLayerChange } = props;
+  const { width, height, frameId, layers, referenceOpacity, tool, size, color, eraseLayer, onion, onLayerChange, guides, caption } = props;
   const layerRefs = useRef<Partial<Record<StoryboardLayer, HTMLCanvasElement | null>>>({});
   const liveRef = useRef<HTMLCanvasElement | null>(null);
   const onionRef = useRef<HTMLCanvasElement | null>(null);
@@ -204,6 +208,10 @@ export const StoryboardCanvas = forwardRef<StoryboardCanvasHandle, Props>(functi
       lastLayers.current[layer] = undefined;
       onLayerChange(layer, undefined);
     },
+    replaceLayer: (layer, dataUrl) => {
+      undoStack.current.push({ frameId, layer, before: layers[layer] });
+      onLayerChange(layer, dataUrl);
+    },
     composite: (type = 'image/png', scale = 1) => {
       const out = document.createElement('canvas');
       out.width = Math.round(width * scale);
@@ -244,6 +252,25 @@ export const StoryboardCanvas = forwardRef<StoryboardCanvasHandle, Props>(functi
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
       />
+      {(guides?.grid || guides?.center || guides?.thirds) && (
+        <svg className="sb-guides" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-hidden>
+          {guides.grid && Array.from({ length: 15 }, (_, i) => <line key={`v${i}`} x1={(i + 1) * width / 16} y1={0} x2={(i + 1) * width / 16} y2={height} className="grid" />)}
+          {guides.grid && Array.from({ length: 8 }, (_, i) => <line key={`h${i}`} x1={0} y1={(i + 1) * height / 9} x2={width} y2={(i + 1) * height / 9} className="grid" />)}
+          {guides.thirds && [1, 2].map((k) => (
+            <g key={k}>
+              <line x1={k * width / 3} y1={0} x2={k * width / 3} y2={height} className="thirds" />
+              <line x1={0} y1={k * height / 3} x2={width} y2={k * height / 3} className="thirds" />
+            </g>
+          ))}
+          {guides.center && (
+            <g>
+              <line x1={width / 2} y1={0} x2={width / 2} y2={height} className="center" />
+              <line x1={0} y1={height / 2} x2={width} y2={height / 2} className="center" />
+            </g>
+          )}
+        </svg>
+      )}
+      {caption && <div className="sb-caption">{caption}</div>}
     </div>
   );
 });
