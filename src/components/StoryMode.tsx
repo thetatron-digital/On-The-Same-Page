@@ -17,6 +17,183 @@ const ROLES: CharacterRole[] = ['Protagonist', 'Antagonist', 'Love Interest', 'M
 const CHARACTER_ARCS: CharacterArc[] = ['Positive Arc', 'Flat Arc', 'Spiral Arc', 'Corruption Arc'];
 const ARCHETYPES: CharacterArchetype[] = ['Lover', 'Magician', 'Explorer', 'Sage', 'Innocent', 'Creator', 'Ruler', 'Caregiver', 'Orphan', 'Jester', 'Classic Villain', 'Anti-Villain', 'Beast', 'Authority Figure', 'Bully', 'Fanatic', 'Machine', 'Evil Personified', 'Mastermind', 'Henchman', 'Shadow', 'Corrupted'];
 
+// Small presentational pieces (module level so they keep their state
+// and don't remount when StoryMode re-renders)
+// Tag input component for multi-select fields
+const TagInput = ({
+  label,
+  options,
+  selected,
+  onChange,
+  tooltipKey,
+}: {
+  label: string;
+  options: string[];
+  selected: string[];
+  onChange: (tags: string[]) => void;
+  tooltipKey?: keyof typeof TOOLTIP_DATA;
+}) => (
+  <div className="form-field">
+    <label>
+      {label}
+      {tooltipKey && TOOLTIP_DATA[tooltipKey] && (
+        <InfoTooltip content={TOOLTIP_DATA[tooltipKey]} />
+      )}
+    </label>
+    <div className="tag-selector">
+      {options.map((option) => (
+        <button
+          key={option}
+          className={`tag-btn ${selected.includes(option) ? 'selected' : ''}`}
+          onClick={() => {
+            if (selected.includes(option)) {
+              onChange(selected.filter((t) => t !== option));
+            } else {
+              onChange([...selected, option]);
+            }
+          }}
+        >
+          {option}
+        </button>
+      ))}
+    </div>
+  </div>
+);
+
+// Generate button (disabled, coming soon)
+const GenerateButton = ({ label }: { label: string }) => (
+  <button className="generate-btn disabled" title="Coming Soon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 2L2 7l10 5 10-5-10-5z" />
+      <path d="M2 17l10 5 10-5" />
+      <path d="M2 12l10 5 10-5" />
+    </svg>
+    {label}
+  </button>
+);
+
+// Generic hover button with tooltip from options data
+const HoverButton = ({
+  name,
+  isSelected,
+  onClick,
+  optionsKey,
+}: {
+  name: string;
+  isSelected: boolean;
+  onClick: () => void;
+  optionsKey: keyof typeof OPTIONS_DATA;
+}) => {
+  const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
+  const optionData = OPTIONS_DATA[optionsKey].find((a) => a.name === name);
+
+  return (
+    <>
+      <button
+        className={`tag-btn ${isSelected ? 'selected' : ''}`}
+        onClick={onClick}
+        onMouseEnter={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          setHoverPos({ x: rect.left, y: rect.bottom + 8 });
+        }}
+        onMouseLeave={() => setHoverPos(null)}
+      >
+        {name}
+      </button>
+      {hoverPos && optionData && ReactDOM.createPortal(
+        <div
+          className="option-hover-tooltip"
+          style={{
+            left: Math.min(hoverPos.x, window.innerWidth - 300),
+            top: hoverPos.y,
+          }}
+        >
+          <div className="option-desc">{optionData.description}</div>
+          {(optionData as { examples?: string }).examples && (
+            <div className="option-examples">Examples: {(optionData as { examples?: string }).examples}</div>
+          )}
+        </div>,
+        document.body
+      )}
+    </>
+  );
+};
+
+// Story Type selector with hover tooltips
+const StoryTypeSelector = ({
+  selected,
+  onChange,
+}: {
+  selected: string[];
+  onChange: (types: string[]) => void;
+}) => (
+  <div className="tag-selector">
+    {STORY_TYPES.map((storyType) => (
+      <HoverButton
+        key={storyType}
+        name={storyType}
+        isSelected={selected.includes(storyType)}
+        onClick={() => {
+          if (selected.includes(storyType)) {
+            onChange(selected.filter((t) => t !== storyType));
+          } else {
+            onChange([...selected, storyType]);
+          }
+        }}
+        optionsKey="storyTypes"
+      />
+    ))}
+  </div>
+);
+
+// Character Arc selector with hover tooltips
+const CharacterArcSelector = ({
+  selected,
+  onChange,
+}: {
+  selected: CharacterArc;
+  onChange: (arc: CharacterArc) => void;
+}) => (
+  <div className="tag-selector small">
+    {CHARACTER_ARCS.map((arc) => (
+      <HoverButton
+        key={arc}
+        name={arc}
+        isSelected={selected === arc}
+        onClick={() => onChange(arc)}
+        optionsKey="characterArc"
+      />
+    ))}
+  </div>
+);
+
+// Archetype selector with individual hover tooltips
+const ArchetypeSelector = ({
+  selected,
+  onChange,
+}: {
+  selected: CharacterArchetype[];
+  onChange: (archetypes: CharacterArchetype[]) => void;
+}) => (
+  <div className="tag-selector small">
+    {ARCHETYPES.map((archetype) => (
+      <HoverButton
+        key={archetype}
+        name={archetype}
+        isSelected={selected.includes(archetype)}
+        onClick={() => {
+          if (selected.includes(archetype)) {
+            onChange(selected.filter((a) => a !== archetype));
+          } else {
+            onChange([...selected, archetype]);
+          }
+        }}
+        optionsKey="archetypes"
+      />
+    ))}
+  </div>
+);
+
 export const StoryMode = () => {
   const [activeTab, setActiveTab] = useState<StoryTab>('plot');
   const [expandedCharacter, setExpandedCharacter] = useState<string | null>(null);
@@ -48,180 +225,6 @@ export const StoryMode = () => {
     initializeBeats();
   }, [initializeBeats]);
 
-  // Tag input component for multi-select fields
-  const TagInput = ({
-    label,
-    options,
-    selected,
-    onChange,
-    tooltipKey,
-  }: {
-    label: string;
-    options: string[];
-    selected: string[];
-    onChange: (tags: string[]) => void;
-    tooltipKey?: keyof typeof TOOLTIP_DATA;
-  }) => (
-    <div className="form-field">
-      <label>
-        {label}
-        {tooltipKey && TOOLTIP_DATA[tooltipKey] && (
-          <InfoTooltip content={TOOLTIP_DATA[tooltipKey]} />
-        )}
-      </label>
-      <div className="tag-selector">
-        {options.map((option) => (
-          <button
-            key={option}
-            className={`tag-btn ${selected.includes(option) ? 'selected' : ''}`}
-            onClick={() => {
-              if (selected.includes(option)) {
-                onChange(selected.filter((t) => t !== option));
-              } else {
-                onChange([...selected, option]);
-              }
-            }}
-          >
-            {option}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-
-  // Generate button (disabled, coming soon)
-  const GenerateButton = ({ label }: { label: string }) => (
-    <button className="generate-btn disabled" title="Coming Soon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M12 2L2 7l10 5 10-5-10-5z" />
-        <path d="M2 17l10 5 10-5" />
-        <path d="M2 12l10 5 10-5" />
-      </svg>
-      {label}
-    </button>
-  );
-
-  // Generic hover button with tooltip from options data
-  const HoverButton = ({
-    name,
-    isSelected,
-    onClick,
-    optionsKey,
-  }: {
-    name: string;
-    isSelected: boolean;
-    onClick: () => void;
-    optionsKey: keyof typeof OPTIONS_DATA;
-  }) => {
-    const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
-    const optionData = OPTIONS_DATA[optionsKey].find((a) => a.name === name);
-
-    return (
-      <>
-        <button
-          className={`tag-btn ${isSelected ? 'selected' : ''}`}
-          onClick={onClick}
-          onMouseEnter={(e) => {
-            const rect = e.currentTarget.getBoundingClientRect();
-            setHoverPos({ x: rect.left, y: rect.bottom + 8 });
-          }}
-          onMouseLeave={() => setHoverPos(null)}
-        >
-          {name}
-        </button>
-        {hoverPos && optionData && ReactDOM.createPortal(
-          <div
-            className="option-hover-tooltip"
-            style={{
-              left: Math.min(hoverPos.x, window.innerWidth - 300),
-              top: hoverPos.y,
-            }}
-          >
-            <div className="option-desc">{optionData.description}</div>
-            {(optionData as { examples?: string }).examples && (
-              <div className="option-examples">Examples: {(optionData as { examples?: string }).examples}</div>
-            )}
-          </div>,
-          document.body
-        )}
-      </>
-    );
-  };
-
-  // Story Type selector with hover tooltips
-  const StoryTypeSelector = ({
-    selected,
-    onChange,
-  }: {
-    selected: string[];
-    onChange: (types: string[]) => void;
-  }) => (
-    <div className="tag-selector">
-      {STORY_TYPES.map((storyType) => (
-        <HoverButton
-          key={storyType}
-          name={storyType}
-          isSelected={selected.includes(storyType)}
-          onClick={() => {
-            if (selected.includes(storyType)) {
-              onChange(selected.filter((t) => t !== storyType));
-            } else {
-              onChange([...selected, storyType]);
-            }
-          }}
-          optionsKey="storyTypes"
-        />
-      ))}
-    </div>
-  );
-
-  // Character Arc selector with hover tooltips
-  const CharacterArcSelector = ({
-    selected,
-    onChange,
-  }: {
-    selected: CharacterArc;
-    onChange: (arc: CharacterArc) => void;
-  }) => (
-    <div className="tag-selector small">
-      {CHARACTER_ARCS.map((arc) => (
-        <HoverButton
-          key={arc}
-          name={arc}
-          isSelected={selected === arc}
-          onClick={() => onChange(arc)}
-          optionsKey="characterArc"
-        />
-      ))}
-    </div>
-  );
-
-  // Archetype selector with individual hover tooltips
-  const ArchetypeSelector = ({
-    selected,
-    onChange,
-  }: {
-    selected: CharacterArchetype[];
-    onChange: (archetypes: CharacterArchetype[]) => void;
-  }) => (
-    <div className="tag-selector small">
-      {ARCHETYPES.map((archetype) => (
-        <HoverButton
-          key={archetype}
-          name={archetype}
-          isSelected={selected.includes(archetype)}
-          onClick={() => {
-            if (selected.includes(archetype)) {
-              onChange(selected.filter((a) => a !== archetype));
-            } else {
-              onChange([...selected, archetype]);
-            }
-          }}
-          optionsKey="archetypes"
-        />
-      ))}
-    </div>
-  );
 
   const renderPlotTab = () => (
     <div className="story-section">
