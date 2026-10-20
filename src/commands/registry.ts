@@ -13,6 +13,9 @@ import { chooseScriptFile, exportFdx, exportFountain } from '../services/scriptF
 import { editSceneNumberAt, lockPagesWithPrompt, selectionIds } from '../components/productionActions';
 import { addAltHere, insertBookmark, insertNote, removeAltHere } from '../components/writingActions';
 import { useDialogs } from './dialogs';
+import { findAgain, findSelection } from './findState';
+import { tagAllCharacters, useTagging } from './tagging';
+import { play, useTableRead } from './tableReadPlayer';
 import type { KeyBinding } from './keys';
 
 export interface Command {
@@ -116,6 +119,13 @@ export const COMMANDS: Command[] = [
     },
   },
 
+  { id: 'edit.find', label: 'Find…', keys: [letter('f', { mod: true, soft: true })], run: () => dialogs().showFind('find') },
+  { id: 'edit.replace', label: 'Replace…', keys: [letter('f', { mod: true, alt: true })], run: () => dialogs().showFind('replace') },
+  { id: 'edit.goto', label: 'Go To…', keys: [letter('g', { mod: true, soft: true })], run: () => dialogs().showFind('goto') },
+  { id: 'edit.findSelection', label: 'Find Selection', keys: [letter('f', { mod: true, shift: true })], run: findSelection },
+  { id: 'edit.findNext', label: 'Find Next', keys: [k('F3')], run: () => { findAgain(); } },
+  { id: 'edit.findPrevious', label: 'Find Previous', keys: [k('F3', { shift: true })], run: () => { findAgain(true); } },
+
   // View
   { id: 'view.ruler', label: 'Ruler', checked: () => store().visibility.ruler, run: () => store().toggleVisibility('ruler') },
   { id: 'view.sceneNavigator', label: 'Scene Strip', checked: () => store().visibility.sceneNavigator, run: () => store().toggleVisibility('sceneNavigator') },
@@ -160,6 +170,7 @@ export const COMMANDS: Command[] = [
   // Document
   { id: 'document.watermark', label: 'Watermark…', run: () => dialogs().show('watermark') },
   { id: 'document.titlePage', label: 'Title Page…', run: () => store().togglePanel('titlePage') },
+  { id: 'document.autoComplete', label: 'Auto-Complete Lists…', keys: [letter('l', { mod: true, soft: true })], run: () => dialogs().show('autoComplete') },
   { id: 'document.macros', label: 'Macros…', run: () => dialogs().show('macros') },
   { id: 'document.bookmarks', label: 'Bookmarks…', run: () => dialogs().show('bookmarks') },
 
@@ -168,6 +179,8 @@ export const COMMANDS: Command[] = [
   { id: 'tools.locationReport', label: 'Location Report…', run: () => dialogs().show('reports', 'location') },
   { id: 'tools.characterReport', label: 'Character Report…', run: () => dialogs().show('reports', 'character') },
   { id: 'tools.castReport', label: 'Cast Report…', run: () => dialogs().show('reports', 'cast') },
+  { id: 'tools.tableRead', label: 'Table Read…', run: () => { useTableRead.getState().show(); play(); } },
+  { id: 'tools.assignVoices', label: 'Assign Voices…', run: () => dialogs().show('voices') },
   { id: 'tools.navigator', label: () => (store().panels.navigator ? 'Hide Navigator' : 'Show Navigator'), run: () => store().togglePanel('navigator') },
   { id: 'tools.writingStats', label: 'Writing Stats', checked: () => store().panels.writingStats, run: () => store().togglePanel('writingStats') },
 
@@ -184,6 +197,8 @@ export const COMMANDS: Command[] = [
   { id: 'production.revisionMode', label: 'Revision Mode', checked: () => getRevisionSettings(store().screenplay).revisionMode, run: () => store().toggleRevisionMode() },
   { id: 'production.markRevised', label: 'Mark Revised', keys: [k('BracketRight', { key: ']', mod: true, soft: true })], enabled: hasParagraph, run: () => store().markRevised(selectionIds()) },
   { id: 'production.clearRevised', label: 'Clear Revised', keys: [k('BracketLeft', { key: '[', mod: true, soft: true })], enabled: hasParagraph, run: () => store().clearRevised(selectionIds()) },
+  { id: 'production.tagsMode', label: 'Tags Mode', keys: [letter('t', { mod: true, alt: true, shift: true })], checked: () => useTagging.getState().on, run: () => useTagging.getState().toggle() },
+  { id: 'production.tagAllCharacters', label: 'Tag All Characters', run: () => { alert(`${tagAllCharacters()} character tags added to the breakdown.`); } },
   { id: 'production.lockPages', label: 'Lock Pages', checked: locked, enabled: () => !locked(), run: lockPagesWithPrompt },
   { id: 'production.unlockAPages', label: 'Unlock "A" Pages', enabled: locked, run: () => store().unlockAPages() },
   { id: 'production.unlockAll', label: 'Unlock All Pages', enabled: locked, run: () => store().unlockAllPages() },
@@ -208,7 +223,13 @@ export const MENUS: { title: string; items: MenuEntry[] }[] = [
       'file.sides', '---', 'file.print',
     ],
   },
-  { title: 'Edit', items: ['edit.undo', 'edit.redo', '---', 'edit.cut', 'edit.copy', 'edit.paste', '---', 'edit.selectAll'] },
+  {
+    title: 'Edit',
+    items: [
+      'edit.undo', 'edit.redo', '---', 'edit.cut', 'edit.copy', 'edit.paste', '---', 'edit.selectAll', '---',
+      'edit.find', 'edit.replace', 'edit.goto', 'edit.findSelection', 'edit.findNext', 'edit.findPrevious',
+    ],
+  },
   {
     title: 'View',
     items: [
@@ -229,10 +250,11 @@ export const MENUS: { title: string; items: MenuEntry[] }[] = [
     title: 'Insert',
     items: ['insert.addAlt', 'insert.removeAlt', '---', 'insert.pageBreak', '---', 'insert.bookmark', 'insert.scriptNote', 'insert.generalNote'],
   },
-  { title: 'Document', items: ['document.watermark', '---', 'document.titlePage', 'document.macros', 'document.bookmarks'] },
+  { title: 'Document', items: ['document.watermark', '---', 'document.titlePage', 'document.autoComplete', 'document.macros', 'document.bookmarks'] },
   {
     title: 'Tools',
     items: [
+      'tools.tableRead', 'tools.assignVoices', '---',
       { submenu: 'Reports', items: ['tools.sceneReport', 'tools.locationReport', '---', 'tools.characterReport', 'tools.castReport'] }, '---',
       'tools.navigator', 'tools.writingStats',
     ],
@@ -244,7 +266,8 @@ export const MENUS: { title: string; items: MenuEntry[] }[] = [
       'production.omitScene', '---',
       'production.revisions', 'production.revisionMode', 'production.markRevised', 'production.clearRevised', '---',
       'production.lockPages', 'production.unlockAPages', 'production.unlockAll',
-      { submenu: 'Locking Tools', items: ['production.relock'] },
+      { submenu: 'Locking Tools', items: ['production.relock'] }, '---',
+      'production.tagsMode', 'production.tagAllCharacters',
     ],
   },
   { title: 'Help', items: ['help.shortcuts', 'help.about'] },

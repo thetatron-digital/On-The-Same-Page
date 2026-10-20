@@ -11,6 +11,9 @@ import { SplitView } from './SplitView';
 import { StoryMode } from './StoryMode';
 import { NotePopover } from './ScriptNotes';
 import { useCommandShortcuts } from '../commands/useCommandShortcuts';
+import { TagsPanel } from './TagsPanel';
+import { useTagHighlights } from './useTagHighlights';
+import { TableReadBar } from './TableRead';
 import { paginateScript } from '../engine/paginate';
 import { getRevisionSettings, pageRevision } from '../engine/production';
 import { ELEMENT_BEHAVIOR } from '../types/screenplay';
@@ -123,6 +126,8 @@ export const Editor = () => {
 
   // Menu commands from the keyboard (undo, save, element shortcuts, ...)
   useCommandShortcuts(activeApp === 'rewriter');
+  // Tags Mode colors tagged words in the script
+  useTagHighlights();
 
   // Calculate zoom scale
   const scale = zoom / 100;
@@ -231,6 +236,8 @@ export const Editor = () => {
 
         {/* ScriptNote popover (opened from a margin marker or the Navigator) */}
         <NotePopover />
+        <TagsPanel />
+        <TableReadBar />
 
         {/* Status bar */}
         <div className="status-bar">

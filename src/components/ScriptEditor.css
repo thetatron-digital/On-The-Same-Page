@@ -125,6 +125,12 @@
   -webkit-user-select: text;
 }
 
+/* BreakDown's stylesheet gives every .script-element a bottom margin; the
+   script editor's spacing comes only from the pagination engine */
+.script-editor-content .script-element {
+  margin-bottom: 0;
+}
+
 /* Placeholder for empty elements */
 .script-element:empty::before,
 .script-element:has(br:only-child)::before {
@@ -252,31 +258,18 @@
    DUAL DIALOGUE
    ============================================ */
 
-.dual-dialogue-container {
+/* Two speeches side by side. Columns start at 1.5" and 4.5" from the page
+   edge, like the PDF; element widths come from the pagination engine. */
+.dual-dialogue-block {
   display: flex;
-  gap: 20px;
-  margin-top: 16px;
+  align-items: flex-start;
+  font-family: 'Courier New', 'Courier Prime', Courier, monospace;
+  font-size: 16px;
 }
 
-.dual-dialogue-left,
-.dual-dialogue-right {
-  flex: 1;
-  max-width: 48%;
-}
-
-.script-element.dual-dialogue-character {
-  margin-left: 20%;
-  width: 80%;
-}
-
-.script-element.dual-dialogue-dialogue {
-  margin-left: 5%;
-  width: 90%;
-}
-
-.script-element.dual-dialogue-parenthetical {
-  margin-left: 15%;
-  width: 70%;
+.dual-dialogue-column {
+  flex: none;
+  width: 30ch;
 }
 
 /* ============================================

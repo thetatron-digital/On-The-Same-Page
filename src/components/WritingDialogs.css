@@ -117,3 +117,29 @@
     grid-template-columns: 1fr;
   }
 }
+
+.modal-content.autocomplete-dialog {
+  width: min(620px, 94vw);
+  max-width: none;
+}
+
+.autocomplete-columns {
+  display: grid;
+  grid-template-columns: 170px 1fr;
+  gap: 12px;
+}
+
+.autocomplete-items {
+  height: 220px;
+}
+
+.autocomplete-dialog .production-row input {
+  flex: 1 1 140px;
+  min-width: 120px;
+  width: auto;
+  padding: 4px 6px;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+}

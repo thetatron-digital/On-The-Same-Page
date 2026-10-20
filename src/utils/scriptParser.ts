@@ -16,6 +16,7 @@ import type {
   ScriptCharacter,
   StoryCharacter,
   AutoCompleteSuggestion,
+  AutoCompleteTrigger,
 } from '../types/screenplay';
 import { getPlainText } from './fdx';
 
@@ -288,8 +289,9 @@ export function getLocationSuggestions(
 export function detectAutoCompleteTrigger(
   currentElement: ScreenplayElement | null,
   cursorPosition: number,
-  text: string
-): { triggerType: 'character' | 'location' | 'extension' | 'timeofday' | null; searchText: string } {
+  text: string,
+  timeSeparator: string = ' - '
+): { triggerType: AutoCompleteTrigger | null; searchText: string } {
   if (!currentElement) {
     return { triggerType: null, searchText: '' };
   }
@@ -321,16 +323,24 @@ export function detectAutoCompleteTrigger(
 
     // Only trigger if we have INT/EXT
     if (parsed.intExt) {
-      // Check if user has typed " - " and is now typing time of day
-      if (elementText.includes(' - ')) {
-        // Extract what's after the dash
-        const afterDash = elementText.split(' - ').slice(1).join(' - ').trim();
+      // Check if user has typed the time separator and is now typing time of day
+      const separator = timeSeparator.trim() ? timeSeparator : ' - ';
+      if (elementText.includes(separator)) {
+        const afterDash = elementText.split(separator).slice(1).join(separator).trim();
         return { triggerType: 'timeofday', searchText: afterDash };
       }
 
       // Otherwise suggest locations
       return { triggerType: 'location', searchText: parsed.location };
     }
+
+    // No INT/EXT yet: suggest scene intros
+    return { triggerType: 'intro', searchText: elementText.trim() };
+  }
+
+  // Transition element: suggest transitions
+  if (currentElement.type === 'Transition') {
+    return { triggerType: 'transition', searchText: elementText.trim() };
   }
 
   return { triggerType: null, searchText: '' };

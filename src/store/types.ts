@@ -22,6 +22,9 @@ import type {
   ScriptCharacter,
   ScriptLocation,
   AutoCompleteSuggestion,
+  AutoCompleteTrigger,
+  AutoCompleteLists,
+  TableReadSettings,
   PageLock,
   RevisionSettings,
   RevisionSet,
@@ -182,7 +185,7 @@ export interface ScriptSlice {
   setDocumentOrigin: (origin: 'project' | 'file') => void;
   // Auto-Complete / Smart Type actions
   refreshScriptData: () => void;
-  openAutoComplete: (triggerType: 'character' | 'location' | 'extension' | 'timeofday', searchText: string, position: { x: number; y: number }) => void;
+  openAutoComplete: (triggerType: AutoCompleteTrigger, searchText: string, position: { x: number; y: number }) => void;
   closeAutoComplete: () => void;
   updateAutoCompleteSearch: (searchText: string) => void;
   selectAutoCompleteSuggestion: (index: number) => void;
@@ -224,6 +227,8 @@ export interface ScriptSlice {
   removeAlt: (elementId: string) => void;
   cycleAlt: (elementId: string, direction: 1 | -1) => void;
   setMacros: (macros: Macro[]) => void;
+  setAutoCompleteLists: (lists: AutoCompleteLists) => void;
+  setTableReadSettings: (settings: TableReadSettings) => void;
 }
 
 // App shell: active app, zoom, panels, theme, writing stats

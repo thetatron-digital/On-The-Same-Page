@@ -2,8 +2,9 @@ import { useRef, useCallback, useEffect } from 'react';
 import type { ScreenplayElement, ElementType } from '../types/screenplay';
 import { ELEMENT_BEHAVIOR, ELEMENT_FORMATTING, MARGIN_LEFT, NOTE_COLORS } from '../types/screenplay';
 import { applyMacro, findMacro, getMacros, macroBank } from '../engine/scriptTools';
+import { getAutoCompleteLists } from '../utils/autoCompleteLists';
 import { getRevisionSettings, showsRevisionMark } from '../engine/production';
-import { CHARS_PER_INCH, elementWidthChars, firstLineWidthChars, paginateScript, wrapElement, type PageBreak, type Pagination } from '../engine/paginate';
+import { CHARS_PER_INCH, DUAL_COLUMN_CHARS, elementWidthChars, firstLineWidthChars, paginateScript, wrapElement, type PageBreak, type Pagination } from '../engine/paginate';
 import { useScreenplayStore } from '../store/screenplayStore';
 import { useShallow } from 'zustand/react/shallow';
 import { generateId, createTextRuns } from '../utils/fdx';
@@ -28,6 +29,16 @@ const applyElementLayout = (div: HTMLElement, type: ElementType, spaceBefore?: n
   if (spaceBefore !== undefined) {
     div.style.marginTop = `${spaceBefore * LINE_HEIGHT_PX}px`;
   }
+};
+
+// An element in a dual dialogue column: 25 characters wide, with the
+// character name and parentheticals indented as in the PDF
+const DUAL_INDENT: Partial<Record<ElementType, number>> = { Character: 7.5, Parenthetical: 4 };
+const layoutDualElement = (div: HTMLElement, type: ElementType) => {
+  div.style.marginLeft = `${DUAL_INDENT[type] ?? 0}ch`;
+  div.style.width = `${DUAL_COLUMN_CHARS}ch`;
+  div.style.marginTop = '0px';
+  div.style.textAlign = 'left';
 };
 
 // Non-editable page break: (MORE) at the foot of the page, a gap sized later by
@@ -224,6 +235,24 @@ export const ScriptEditor = () => {
       if (item.kind === 'dual') spaceBefore.set(item.left[0].elementId, item.spaceBefore);
     }));
     const characterIndent = indentChars('Character');
+
+    // Dual dialogue blocks, found the same way the pagination engine finds
+    // them: a run of left-column elements followed by a run of right ones
+    const dualBlocks = new Map<number, { mid: number; end: number }>();
+    const dualSide = new Map<number, 'left' | 'right'>();
+    for (let i = 0; i < screenplay.elements.length; i++) {
+      const isSide = (j: number, side: 'left' | 'right') =>
+        screenplay.elements[j]?.isDualDialogue && screenplay.elements[j].dualDialoguePosition === side;
+      if (!isSide(i, 'left') || isSide(i - 1, 'left')) continue;
+      let mid = i;
+      while (isSide(mid, 'left')) mid++;
+      let end = mid;
+      while (isSide(end, 'right')) end++;
+      if (end === mid) continue;
+      dualBlocks.set(i, { mid, end });
+      for (let j = i; j < end; j++) dualSide.set(j, j < mid ? 'left' : 'right');
+    }
+    let dualColumns: { left: HTMLElement; right: HTMLElement } | null = null;
     const continuedCharacters = new Set(pagination.continuedCharacters);
 
     screenplay.elements.forEach((element, index) => {
@@ -339,6 +368,27 @@ export const ScriptEditor = () => {
       breaks.filter((brk) => brk.line === 0).forEach((brk) => {
         editor.appendChild(makePageBreak(brk, 'div', characterIndent));
       });
+
+      // Dual dialogue: two columns side by side (as the engine and PDF lay them out)
+      if (dualBlocks.has(index)) {
+        const block = document.createElement('div');
+        block.className = 'dual-dialogue-block';
+        block.style.marginTop = `${(spaceBefore.get(element.id) ?? 1) * LINE_HEIGHT_PX}px`;
+        const left = document.createElement('div');
+        const right = document.createElement('div');
+        left.className = 'dual-dialogue-column';
+        right.className = 'dual-dialogue-column';
+        block.append(left, right);
+        editor.appendChild(block);
+        dualColumns = { left, right };
+      }
+      const side = dualSide.get(index);
+      if (side && dualColumns) {
+        layoutDualElement(div, element.type);
+        dualColumns[side].appendChild(div);
+        return;
+      }
+      dualColumns = null;
 
       // A page that starts partway through this element: break inside its text
       breaks.filter((brk) => brk.line > 0).forEach((brk) => {
@@ -472,7 +522,8 @@ export const ScriptEditor = () => {
     }
 
     const text = getPlainText(current.element.content);
-    const trigger = detectAutoCompleteTrigger(current.element, current.offset, text);
+    const lists = getAutoCompleteLists(useScreenplayStore.getState().screenplay);
+    const trigger = detectAutoCompleteTrigger(current.element, current.offset, text, lists.timeSeparator);
 
     if (trigger.triggerType && trigger.searchText.length >= 0) {
       const pos = getCursorPosition();
@@ -695,10 +746,18 @@ export const ScriptEditor = () => {
       state.saveToHistory();
 
       if (cursorPos >= text.length) {
-        elements.splice(currentIndex + 1, 0, {
+        // In a dual dialogue column, more speech stays in the column; anything
+        // else goes after the whole side-by-side block rather than splitting it
+        const dual = current.element.isDualDialogue && (nextType === 'Dialogue' || nextType === 'Parenthetical');
+        let insertAt = currentIndex + 1;
+        if (current.element.isDualDialogue && !dual) {
+          while (insertAt < elements.length && elements[insertAt].isDualDialogue) insertAt++;
+        }
+        elements.splice(insertAt, 0, {
           id: newId,
           type: nextType,
           content: [{ text: '' }],
+          ...(dual ? { isDualDialogue: true, dualDialoguePosition: current.element.dualDialoguePosition } : {}),
         });
 
         state.setScreenplay({ ...state.screenplay, elements });
@@ -926,14 +985,14 @@ export const ScriptEditor = () => {
         newText = value;
       }
     } else if (current.element.type === 'Scene Heading') {
-      if (triggerType === 'timeofday') {
-        // Replace time of day portion after " - "
-        const parts = text.split(' - ');
-        if (parts.length >= 1) {
-          newText = parts[0] + ' - ' + value;
-        } else {
-          newText = text + ' - ' + value;
-        }
+      const lists = getAutoCompleteLists(state.screenplay);
+      const separator = lists.timeSeparator.trim() ? lists.timeSeparator : ' - ';
+      if (triggerType === 'intro') {
+        // A scene intro, then its separator, ready for the location
+        newText = value + lists.sceneIntroSeparator;
+      } else if (triggerType === 'timeofday') {
+        // Replace the time of day after the separator
+        newText = text.split(separator)[0] + separator + value;
       } else if (triggerType === 'location') {
         // Parse existing scene heading and replace location
         const match = text.match(/^(INT\.?|EXT\.?|INT\/EXT\.?|I\/E\.?)\s*/i);
@@ -946,6 +1005,10 @@ export const ScriptEditor = () => {
           }
         }
       }
+    }
+
+    if (current.element.type === 'Transition' && triggerType === 'transition') {
+      newText = value;
     }
 
     const format = ELEMENT_FORMAT[current.element.type];
