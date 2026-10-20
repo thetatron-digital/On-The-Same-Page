@@ -7,6 +7,7 @@ import type { BreakdownCategory, BreakdownElement, ScreenplayElement } from '../
 import { sceneHeadingIndex } from '../engine/production';
 import { speakerName } from '../utils/reports';
 import { offsetInElement } from '../components/editorDom';
+import { offerLinkedElements } from './elementLinking';
 
 interface TaggingState {
   on: boolean;
@@ -55,8 +56,10 @@ export const tagSelection = (category: BreakdownCategory | string): string | nul
   const text = el.content.map((r) => r.text).join('').slice(start, end).trim();
   if (!text) return 'Select the words to tag first.';
   ensureBreakdown();
-  store().addBreakdownElement(newTag(el, elements[headingIndex].id, category, text, start, start + text.length));
+  const tag = newTag(el, elements[headingIndex].id, category, text, start, start + text.length);
+  store().addBreakdownElement(tag);
   selection.removeAllRanges();
+  offerLinkedElements([tag.id]);
   return null;
 };
 
@@ -67,7 +70,7 @@ export const tagAllCharacters = (): number => {
   const existing = new Set((breakdown?.elements ?? [])
     .filter((t) => t.category === 'Cast Members')
     .map((t) => `${t.sceneId}|${t.text.toUpperCase()}`));
-  let added = 0;
+  const tagged: string[] = [];
   let sceneId = '';
   for (const el of screenplay.elements) {
     if (el.type === 'Scene Heading') sceneId = el.id;
@@ -75,8 +78,10 @@ export const tagAllCharacters = (): number => {
     const name = speakerName(el.content.map((r) => r.text).join(''));
     if (!name || existing.has(`${sceneId}|${name}`)) continue;
     existing.add(`${sceneId}|${name}`);
-    store().addBreakdownElement(newTag(el, sceneId, 'Cast Members', name, 0, name.length));
-    added++;
+    const tag = newTag(el, sceneId, 'Cast Members', name, 0, name.length);
+    store().addBreakdownElement(tag);
+    tagged.push(tag.id);
   }
-  return added;
+  offerLinkedElements(tagged);
+  return tagged.length;
 };
