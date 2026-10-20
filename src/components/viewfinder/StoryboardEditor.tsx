@@ -2,7 +2,7 @@
 // Board strip, drawing canvas, board metadata, the scene's script lines,
 // Storyboarder's single-key shortcuts, timeline mode, animatic playback and
 // exports (PDF, GIF, video, editing-app timelines).
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useScreenplayStore } from '../../store/screenplayStore';
 import type { StoryboardFrame, StoryboardLayer } from '../../types/screenplay';
@@ -15,6 +15,11 @@ import { storyboardPdf } from './storyboardPdf';
 import { audioDurationMs, effectiveDurationMs, exportGif, exportVideo, fitImageToBoard, readFileAsDataUrl, renderBoardPng, supportedVideoType } from './storyboardMedia';
 import { buildTimeline, editorPackage } from './editorExport';
 import { boardToPsd, psdToBoardLayers } from './storyboardPsd';
+import type { ShotGeneratorResult } from './ShotGenerator';
+import type { ShotScene } from '../../engine/storyboard/shotGenerator';
+
+// three.js loads only when the Shot Generator opens
+const ShotGenerator = lazy(() => import('./ShotGenerator'));
 import './Storyboard.css';
 
 const BOARD_W = 1280;
@@ -76,6 +81,7 @@ export function StoryboardEditor({ onClose }: { onClose: () => void }) {
   const playerRef = useRef<HTMLAudioElement | null>(null);
   // Timeline mode: board widths follow their durations; drag an edge to retime
   const [timelineMode, setTimelineMode] = useState(false);
+  const [shotGenOpen, setShotGenOpen] = useState(false);
   const [pxPerSecond, setPxPerSecond] = useState(60);
   const [retime, setRetime] = useState<{ id: string; startX: number; startMs: number; ms: number } | null>(null);
   const retimeRef = useRef(retime); // pointer events can outrun renders
@@ -182,7 +188,7 @@ export function StoryboardEditor({ onClose }: { onClose: () => void }) {
   // Storyboarder's single-key commands
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (isTyping(e.target)) return;
+      if (isTyping(e.target) || shotGenOpen) return;
       const mod = e.metaKey || e.ctrlKey;
       const t = TOOLS.find((x) => x.key === e.key);
       if (t && !mod && !e.altKey) { setToolId(t.id); if (t.layer && t.id !== 'eraser') setEraseLayer(t.layer); return; }
@@ -251,6 +257,27 @@ export function StoryboardEditor({ onClose }: { onClose: () => void }) {
     } catch {
       alert('That file could not be read as a Photoshop document.');
     }
+  };
+
+  // Shot Generator render -> this board's reference layer, or a new board
+  const insertShot = (result: ShotGeneratorResult, mode: 'reference' | 'new-board') => {
+    const shotFields = { shotScene: result.scene, shotSize: result.shotSize, cameraAngle: result.cameraAngle, focalLength: result.focalLength };
+    if (mode === 'reference' && frame) {
+      canvasRef.current?.replaceLayer('reference', result.image);
+      update({ ...shotFields, referenceOpacity: frame.layers?.reference ? frame.referenceOpacity : 1 });
+    } else {
+      const id = ensureStoryboard();
+      if (!id) return;
+      const at = frames.length ? index + 1 : 0;
+      s.insertFrame(id, at, blankFrame({ ...shotFields, layers: { reference: result.image }, referenceOpacity: 1, image: result.image, newShot: true }));
+      setBoardIndex(at);
+    }
+    setShotGenOpen(false);
+  };
+  const closeShotGenerator = (scene: ShotScene) => {
+    // Keep the blocking on the board so it reopens where it was left
+    if (frame && scene !== frame.shotScene) update({ shotScene: scene });
+    setShotGenOpen(false);
   };
 
   const setAudio = async (dataUrl: string, name: string) => {
@@ -326,17 +353,21 @@ export function StoryboardEditor({ onClose }: { onClose: () => void }) {
         storyboardFrame: first.image,
         storyboardNotes: text.map((f) => f.notes).filter(Boolean).join(' '),
         duration: Math.round(indexes.reduce((sum, i) => sum + positions[i].durationMs, 0) / 1000),
+        // Camera from the Shot Generator, when the shot's first board has one
+        ...(first.shotSize ? { size: first.shotSize } : {}),
+        ...(first.cameraAngle ? { angle: first.cameraAngle } : {}),
       };
+      const lens = first.focalLength ? { lens: { focalLength: `${first.focalLength}mm` } } : null;
       const existing = first.shotId && s.shots?.find((sh) => sh.id === first.shotId);
       let shotId: string;
       if (existing) {
-        s.updateShot(existing.id, fields);
+        s.updateShot(existing.id, lens ? { ...fields, equipment: { ...existing.equipment, ...lens } } : fields);
         shotId = existing.id;
         updated++;
       } else {
         shotId = s.addShot({
           sceneId: scene.id, sceneNumber: scene.sceneNumber, shotNumber,
-          size: 'MS', angle: 'Eye Level', movement: 'Static', subject: '', equipment: {},
+          size: 'MS', angle: 'Eye Level', movement: 'Static', subject: '', equipment: lens ?? {},
           status: 'Storyboarded', priority: Number(shotNumber) || 0, ...fields,
         });
         created++;
@@ -419,6 +450,7 @@ export function StoryboardEditor({ onClose }: { onClose: () => void }) {
             Images → New Boards
             <input type="file" accept="image/*" multiple hidden onChange={(e) => { const fs = [...(e.target.files ?? [])]; e.target.value = ''; if (fs.length) void importImagesAsBoards(fs); }} />
           </label>
+          <button className="sb-tool" onClick={() => setShotGenOpen(true)} title="Block the shot in 3D and render it onto the board">Shot Generator</button>
           <button className="sb-tool" disabled={!frame} onClick={() => void exportPsd()} title="Layered Photoshop file of this board">Export PSD</button>
           <label className={`sb-tool ${frame ? '' : 'disabled'}`} title="Bring an edited PSD back; layers named Reference, Fill, Tone, Pencil, Ink and Notes return to those layers">
             Import PSD
@@ -524,6 +556,19 @@ export function StoryboardEditor({ onClose }: { onClose: () => void }) {
           </div>
         </aside>
       </div>
+
+      {shotGenOpen && (
+        <Suspense fallback={<div className="sb-progress"><span>Loading the Shot Generator…</span></div>}>
+          <ShotGenerator
+            key={frame?.id ?? 'new'}
+            initial={frame?.shotScene}
+            width={BOARD_W}
+            height={BOARD_H}
+            onInsert={insertShot}
+            onClose={closeShotGenerator}
+          />
+        </Suspense>
+      )}
 
       {busy && (
         <div className="sb-progress">
