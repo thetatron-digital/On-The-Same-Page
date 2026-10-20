@@ -1,0 +1,32 @@
+/* Shot Generator (sg- prefix), full-window over the storyboard editor */
+.sg-overlay { position: fixed; inset: 0; z-index: 900; display: flex; flex-direction: column; background: var(--sg-bg, #16162a); color: var(--sg-text, #e0e0e0); --sb-panel: #1e1e32; --sb-border: #2d2d4a; --sb-muted: #8a8aa0; }
+.sg-header { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--sb-border); flex-wrap: wrap; }
+.sg-header h2 { margin: 0; font-size: 16px; }
+.sg-readout { font-size: 13px; color: #c4b5fd; font-variant-numeric: tabular-nums; }
+.sg-actions { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+.sg-body { flex: 1; min-height: 0; display: flex; }
+.sg-panel { width: 240px; flex-shrink: 0; overflow-y: auto; padding: 10px; border-right: 1px solid var(--sb-border); display: flex; flex-direction: column; gap: 10px; background: var(--sb-panel); }
+.sg-add { display: flex; flex-wrap: wrap; gap: 4px; }
+.sg-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.sg-list button { width: 100%; text-align: left; padding: 5px 8px; border-radius: 6px; border: 1px solid transparent; background: none; color: inherit; font-size: 13px; cursor: pointer; }
+.sg-list button.active { background: rgba(139, 92, 246, 0.2); border-color: #8B5CF6; }
+.sg-props { display: flex; flex-direction: column; gap: 8px; }
+.sg-props label, .sg-camera-bar label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--sb-muted); }
+.sg-props input:not([type='range']):not([type='color']), .sg-props select, .sg-camera-bar select { padding: 4px 6px; border-radius: 5px; border: 1px solid var(--sb-border); background: transparent; color: var(--sg-text, #e0e0e0); font: inherit; font-size: 13px; }
+.sg-props select option, .sg-camera-bar select option { color: #111; }
+.sg-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.sg-grid2 input { width: 100%; box-sizing: border-box; }
+.sg-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; padding: 12px; overflow-y: auto; }
+.sg-view { width: 100%; max-width: 1100px; align-self: center; cursor: grab; touch-action: none; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35); line-height: 0; }
+.sg-view:active { cursor: grabbing; }
+.sg-view canvas { display: block; width: 100%; height: auto; }
+.sg-camera-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; max-width: 1100px; align-self: center; width: 100%; }
+.sg-presets { display: flex; flex-wrap: wrap; gap: 4px; }
+.sg-presets .sb-btn.active { background: #8B5CF6; border-color: #8B5CF6; color: #fff; }
+.sg-plan { width: 340px; flex-shrink: 0; padding: 10px; border-left: 1px solid var(--sb-border); display: flex; flex-direction: column; gap: 6px; background: var(--sb-panel); }
+.sg-plan canvas { width: 320px; height: 320px; border-radius: 6px; cursor: pointer; touch-action: none; }
+@media (max-width: 1000px) {
+  .sg-body { flex-direction: column; overflow-y: auto; }
+  .sg-panel, .sg-plan { width: auto; border: none; }
+  .sg-main { overflow: visible; }
+}

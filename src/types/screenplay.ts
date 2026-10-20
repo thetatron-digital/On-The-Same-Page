@@ -1,4 +1,5 @@
 // Screenplay element types following Final Draft conventions
+import type { ShotScene } from '../engine/storyboard/shotGenerator';
 export type ElementType =
   | 'Scene Heading'
   | 'Action'
@@ -1138,6 +1139,10 @@ export interface StoryboardFrame {
   layers?: Partial<Record<StoryboardLayer, string>>; // PNG data URLs
   referenceOpacity?: number; // 0-1, light-box strength of the reference layer
   audio?: { dataUrl: string; durationMs: number; name: string }; // board audio (dialogue, temp sound)
+  shotScene?: ShotScene;     // Shot Generator blocking for this board
+  shotSize?: ShotSize;       // from the Shot Generator camera
+  cameraAngle?: CameraAngle;
+  focalLength?: number;      // mm
 }
 
 // Shot list for a scene (printable format)
