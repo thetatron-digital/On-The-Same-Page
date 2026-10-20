@@ -14,6 +14,7 @@ import { LAYERS, TOOLS, type ToolId } from './storyboardTools';
 import { storyboardPdf } from './storyboardPdf';
 import { audioDurationMs, effectiveDurationMs, exportGif, exportVideo, fitImageToBoard, readFileAsDataUrl, renderBoardPng, supportedVideoType } from './storyboardMedia';
 import { buildTimeline, editorPackage } from './editorExport';
+import { boardToPsd, psdToBoardLayers } from './storyboardPsd';
 import './Storyboard.css';
 
 const BOARD_W = 1280;
@@ -235,6 +236,23 @@ export function StoryboardEditor({ onClose }: { onClose: () => void }) {
     setBoardIndex(at - 1);
   };
 
+  // Edit in Photoshop (or Krita, GIMP, Photopea): layered PSD out and back
+  const exportPsd = async () => {
+    if (!frame) return;
+    download(await boardToPsd(frame, BOARD_W, BOARD_H), `${fileBase}_Board_${positions[index]?.shot ?? index + 1}.psd`);
+  };
+  const importPsd = async (file: File) => {
+    if (!frame) return;
+    const hasDrawing = Object.values(frame.layers ?? {}).some(Boolean);
+    if (hasDrawing && !confirm('Replace this board\'s layers with the layers in the PSD?')) return;
+    try {
+      const { layers, referenceOpacity } = await psdToBoardLayers(await file.arrayBuffer(), BOARD_W, BOARD_H);
+      update({ layers, ...(referenceOpacity !== undefined ? { referenceOpacity } : {}) });
+    } catch {
+      alert('That file could not be read as a Photoshop document.');
+    }
+  };
+
   const setAudio = async (dataUrl: string, name: string) => {
     update({ audio: { dataUrl, name, durationMs: await audioDurationMs(dataUrl) } });
   };
@@ -400,6 +418,11 @@ export function StoryboardEditor({ onClose }: { onClose: () => void }) {
           <label className="sb-tool" title="Each image becomes a new board">
             Images → New Boards
             <input type="file" accept="image/*" multiple hidden onChange={(e) => { const fs = [...(e.target.files ?? [])]; e.target.value = ''; if (fs.length) void importImagesAsBoards(fs); }} />
+          </label>
+          <button className="sb-tool" disabled={!frame} onClick={() => void exportPsd()} title="Layered Photoshop file of this board">Export PSD</button>
+          <label className={`sb-tool ${frame ? '' : 'disabled'}`} title="Bring an edited PSD back; layers named Reference, Fill, Tone, Pencil, Ink and Notes return to those layers">
+            Import PSD
+            <input type="file" accept=".psd,image/vnd.adobe.photoshop" hidden disabled={!frame} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void importPsd(f); }} />
           </label>
           <button className="sb-tool" disabled={!frame} onClick={() => canvasRef.current?.undo()} title="Undo stroke (Cmd/Ctrl+Z)">Undo</button>
           <button className="sb-tool" disabled={!frame} onClick={() => canvasRef.current?.clearLayer(tool.layer ?? eraseLayer)}>Clear Layer</button>
