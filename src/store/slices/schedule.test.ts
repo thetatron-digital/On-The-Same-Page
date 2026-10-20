@@ -189,3 +189,31 @@ describe('Import from Breakdown', () => {
     expect(rows.map((r) => `${r.boardId}. ${r.name}`)).toEqual(['1. ADA', '2. GRACE']);
   });
 });
+
+describe('Day breaks and banners', () => {
+  beforeEach(setUpBoard); // strips a..e on one day
+
+  it('Insert Day Break splits the day after the selected strip', () => {
+    expect(store().insertDayBreakAfter('b')).toBeNull();
+    expect(dayStrips()).toEqual([['a', 'b'], ['c', 'd', 'e']]);
+    expect(store().insertDayBreakAfter('e')).toMatch(/already ends/);
+  });
+
+  it('Delete All Day Breaks puts every scheduled strip on one day', () => {
+    store().autoAssignDayBreaks({ maxPagesPerDay: 5 });
+    expect(store().deleteAllDayBreaks()).toBeNull();
+    expect(dayStrips()).toEqual([['a', 'b', 'c', 'd', 'e']]);
+  });
+
+  it('banners stay with their strip through day breaks', () => {
+    const dayId = store().schedule!.shootDays[0].id;
+    store().addBanner(dayId, 'COMPANY MOVE', { beforeStripId: 'd' });
+    store().addBanner(dayId, 'WRAP NOTE');
+    store().insertDayBreakAfter('b');
+    const [day1, day2] = store().schedule!.shootDays;
+    expect(day1.banners ?? []).toEqual([]);
+    expect(day2.banners!.map((b) => b.text)).toEqual(['COMPANY MOVE', 'WRAP NOTE']);
+    store().deleteAllDayBreaks();
+    expect(store().schedule!.shootDays[0].banners!.map((b) => b.text)).toEqual(['COMPANY MOVE', 'WRAP NOTE']);
+  });
+});

@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { Fragment, useState, useEffect, useMemo } from 'react';
 import { useScreenplayStore } from '../store/screenplayStore';
 import { useShallow } from 'zustand/react/shallow';
 import type {
   ShootDay, SceneStrip, ProductionPerson, ProductionLocation, ProductionScene,
-  CallSheet, PersonRole, CallSheetScene,
+  CallSheet, PersonRole, CallSheetScene, BoardBanner,
 } from '../types/screenplay';
 import { STRIP_COLOR_HEX, stripTextColor } from '../types/screenplay';
 import { fetchWeather, geocodeAddress, generateMapsLink, findNearbyHospitals, lookupTimezone, type WeatherData, type NearestHospitalResult } from '../utils/weather';
@@ -44,6 +44,7 @@ const BaseCamp: React.FC = () => {
     addShootDay,
     updateShootDay,
     deleteShootDay,
+    deleteBanner,
     assignStripToDay,
     unassignStrip,
     selectShootDay,
@@ -80,6 +81,7 @@ const BaseCamp: React.FC = () => {
       addShootDay: s.addShootDay,
       updateShootDay: s.updateShootDay,
       deleteShootDay: s.deleteShootDay,
+      deleteBanner: s.deleteBanner,
       assignStripToDay: s.assignStripToDay,
       unassignStrip: s.unassignStrip,
       selectShootDay: s.selectShootDay,
@@ -2570,6 +2572,13 @@ const BaseCamp: React.FC = () => {
       );
     };
 
+    const renderBanner = (dayId: string, banner: BoardBanner) => (
+      <div key={banner.id} className="bct-banner" style={{ background: banner.color || '#F5D76E' }}>
+        <span>{banner.text}</span>
+        <button title="Remove banner" onClick={e => { e.stopPropagation(); deleteBanner(dayId, banner.id); }}>×</button>
+      </div>
+    );
+
     const stats = {
       totalScenes: schedule?.strips.length || 0,
       scheduledScenes: schedule?.strips.filter(s => s.scheduledDayId).length || 0,
@@ -2586,13 +2595,13 @@ const BaseCamp: React.FC = () => {
             <h3>Schedule Overview</h3>
             <div className="stat-item"><span>Total Scenes</span><span>{stats.totalScenes}</span></div>
             <div className="stat-item"><span>Scheduled</span><span>{stats.scheduledScenes}</span></div>
-            <div className="stat-item"><span>Unscheduled</span><span className="warning">{stats.unscheduledScenes}</span></div>
+            <div className="stat-item"><span>Boneyard</span><span className="warning">{stats.unscheduledScenes}</span></div>
             <div className="stat-item"><span>Shoot Days</span><span>{stats.totalDays}</span></div>
             <div className="stat-item"><span>Total Pages</span><span>{formatPageCount(stats.totalPages)}</span></div>
           </div>
 
           <div className="sidebar-section unscheduled">
-            <h3>Unscheduled ({schedule?.unscheduledStrips.length || 0})</h3>
+            <h3>Boneyard ({schedule?.unscheduledStrips.length || 0})</h3>
             <div className="unscheduled-area" onDragOver={handleDragOver} onDrop={handleDropOnUnscheduled}>
               {schedule?.unscheduledStrips.length === 0 ? (
                 <div className="empty-text">
@@ -2685,7 +2694,15 @@ const BaseCamp: React.FC = () => {
                       {day.strips.length === 0 ? (
                         <div className="drop-zone">Drop scenes here</div>
                       ) : (
-                        <div className="strip-list">{day.strips.map(stripId => renderStrip(stripId))}</div>
+                        <div className="strip-list">
+                          {day.strips.map(stripId => (
+                            <Fragment key={stripId}>
+                              {(day.banners ?? []).filter(b => b.beforeStripId === stripId).map(b => renderBanner(day.id, b))}
+                              {renderStrip(stripId)}
+                            </Fragment>
+                          ))}
+                          {(day.banners ?? []).filter(b => !b.beforeStripId || !day.strips.includes(b.beforeStripId)).map(b => renderBanner(day.id, b))}
+                        </div>
                       )}
                     </div>
                   </div>

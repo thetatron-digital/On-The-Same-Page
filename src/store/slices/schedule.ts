@@ -796,6 +796,92 @@ export const createScheduleSlice: StateCreator<ScreenplayState, [], [], Schedule
     return null;
   },
 
+  // Movie Magic's Insert Day Break: the strips after `stripId` start a new day
+  insertDayBreakAfter: (stripId) => {
+    const schedule = get().schedule;
+    if (!schedule) return 'There is no schedule yet.';
+    const dayIndex = schedule.shootDays.findIndex((d) => d.strips.includes(stripId));
+    if (dayIndex < 0) return 'Select a scheduled strip first.';
+    const day = schedule.shootDays[dayIndex];
+    const cut = day.strips.indexOf(stripId) + 1;
+    if (cut >= day.strips.length) return 'That strip already ends its day.';
+    const moving = new Set(day.strips.slice(cut));
+    const groups = schedule.shootDays.flatMap((d, i) =>
+      i === dayIndex ? [d.strips.slice(0, cut), d.strips.slice(cut)] : [d.strips]
+    );
+    // Banners travel with the strip they sit before; end-of-day banners go to the new day
+    const keep = (day.banners ?? []).filter((b) => b.beforeStripId && !moving.has(b.beforeStripId));
+    const move = (day.banners ?? []).filter((b) => !b.beforeStripId || moving.has(b.beforeStripId));
+    const newDay: ShootDay = {
+      id: generateId(), dayNumber: 0, strips: [], shotPackages: [], banners: move,
+      callTime: day.callTime, estimatedWrap: day.estimatedWrap, lunchDuration: day.lunchDuration,
+      isLocked: false, hasNightWork: false,
+    };
+    const shootDays = [...schedule.shootDays];
+    shootDays.splice(dayIndex, 1, { ...day, banners: keep }, newDay);
+    set({ schedule: fillDays({ ...schedule, shootDays }, groups), isDirty: true });
+    return null;
+  },
+
+  // Movie Magic's Delete All Day Breaks: every scheduled strip on one day
+  deleteAllDayBreaks: () => {
+    const schedule = get().schedule;
+    if (!schedule) return 'There is no schedule yet.';
+    const ids = scheduledStripIds(schedule);
+    if (ids.length === 0) return 'Schedule some strips first.';
+    // Banners from every day follow their strips onto the one day
+    const banners = schedule.shootDays.flatMap((d) => d.banners ?? []);
+    const shootDays = schedule.shootDays.map((d, i) => ({ ...d, banners: i === 0 ? banners : [] }));
+    set({ schedule: fillDays({ ...schedule, shootDays }, [ids]), isDirty: true });
+    return null;
+  },
+
+  addBanner: (dayId, text, options = {}) => {
+    const schedule = get().schedule;
+    if (!schedule) return null;
+    const id = generateId();
+    const banner = { id, text: text.trim() || 'BANNER', ...options };
+    set({
+      schedule: {
+        ...schedule,
+        shootDays: schedule.shootDays.map((d) => (d.id === dayId ? { ...d, banners: [...(d.banners ?? []), banner] } : d)),
+        updatedAt: new Date(),
+      },
+      isDirty: true,
+    });
+    return id;
+  },
+
+  updateBanner: (dayId, bannerId, updates) => {
+    const schedule = get().schedule;
+    if (!schedule) return;
+    set({
+      schedule: {
+        ...schedule,
+        shootDays: schedule.shootDays.map((d) =>
+          d.id === dayId ? { ...d, banners: (d.banners ?? []).map((b) => (b.id === bannerId ? { ...b, ...updates } : b)) } : d
+        ),
+        updatedAt: new Date(),
+      },
+      isDirty: true,
+    });
+  },
+
+  deleteBanner: (dayId, bannerId) => {
+    const schedule = get().schedule;
+    if (!schedule) return;
+    set({
+      schedule: {
+        ...schedule,
+        shootDays: schedule.shootDays.map((d) =>
+          d.id === dayId ? { ...d, banners: (d.banners ?? []).filter((b) => b.id !== bannerId) } : d
+        ),
+        updatedAt: new Date(),
+      },
+      isDirty: true,
+    });
+  },
+
   updateDOODSettings: (updates) => {
     const state = get();
     if (!state.schedule) get().initializeSchedule();

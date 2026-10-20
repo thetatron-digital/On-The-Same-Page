@@ -17,14 +17,28 @@ const SORT_FIELDS: [StripSortField, string][] = [
 ];
 
 export function BoardTools() {
-  const { autoAssignDayBreaks, sortScheduledStrips, hasScheduled } = useScreenplayStore(
+  const {
+    autoAssignDayBreaks, sortScheduledStrips, insertDayBreakAfter, deleteAllDayBreaks, addBanner,
+    hasScheduled, selectedStripId, selectedShootDayId, shootDays,
+  } = useScreenplayStore(
     useShallow((s) => ({
       autoAssignDayBreaks: s.autoAssignDayBreaks,
       sortScheduledStrips: s.sortScheduledStrips,
+      insertDayBreakAfter: s.insertDayBreakAfter,
+      deleteAllDayBreaks: s.deleteAllDayBreaks,
+      addBanner: s.addBanner,
       hasScheduled: !!s.schedule?.shootDays.some((d) => d.strips.length > 0),
+      selectedStripId: s.selectedStripId,
+      selectedShootDayId: s.selectedShootDayId,
+      shootDays: s.schedule?.shootDays ?? [],
     }))
   );
-  const [dialog, setDialog] = useState<'breaks' | 'sort' | null>(null);
+  const [dialog, setDialog] = useState<'breaks' | 'sort' | 'banner' | null>(null);
+  const [bannerText, setBannerText] = useState('COMPANY MOVE');
+  const [bannerColor, setBannerColor] = useState('#F5D76E');
+  const stripDay = shootDays.find((d) => selectedStripId && d.strips.includes(selectedStripId));
+  // Banner goes before the selected strip, else at the end of the selected (or first) day
+  const bannerDay = stripDay ?? shootDays.find((d) => d.id === selectedShootDayId) ?? shootDays[0];
   const [maxPages, setMaxPages] = useState(5);
   const [levels, setLevels] = useState<StripSortLevel[]>([{ field: 'location', direction: 'asc' }]);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +51,11 @@ export function BoardTools() {
       <div className="bct-board-tools">
         <button className="bc-btn bc-btn-outline small" disabled={!hasScheduled} onClick={() => setDialog('breaks')} title="Insert day breaks across the whole board">Auto Day Breaks…</button>
         <button className="bc-btn bc-btn-outline small" disabled={!hasScheduled} onClick={() => setDialog('sort')} title="Reorder scheduled strips">Sort…</button>
+        <button className="bc-btn bc-btn-outline small" disabled={!stripDay} title={stripDay ? 'Start a new day after the selected strip' : 'Select a scheduled strip first'}
+          onClick={() => { const err = insertDayBreakAfter(selectedStripId!); if (err) alert(err); }}>Insert Day Break</button>
+        <button className="bc-btn bc-btn-outline small" disabled={!hasScheduled || shootDays.length < 2} title="Put every scheduled strip on one day"
+          onClick={() => { if (confirm('Delete all day breaks? Every scheduled strip will be on Day 1.')) { const err = deleteAllDayBreaks(); if (err) alert(err); } }}>Delete All Day Breaks</button>
+        <button className="bc-btn bc-btn-outline small" disabled={!bannerDay} onClick={() => setDialog('banner')} title="Add a banner (e.g. COMPANY MOVE) to the board">Insert Banner…</button>
       </div>
 
       {dialog === 'breaks' && (
@@ -54,6 +73,39 @@ export function BoardTools() {
             <div className="bc-modal-footer">
               <button className="bc-btn bc-btn-secondary" onClick={close}>Cancel</button>
               <button className="bc-btn bc-btn-primary" onClick={() => run(autoAssignDayBreaks({ maxPagesPerDay: maxPages }))}>OK</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {dialog === 'banner' && bannerDay && (
+        <div className="bc-modal-overlay" onClick={close}>
+          <div className="bc-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="bc-modal-header"><h3>Insert Banner</h3><button className="bc-modal-close" onClick={close}>×</button></div>
+            <div className="bc-modal-body">
+              <div className="bc-form-group">
+                <label>Banner Text</label>
+                <input value={bannerText} onChange={(e) => setBannerText(e.target.value)} />
+              </div>
+              <div className="bct-banner-presets">
+                {['COMPANY MOVE', 'LUNCH', 'TRAVEL DAY', 'END OF WEEK', 'SECOND UNIT'].map((t) => (
+                  <button key={t} className="bc-btn bc-btn-outline small" onClick={() => setBannerText(t)}>{t}</button>
+                ))}
+              </div>
+              <div className="bc-form-group">
+                <label>Color</label>
+                <input type="color" value={bannerColor} onChange={(e) => setBannerColor(e.target.value)} />
+              </div>
+              <p className="bc-form-hint">
+                Goes into Day {bannerDay.dayNumber}{stripDay ? ', before the selected strip' : ', at the end of the day'}.
+              </p>
+            </div>
+            <div className="bc-modal-footer">
+              <button className="bc-btn bc-btn-secondary" onClick={close}>Cancel</button>
+              <button className="bc-btn bc-btn-primary" disabled={!bannerText.trim()} onClick={() => {
+                addBanner(bannerDay.id, bannerText.toUpperCase(), { beforeStripId: stripDay ? selectedStripId! : undefined, color: bannerColor });
+                close();
+              }}>OK</button>
             </div>
           </div>
         </div>
