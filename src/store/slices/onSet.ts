@@ -1,8 +1,24 @@
 // OnSet: live production board
 import type { StateCreator } from 'zustand';
-import type { OnSet, ProductionStatus, LunchStatus, DelayEntry } from '../../types/screenplay';
+import type { OnSet, ProductionStatus, LunchStatus, DelayEntry, Schedule, ShootDay } from '../../types/screenplay';
+import { clockFromMinutes, dayProgress, planDay } from '../../engine/schedule/dayPlan';
 import { generateId } from '../../utils/fdx';
 import type { ScreenplayState, OnSetSlice } from '../types';
+
+// Lunch minutes so far today (still counting while on lunch)
+function lunchTakenMinutes(lunch: LunchStatus | null): number {
+  if (!lunch?.lunchStartedAt) return 0;
+  if (lunch.actualDuration !== undefined) return lunch.actualDuration;
+  return lunch.isOnLunch ? (Date.now() - new Date(lunch.lunchStartedAt).getTime()) / 60000 : 0;
+}
+
+// Scheduled wrap moved by how far ahead or behind the day is
+function projectedWrap(schedule: Schedule, day: ShootDay, status: ProductionStatus, lunch: LunchStatus | null): string | null {
+  if (!status.dayStartedAt) return null;
+  const plan = planDay(day, new Map(schedule.strips.map(s => [s.id, s])), schedule.companyMoves, schedule.defaultLunchDuration ?? 60);
+  const p = dayProgress(plan, new Set(status.completedStrips), new Date(status.dayStartedAt), new Date(), lunchTakenMinutes(lunch));
+  return p.projectedWrapMinutes !== null ? clockFromMinutes(p.projectedWrapMinutes) : null;
+}
 
 export const createOnSetSlice: StateCreator<ScreenplayState, [], [], OnSetSlice> = (set, get) => ({
   // OnSet state
@@ -231,20 +247,11 @@ export const createOnSetSlice: StateCreator<ScreenplayState, [], [], OnSetSlice>
     const prodStatus = onSetState?.productionStatus;
     if (!onSetState || !prodStatus || !state.schedule) return;
 
-    // Simple calculation: compare completed strips to expected progress
+    // Planned minutes of the scenes finished vs minutes worked (less lunch)
     const currentDay = state.schedule.shootDays.find(d => d.id === prodStatus.currentDayId);
-    if (!currentDay) return;
-
-    const completedCount = prodStatus.completedStrips.length;
-
-    // If day started, calculate expected progress based on elapsed time
-    const dayStarted = prodStatus.dayStartedAt;
-    if (!dayStarted) return;
-
-    const elapsedMinutes = (new Date().getTime() - new Date(dayStarted).getTime()) / 60000;
-    const expectedPerStrip = 60; // Assume 1 hour per strip as baseline (would be calculated from estimates)
-    const expectedProgress = elapsedMinutes / expectedPerStrip;
-    const aheadBehind = Math.round((completedCount - expectedProgress) * expectedPerStrip);
+    if (!currentDay || !prodStatus.dayStartedAt) return;
+    const plan = planDay(currentDay, new Map(state.schedule.strips.map(s => [s.id, s])), state.schedule.companyMoves, state.schedule.defaultLunchDuration ?? 60);
+    const aheadBehind = dayProgress(plan, new Set(prodStatus.completedStrips), new Date(prodStatus.dayStartedAt), new Date(), lunchTakenMinutes(onSetState.lunchStatus)).aheadMinutes;
 
     set({
       onSet: {
@@ -298,7 +305,13 @@ export const createOnSetSlice: StateCreator<ScreenplayState, [], [], OnSetSlice>
     const nextStripId = currentDay.strips[prodStatus.currentStripIndex + 1];
     const nextStrip = nextStripId ? state.schedule.strips.find(s => s.id === nextStripId) : null;
 
-    const aheadBehindNum = prodStatus.aheadBehind;
+    // Live: recomputed whenever the board asks (it refreshes every second)
+    const aheadBehindNum = prodStatus.dayStartedAt
+      ? dayProgress(
+          planDay(currentDay, new Map(state.schedule.strips.map(s => [s.id, s])), state.schedule.companyMoves, state.schedule.defaultLunchDuration ?? 60),
+          new Set(prodStatus.completedStrips), new Date(prodStatus.dayStartedAt), new Date(), lunchTakenMinutes(onSetState.lunchStatus)
+        ).aheadMinutes
+      : prodStatus.aheadBehind;
     const aheadBehind = aheadBehindNum >= 0 ? `+${aheadBehindNum} min` : `${aheadBehindNum} min`;
 
     // Calculate lunch countdown if on lunch
@@ -316,7 +329,7 @@ export const createOnSetSlice: StateCreator<ScreenplayState, [], [], OnSetSlice>
     return {
       currentScene: currentStrip ? `Scene ${currentStrip.sceneNumber}` : 'N/A',
       currentSetup: currentStrip ? `${currentStrip.intExt}. ${currentStrip.location}` : '',
-      estimatedWrap: currentDay.estimatedWrap,
+      estimatedWrap: projectedWrap(state.schedule, currentDay, prodStatus, onSetState.lunchStatus) ?? currentDay.estimatedWrap,
       aheadBehind,
       nextUp: nextStrip ? `Scene ${nextStrip.sceneNumber}` : 'Wrap',
       isOnLunch: onSetState.lunchStatus?.isOnLunch || false,

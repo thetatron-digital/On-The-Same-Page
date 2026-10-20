@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useScreenplayStore } from '../store/screenplayStore';
 import { useShallow } from 'zustand/react/shallow';
 import type { OnSetViewMode } from '../types/screenplay';
 import { STRIP_COLOR_HEX, stripTextColor } from '../types/screenplay';
+import { planDay } from '../engine/schedule/dayPlan';
 import './OnSet.css';
 
 const OnSet: React.FC = () => {
@@ -68,6 +69,14 @@ const OnSet: React.FC = () => {
 
   // Get current status
   const status = getQuickStatus();
+
+  // Planned length of each of today's scenes (the working day shared by pages)
+  const plannedMinutes = useMemo(() => {
+    const day = schedule?.shootDays.find(d => d.id === onSet?.productionStatus?.currentDayId);
+    if (!day || !schedule) return new Map<string, number>();
+    const plan = planDay(day, new Map(schedule.strips.map(s => [s.id, s])), schedule.companyMoves, schedule.defaultLunchDuration ?? 60);
+    return new Map(plan.items.filter(i => i.kind === 'strip').map(i => [i.id, i.minutes]));
+  }, [schedule, onSet?.productionStatus?.currentDayId]);
 
   // Get current day
   const currentDay = onSet?.productionStatus
@@ -424,7 +433,7 @@ const OnSet: React.FC = () => {
                 >
                   <span className="strip-number">{strip!.sceneNumber}</span>
                   <span className="strip-location">{strip!.intExt}. {strip!.location}</span>
-                  <span className="strip-pages">{strip!.pageCount} pg</span>
+                  <span className="strip-pages">{strip!.pageCount} pg{plannedMinutes.get(strip!.id) ? ` · ~${plannedMinutes.get(strip!.id)} min` : ''}</span>
                 </div>
               ))}
               {getNextStrips(5).length === 0 && (
