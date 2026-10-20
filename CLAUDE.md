@@ -27,6 +27,7 @@ The platform contains these apps (these names are correct and should not be chan
 | `basecamp` | BaseCamp | Scheduling |
 | `onset` | OnSet | Live Production |
 | `supervisor` | SuperVisor | Script Supervisor |
+| `bottomline` | BottomLine | Budgeting |
 
 ## Naming Rules
 

@@ -10,7 +10,7 @@ import type { AppMode } from '../store/types';
 
 export const APP_IDS = [
   'blueprint', 'corkboard', 'rewriter', 'breakdown', 'artcart',
-  'viewfinder', 'basecamp', 'onset', 'supervisor',
+  'viewfinder', 'basecamp', 'onset', 'supervisor', 'bottomline',
 ] as const satisfies readonly Exclude<AppMode, 'home'>[];
 
 export interface RouteTarget {

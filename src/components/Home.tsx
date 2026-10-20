@@ -476,6 +476,7 @@ export const Home = () => {
               { id: 'basecamp', name: 'BaseCamp', desc: 'Scheduling' },
               { id: 'onset', name: 'OnSet', desc: 'Live Production' },
               { id: 'supervisor', name: 'SuperVisor', desc: 'Script Supervisor' },
+              { id: 'bottomline', name: 'BottomLine', desc: 'Budgeting' },
             ].map((app) => (
               <button
                 key={app.id}
