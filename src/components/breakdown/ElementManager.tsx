@@ -24,6 +24,7 @@ export function ElementManager({ onClose }: { onClose: () => void }) {
       mergeElementRecords: st.mergeElementRecords,
       renumberElementBoardIds: st.renumberElementBoardIds,
       deleteElementRecord: st.deleteElementRecord,
+      setElementLinkMode: st.setElementLinkMode,
       updateDOODSettings: st.updateDOODSettings,
     }))
   );
@@ -91,6 +92,14 @@ export function ElementManager({ onClose }: { onClose: () => void }) {
         <button className="em-btn" onClick={onClose}>← Script</button>
         <h3>Element Manager</h3>
         <div className="em-toolbar-actions">
+          <label className="em-link-mode" title="Element-Linking preference: what happens to linked elements when you tag an element">
+            Linked elements
+            <select value={breakdown.elementLinkMode ?? 'confirm'} onChange={(e) => s.setElementLinkMode(e.target.value as 'auto' | 'confirm' | 'never')}>
+              <option value="auto">Insert automatically</option>
+              <option value="confirm">Insert after confirmation</option>
+              <option value="never">Never insert</option>
+            </select>
+          </label>
           <button className="em-btn" disabled={selected.length !== 1} onClick={() => setEditing(selectedRecords[0])}>Edit…</button>
           <button className="em-btn" disabled={category === ALL} title={category === ALL ? 'Pick a category first' : ''}
             onClick={() => s.renumberElementBoardIds(category)}>Renumber Board IDs</button>
@@ -147,7 +156,11 @@ export function ElementManager({ onClose }: { onClose: () => void }) {
                       {category === ALL && <td>{e.category}</td>}
                       <td>{e.boardId ?? ''}</td>
                       <td>{e.lockBoardId ? '🔒' : ''}</td>
-                      <td className="em-left em-name">{e.name}{e.excludeFromStripboard ? <span className="em-tag">excluded</span> : null}</td>
+                      <td className="em-left em-name">
+                        {e.name}
+                        {e.linkedElementIds?.length ? <span className="em-tag" title={e.linkedElementIds.map((id) => list.find((x) => x.id === id)?.name).filter(Boolean).join(', ')}>🔗 {e.linkedElementIds.length}</span> : null}
+                        {e.excludeFromStripboard ? <span className="em-tag">excluded</span> : null}
+                      </td>
                       <td>{usage.get(e.id)?.occurrences ?? 0}</td>
                       <td>{row?.totals.start ?? ''}</td>
                       <td>{row?.totals.finish ?? ''}</td>
@@ -171,6 +184,7 @@ export function ElementManager({ onClose }: { onClose: () => void }) {
       {editing && (
         <EditElement
           record={editing}
+          allElements={list}
           occurrences={usage.get(editing.id)?.occurrences ?? 0}
           dood={doodFor(editing)}
           options={resolveDOODOptions(schedule?.doodSettings ?? DEFAULT_DOOD_SETTINGS, editing.category, editing.id)}
@@ -189,6 +203,7 @@ export function ElementManager({ onClose }: { onClose: () => void }) {
 
 function EditElement(props: {
   record: ElementRecord;
+  allElements: ElementRecord[];
   occurrences: number;
   dood?: DOODRow;
   options: DOODElementOptions;
@@ -231,6 +246,29 @@ function EditElement(props: {
             </div>
           </fieldset>
           <fieldset>
+            <legend>Linked Elements</legend>
+            <p className="em-hint">Tagging {record.name || 'this element'} in a scene also adds the elements checked here.</p>
+            <div className="em-link-list">
+              {props.allElements
+                .filter((e) => e.id !== record.id)
+                .sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name))
+                .map((e) => {
+                  const linked = record.linkedElementIds?.includes(e.id) ?? false;
+                  return (
+                    <label key={e.id} className="em-check">
+                      <input type="checkbox" checked={linked} onChange={() => setRecord({
+                        ...record,
+                        linkedElementIds: linked
+                          ? (record.linkedElementIds ?? []).filter((id) => id !== e.id)
+                          : [...(record.linkedElementIds ?? []), e.id],
+                      })} />
+                      <span className="em-link-cat">{e.category}</span> {e.name}
+                    </label>
+                  );
+                })}
+            </div>
+          </fieldset>
+          <fieldset>
             <legend>Element Properties</legend>
             {Object.entries(properties).map(([key, value]) => (
               <label key={key}>{key}
@@ -257,8 +295,8 @@ function EditElement(props: {
         <div className="em-modal-footer">
           <button className="em-btn" onClick={props.onClose}>Cancel</button>
           <button className="em-btn em-primary" disabled={!record.name.trim()} onClick={() => {
-            const { name, boardId, lockBoardId, excludeFromStripboard, properties: props2, notes } = record;
-            props.onSave({ name: name.trim(), boardId, lockBoardId, excludeFromStripboard, properties: props2, notes }, options);
+            const { name, boardId, lockBoardId, excludeFromStripboard, properties: props2, notes, linkedElementIds } = record;
+            props.onSave({ name: name.trim(), boardId, lockBoardId, excludeFromStripboard, properties: props2, notes, linkedElementIds }, options);
           }}>OK</button>
         </div>
       </div>

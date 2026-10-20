@@ -682,6 +682,7 @@ export interface ElementRecord {
   excludeFromStripboard: boolean;
   properties?: Record<string, string>; // custom fields (e.g. actor, agent)
   notes?: string;
+  linkedElementIds?: string[]; // Element Linking: tagging this adds these to the scene
 }
 
 // Scene breakdown with eighths calculation
@@ -741,6 +742,7 @@ export interface Breakdown {
   elements: BreakdownElement[];
   elementList?: ElementRecord[]; // master elements (built from tags if missing)
   sheets?: Record<string, BreakdownSheetFields>; // user-entered sheet fields, by scene id
+  elementLinkMode?: 'auto' | 'confirm' | 'never'; // Element-Linking preference (default: confirm)
   scenes: BreakdownScene[];
   customCategories: CustomCategory[];
   castList: BreakdownCastMember[];
@@ -1371,6 +1373,10 @@ export interface DOODDayStatus {
   status: DOODStatus;
 }
 
+// Strip layout presets (Movie Magic lets you design strips; these cover
+// the common vertical / detailed / thin layouts)
+export type StripLayout = 'standard' | 'detailed' | 'thin';
+
 // An inactive stripboard: its own day breaks, Boneyard and calendar
 export interface StripboardSnapshot {
   id: string;
@@ -1420,6 +1426,7 @@ export interface Schedule {
   // board; other boards over the same strips are kept as snapshots
   activeBoardId?: string;
   activeBoardName?: string;
+  stripLayout?: StripLayout; // which fields strips show (Movie Magic's Layout picker)
   activeBoardDescription?: string;
   otherBoards?: StripboardSnapshot[];
 
@@ -1610,6 +1617,29 @@ export interface ProductionSettings {
   defaultCallTime: string;
   defaultLunchDuration: number;
   defaultDisclaimer: string;
+  productionInfo?: ProductionInfo;
+}
+
+// Movie Magic's Production Info (Design menu): header fields for
+// reports, the Day Out of Days and strip boards
+export interface ProductionInfo {
+  pictureTitle?: string;
+  company?: string;
+  productionNumber?: string;
+  episodeNumber?: string;
+  director?: string;
+  producer?: string;
+  upm?: string;
+  assistantDirector?: string;
+  artDirector?: string;
+  setDresser?: string;
+  scriptDated?: string;
+  preparedBy?: string;
+  timing?: string;
+  misc1?: string;
+  misc2?: string;
+  misc3?: string;
+  misc4?: string;
 }
 
 export const DEFAULT_DISCLAIMER = 'NO VISITORS WITHOUT PRIOR APPROVAL OF PRODUCTION | NO PHOTOS ON SET | PUT CELLPHONES ON SILENT WHEN ON SET';

@@ -335,3 +335,13 @@
 .bct-row-actions { display: flex; gap: 4px; justify-content: flex-end; flex-wrap: wrap; }
 .bct-active-tag { margin-left: 6px; font-size: 10px; text-transform: uppercase; background: #27AE60; color: #fff; border-radius: 4px; padding: 1px 5px; }
 .bct-sort-table input { padding: 4px 6px; border-radius: 4px; border: 1px solid #D5DBE3; background: transparent; color: inherit; width: 100%; }
+
+/* Production Info */
+.bct-info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 4px 16px; max-width: 900px; }
+.bct-info-grid input::placeholder { opacity: 0.55; }
+.bct-report-credits { font-size: 12px; opacity: 0.75; margin: -6px 0 12px; }
+
+/* Strip layouts */
+.strip-cast-ids { font-size: 10px; font-weight: 700; letter-spacing: 0.02em; padding: 0 4px; border-left: 1px solid rgba(0,0,0,0.2); }
+.strip-sheet { font-size: 9px; opacity: 0.7; min-width: 16px; }
+.strip-synopsis { display: block; font-size: 9px; opacity: 0.75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

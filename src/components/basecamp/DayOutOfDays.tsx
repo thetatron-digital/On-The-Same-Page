@@ -12,6 +12,7 @@ import {
   type DOODElementOptions,
 } from '../../engine/schedule/dood';
 import type { CalendarColumn } from '../../engine/schedule/calendar';
+import { productionInfoLine, resolveProductionInfo } from '../../utils/productionInfo';
 import './basecampTools.css';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -25,11 +26,12 @@ const CODE_LABELS: [keyof DOODCodes, string][] = [
 const columnDate = (c: CalendarColumn) => (c.date ? new Date(`${c.date}T12:00:00`) : null);
 
 export function DayOutOfDays() {
-  const { schedule, breakdown, people, updateDOODSettings, setBasecampView } = useScreenplayStore(
+  const { schedule, breakdown, people, productionSettings, updateDOODSettings, setBasecampView } = useScreenplayStore(
     useShallow((s) => ({
       schedule: s.schedule,
       breakdown: s.breakdown,
       people: s.productionData.people,
+      productionSettings: s.productionData.settings,
       updateDOODSettings: s.updateDOODSettings,
       setBasecampView: s.setBasecampView,
     }))
@@ -82,6 +84,13 @@ export function DayOutOfDays() {
         <div className="bct-empty"><p>No {category} elements appear on scheduled strips.</p></div>
       ) : (
         <div className="bct-table-wrap">
+          {(() => {
+            const info = resolveProductionInfo(productionSettings, people);
+            const credits = productionInfoLine(info);
+            return info.pictureTitle || credits ? (
+              <div className="bct-report-credits"><strong>{info.pictureTitle}</strong>{credits ? `  ·  ${credits}` : ''}</div>
+            ) : null;
+          })()}
           <table className="bct-dood-table">
             <thead>
               <tr>

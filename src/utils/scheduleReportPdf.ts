@@ -31,6 +31,13 @@ export function scheduleReportPdf(report: ScheduleReport, kind: ReportKind): jsP
     doc.setLineWidth(0.75);
     doc.line(M, M + 14, PW - M, M + 14);
     y = M + 30;
+    if (report.credits) {
+      doc.setFontSize(8);
+      doc.setTextColor('#555555');
+      doc.text(doc.splitTextToSize(report.credits, CW)[0] ?? '', M, M + 25);
+      doc.setTextColor('#1a1a1a');
+      y = M + 40;
+    }
   };
   const footer = () => {
     doc.setFont('helvetica', 'normal');

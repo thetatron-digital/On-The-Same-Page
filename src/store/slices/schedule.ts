@@ -978,6 +978,12 @@ export const createScheduleSlice: StateCreator<ScreenplayState, [], [], Schedule
     return null;
   },
 
+  setStripLayout: (layout) => {
+    const schedule = get().schedule;
+    if (!schedule) return;
+    set({ schedule: { ...schedule, stripLayout: layout, updatedAt: new Date() }, isDirty: true });
+  },
+
   // Movie Magic's "Move All Strips to Unscheduled"
   moveAllStripsToBoneyard: () => {
     const schedule = get().schedule;

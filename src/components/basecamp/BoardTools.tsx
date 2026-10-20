@@ -66,7 +66,7 @@ export function BoardTools() {
   const {
     autoAssignDayBreaks, sortScheduledStrips, insertDayBreakAfter, deleteAllDayBreaks, addBanner,
     hasScheduled, selectedStripId, selectedShootDayId, shootDays,
-    activeBoardName, activeBoardDescription, otherBoards, activeBoardId, createStripboard, switchStripboard, renameStripboard, deleteStripboard, moveAllStripsToBoneyard,
+    activeBoardName, activeBoardDescription, otherBoards, activeBoardId, createStripboard, stripLayout, setStripLayout, switchStripboard, renameStripboard, deleteStripboard, moveAllStripsToBoneyard,
   } = useScreenplayStore(
     useShallow((s) => ({
       activeBoardName: s.schedule?.activeBoardName,
@@ -78,6 +78,8 @@ export function BoardTools() {
       renameStripboard: s.renameStripboard,
       deleteStripboard: s.deleteStripboard,
       moveAllStripsToBoneyard: s.moveAllStripsToBoneyard,
+      stripLayout: s.schedule?.stripLayout ?? 'standard',
+      setStripLayout: s.setStripLayout,
       autoAssignDayBreaks: s.autoAssignDayBreaks,
       sortScheduledStrips: s.sortScheduledStrips,
       insertDayBreakAfter: s.insertDayBreakAfter,
@@ -114,6 +116,14 @@ export function BoardTools() {
           </select>
         </label>
         <button className="bc-btn bc-btn-outline small" onClick={() => setDialog('boards')}>Stripboard Manager…</button>
+        <label className="bct-inline-label">
+          Layout
+          <select value={stripLayout} onChange={(e) => setStripLayout(e.target.value as 'standard' | 'detailed' | 'thin')}>
+            <option value="standard">Standard (cast IDs)</option>
+            <option value="detailed">Detailed (sheet #, synopsis)</option>
+            <option value="thin">Thin</option>
+          </select>
+        </label>
         <button className="bc-btn bc-btn-outline small" disabled={!hasScheduled} onClick={() => setDialog('breaks')} title="Insert day breaks across the whole board">Auto Day Breaks…</button>
         <button className="bc-btn bc-btn-outline small" disabled={!hasScheduled} onClick={() => setDialog('sort')} title="Reorder scheduled strips">Sort…</button>
         <button className="bc-btn bc-btn-outline small" disabled={!stripDay} title={stripDay ? 'Start a new day after the selected strip' : 'Select a scheduled strip first'}

@@ -42,6 +42,7 @@ export interface ReportDay {
 
 export interface ScheduleReport {
   title: string;
+  credits?: string; // Production Info line for the header
   days: ReportDay[];
   totalEighths: number;
   totalPages: string;
@@ -102,7 +103,7 @@ function stripRow(
 
 export function buildScheduleReport(
   schedule: Schedule,
-  context: { breakdown: Breakdown | null; people: ProductionPerson[]; includeBanners?: boolean; title?: string }
+  context: { breakdown: Breakdown | null; people: ProductionPerson[]; includeBanners?: boolean; title?: string; credits?: string }
 ): ScheduleReport {
   const stripById = new Map(schedule.strips.map((s) => [s.id, s]));
   const days: ReportDay[] = schedule.shootDays.map((day) => {
@@ -120,7 +121,7 @@ export function buildScheduleReport(
     return { dayNumber: day.dayNumber, date: toYMD(day.date), items, totalEighths, totalPages: formatEighths(totalEighths) };
   });
   const totalEighths = days.reduce((sum, d) => sum + d.totalEighths, 0);
-  return { title: context.title ?? schedule.projectName, days, totalEighths, totalPages: formatEighths(totalEighths) };
+  return { title: context.title ?? schedule.projectName, credits: context.credits, days, totalEighths, totalPages: formatEighths(totalEighths) };
 }
 
 export const formatReportDate = (ymd: string) =>

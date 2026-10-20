@@ -3,7 +3,7 @@ import type { StateCreator } from 'zustand';
 import type { Breakdown } from '../../types/screenplay';
 import { generateId } from '../../utils/fdx';
 import { generateBreakdownScenes, getElementsForScene } from '../../utils/breakdown';
-import { deleteElement, mergeElements, renumberBoardIds, syncElementList } from '../../utils/elements';
+import { addLinkedElements, deleteElement, mergeElements, pendingLinkedElements, renumberBoardIds, syncElementList } from '../../utils/elements';
 import type { ScreenplayState, BreakdownSlice } from '../types';
 
 export const createBreakdownSlice: StateCreator<ScreenplayState, [], [], BreakdownSlice> = (set, get) => ({
@@ -192,6 +192,22 @@ export const createBreakdownSlice: StateCreator<ScreenplayState, [], [], Breakdo
     const known = new Set(breakdownScenes.map((sc) => sc.id));
     const scenes = [...breakdownScenes, ...breakdown.scenes.filter((sc) => !known.has(sc.id))];
     set({ breakdown: { ...renumberBoardIds(syncElementList(breakdown), scenes, category), updatedAt: new Date() }, isDirty: true });
+  },
+
+  addLinkedElementsToScene: (sceneId, recordId) => {
+    const { breakdown } = get();
+    if (!breakdown) return 0;
+    const pending = pendingLinkedElements(breakdown, sceneId, recordId);
+    if (pending.length === 0) return 0;
+    const next = addLinkedElements(breakdown, sceneId, pending);
+    set({ breakdown: { ...next, updatedAt: new Date() }, breakdownScenes: next.scenes, isDirty: true });
+    return pending.length;
+  },
+
+  setElementLinkMode: (mode) => {
+    const { breakdown } = get();
+    if (!breakdown) return;
+    set({ breakdown: { ...breakdown, elementLinkMode: mode, updatedAt: new Date() }, isDirty: true });
   },
 
   deleteElementRecord: (id) => {
