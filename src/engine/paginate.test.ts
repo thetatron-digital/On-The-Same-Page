@@ -130,12 +130,30 @@ describe('paginate: dialogue across a page break', () => {
     }]);
   });
 
-  it('prefers to break after a full sentence', () => {
-    // 8 lines would fit, but lines 7 and 8 end mid-sentence, so the break moves up to after line 6
-    const speech = sentences(12).split('\n').map((l, i) => (i === 6 || i === 7 ? l.replace('.', ',') : l)).join('\n');
+  it('breaks only at the end of a sentence and re-wraps the rest on the next page', () => {
+    const speech = Array.from({ length: 9 }, (_, i) =>
+      `Sentence ${i + 1} runs on for a little while before it stops.`).join(' ');
     const script = [el('Action', 'Rain.'), el('Character', 'ALEX'), el('Dialogue', speech)];
-    const first = elementItems(paginate(script, { linesPerPage: 12 }).pages[0])[2];
-    expect(first.lines).toHaveLength(6);
+    const result = paginate(script, { linesPerPage: 12 });
+    const kept = elementItems(result.pages[0])[2];
+    const rest = elementItems(result.pages[1])[0];
+    const { offset } = result.breaks[0];
+
+    expect(kept.lines.length).toBeLessThanOrEqual(8); // lines 3-10, (MORE) on 11
+    expect(kept.lines[kept.lines.length - 1].text).toMatch(/stops\.$/);
+    expect(speech.slice(offset)).toMatch(/^Sentence \d/);
+    expect(rest.lines.map((l) => l.text)).toEqual(wrapText(speech.slice(offset), 35).map((l) => l.text));
+    expect(rest.lines[0].start).toBe(offset);
+  });
+
+  it('moves a speech whole when no sentence end fits on the page', () => {
+    const longSentence = Array.from({ length: 30 }, () => 'and on').join(' ') + ' until it ends.';
+    const script = [...actions(3), el('Character', 'ALEX'), el('Dialogue', longSentence)];
+    // the Character lands on line 6: with a sentence end, 2 lines + (MORE) would fit
+    const result = paginate(script, { linesPerPage: 12 });
+    expect(result.elementPages[3]).toBe(2);
+    expect(result.elementPages[4]).toBe(2);
+    expect(result.pages[0].items.some((i) => i.kind === 'more')).toBe(false);
   });
 
   it('keeps at least two lines of a speech on each side of the break', () => {
@@ -185,6 +203,46 @@ describe('paginate: dialogue across a page break', () => {
     expect(result.pageCount).toBe(2);
     expect(result.pages.flatMap(markers)).toEqual([]);
     expect(result.breaks[0]).toMatchObject({ elementIndex: 1, line: 10 });
+  });
+});
+
+describe('paginate: automatic character continueds', () => {
+  it("adds (CONT'D) when the same character speaks again in a scene", () => {
+    const script = [
+      el('Scene Heading', 'INT. HALL - DAY'),
+      el('Character', 'ALEX'), el('Dialogue', 'Hi.'),
+      el('Action', 'She waits.'),
+      el('Character', 'Alex (V.O.)'), el('Dialogue', 'Still here.'), // same speaker: CONT'D
+      el('Character', 'SAM'), el('Dialogue', 'Yes.'),
+      el('Character', 'ALEX'), el('Dialogue', 'Good.'), // someone spoke between: no CONT'D
+      el('Scene Heading', 'EXT. YARD - DAY'),
+      el('Character', 'ALEX'), el('Dialogue', 'Outside.'), // new scene: no CONT'D
+      el('Character', "ALEX (CONT'D)"), el('Dialogue', 'Again.'), // already marked: not doubled
+    ];
+    const result = paginate(script);
+    expect(result.continuedCharacters).toEqual([4]);
+    const shown = elementItems(result.pages[0]).filter((i) => i.type === 'Character').map((i) => i.lines[0].text);
+    expect(shown).toEqual(['ALEX', "ALEX (V.O.) (CONT'D)", 'SAM', 'ALEX', 'ALEX', "ALEX (CONT'D)"]);
+  });
+
+  it('can be turned off', () => {
+    const script = [el('Character', 'ALEX'), el('Dialogue', 'Hi.'), el('Action', 'Pause.'), el('Character', 'ALEX'), el('Dialogue', 'Bye.')];
+    expect(paginate(script, { autoCharacterContinueds: false }).continuedCharacters).toEqual([]);
+  });
+});
+
+describe('paginate: element formatting', () => {
+  it('hangs the first line of a Parenthetical one character to the left', () => {
+    // 26 characters fit on the first line, 25 on the rest
+    const text = '(aaaaaaaaaaaa bbbbbbbbbbbb cc)';
+    const lines = elementItems(paginate([el('Character', 'ALEX'), el('Parenthetical', text)]).pages[0])[1].lines;
+    expect(lines.map((l) => l.text)).toEqual(['(aaaaaaaaaaaa bbbbbbbbbbbb', 'cc)']);
+    expect(wrapText(text, 25).map((l) => l.text)).toEqual(['(aaaaaaaaaaaa', 'bbbbbbbbbbbb cc)']);
+  });
+
+  it('gives General no space before, like Final Draft', () => {
+    const tops = elementItems(paginate([el('Action', 'One.'), el('General', 'Two.')]).pages[0]).map((i) => i.top);
+    expect(tops).toEqual([0, 1]);
   });
 });
 

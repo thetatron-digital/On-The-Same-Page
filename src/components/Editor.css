@@ -108,8 +108,8 @@
 /* Page number in top right (for pages after first) */
 .page-number {
   position: absolute;
-  top: 48px;
-  right: 96px;
+  top: 48px;   /* 0.5" header margin */
+  right: 120px; /* right-aligned at 7.25", as in Final Draft */
   font-family: 'Courier New', Courier, monospace;
   font-size: 16px;
   color: var(--script-text);

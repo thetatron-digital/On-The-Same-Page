@@ -5,19 +5,25 @@
 // many pages there are. The engine works in lines of 12pt Courier: 10 characters
 // per inch across, LINES_PER_PAGE lines down.
 //
-// Rules (our own, based on common screenplay conventions):
-// - Blank lines between elements = max(previous spaceAfterLines, current
-//   spaceBeforeLines) from ELEMENT_FORMATTING. Inside a dialogue block
-//   (Character → Parenthetical/Dialogue) there are none. None at the top of a page.
+// The rules follow Final Draft's default screenplay behavior as observed in
+// findings/final-draft-13.md (§3.4 "MOREs and CONT'Ds", §4.1 PageLayout,
+// ElementSettings and MoresAndContinueds). The implementation is our own.
+// - Each element gets its spaceBeforeLines from ELEMENT_FORMATTING, except at
+//   the top of a page.
 // - Lines wrap at word boundaries (after spaces and inside hyphenated words) to
-//   each element's width; a word longer than the line is cut.
+//   each element's width; a word longer than the line is cut. A hanging first
+//   indent (Parenthetical) gives the first line one more character.
 // - Scene Headings, Shots and Characters stay with what follows them; a
 //   Parenthetical stays with the dialogue after it; the element before a
 //   Transition stays with the Transition.
-// - Action, General and Dialogue may split across pages, keeping at least
-//   MIN_SPLIT_LINES on each side, preferring a break after a sentence.
-// - A dialogue block that breaks across pages gets (MORE) under the last line
-//   and the speaker's name with (CONT'D) at the top of the next page.
+// - Action, General and Dialogue split across pages only at the end of a
+//   sentence (Final Draft's "break dialogue and action at sentences"), keeping
+//   at least MIN_SPLIT_LINES on each side. The continued text re-wraps on the
+//   next page. Only an element taller than a page is cut mid-sentence.
+// - A speech that breaks across pages gets (MORE) under its last line and the
+//   speaker's name with (CONT'D) at the top of the next page.
+// - Automatic character continueds: when the same character speaks again in a
+//   scene with no other speaker in between, their name gets (CONT'D).
 // - Dual dialogue is one block, as tall as its taller column, and never splits.
 
 import type { ElementType, ScreenplayElement } from '../types/screenplay';
@@ -31,6 +37,7 @@ export interface PaginateOptions {
   linesPerPage?: number;
   moreText?: string;
   contdText?: string;
+  autoCharacterContinueds?: boolean;
 }
 
 export interface WrappedLine {
@@ -46,7 +53,7 @@ export interface ElementItem {
   elementIndex: number;
   elementId: string;
   type: ElementType;
-  firstLine: number; // index into the element's wrapped lines
+  firstLine: number; // lines of this element placed on earlier pages
   lines: WrappedLine[];
   continued: boolean; // began on an earlier page
   continues: boolean; // carries on to the next page
@@ -84,13 +91,14 @@ export interface Page {
 }
 
 // Where a new page begins. line 0 means the page starts with this element;
-// line k > 0 means the element splits and the page starts at its line k.
+// line > 0 means the element splits, with `line` of its lines on earlier pages,
+// and the page starts at character `offset` of its text.
 export interface PageBreak {
   page: number;
   elementIndex: number;
   elementId: string;
   line: number;
-  offset: number; // character offset in the element where the page starts
+  offset: number;
   more?: string; // marker printed at the bottom of the previous page
   contd?: string; // speaker line printed at the top of this page
 }
@@ -100,6 +108,8 @@ export interface Pagination {
   pageCount: number;
   breaks: PageBreak[];
   elementPages: number[]; // page each element starts on, by element index
+  continuedCharacters: number[]; // Character elements shown with an automatic (CONT'D)
+  contdText: string;
   linesPerPage: number;
 }
 
@@ -108,10 +118,17 @@ export interface Pagination {
 
 const plainText = (el: ScreenplayElement): string => el.content.map((r) => r.text).join('');
 
+const toChars = (inches: number): number => Math.floor(inches * CHARS_PER_INCH + 1e-6);
+
+// Characters per line
 export const elementWidthChars = (type: ElementType): number => {
   const f = ELEMENT_FORMATTING[type];
-  return Math.round((f.rightEdge - f.leftEdge) * CHARS_PER_INCH);
+  return toChars(f.rightEdge - f.leftEdge);
 };
+
+// Characters on the first line, which a hanging indent widens
+export const firstLineWidthChars = (type: ElementType): number =>
+  elementWidthChars(type) - Math.round((ELEMENT_FORMATTING[type].firstIndent ?? 0) * CHARS_PER_INCH);
 
 // A line may end before index j when j closes a run of spaces, or follows a
 // hyphen inside a word ("self-|aware", "wait--|what").
@@ -127,11 +144,12 @@ const canBreakBefore = (text: string, j: number, lineStart: number): boolean => 
   return false;
 };
 
-const wrapHardLine = (text: string, base: number, width: number, out: WrappedLine[]) => {
+const wrapHardLine = (text: string, base: number, firstWidth: number, width: number, out: WrappedLine[]) => {
   let start = 0;
+  let w = firstWidth;
   for (;;) {
     const rest = text.slice(start);
-    if (rest.trimEnd().length <= width) {
+    if (rest.trimEnd().length <= w) {
       out.push({ text: rest.trimEnd(), start: base + start, end: base + text.length });
       return;
     }
@@ -142,24 +160,26 @@ const wrapHardLine = (text: string, base: number, width: number, out: WrappedLin
       if (j > start && canBreakBefore(text, j, start)) brk = j;
       if (text[j] !== ' ') {
         lastInk = j;
-        if (lastInk - start + 1 > width) break;
+        if (lastInk - start + 1 > w) break;
       }
     }
-    if (brk === -1) brk = start + width; // word longer than the line
+    if (brk === -1) brk = start + w; // word longer than the line
     out.push({ text: text.slice(start, brk).trimEnd(), start: base + start, end: base + brk });
     start = brk;
+    w = width;
   }
 };
 
-// Wraps text to a width in characters. Hard line breaks ("\n") are kept.
-export const wrapText = (text: string, width: number): WrappedLine[] => {
+// Wraps text to a width in characters (firstWidth for the very first line).
+// Hard line breaks ("\n") are kept.
+export const wrapText = (text: string, width: number, firstWidth = width): WrappedLine[] => {
   const out: WrappedLine[] = [];
   let base = 0;
-  for (const hard of text.split('\n')) {
-    wrapHardLine(hard, base, Math.max(1, width), out);
+  text.split('\n').forEach((hard, i) => {
+    wrapHardLine(hard, base, Math.max(1, i === 0 ? firstWidth : width), Math.max(1, width), out);
     out[out.length - 1].end = base + hard.length + 1;
     base += hard.length + 1;
-  }
+  });
   out[out.length - 1].end = text.length;
   return out;
 };
@@ -172,7 +192,19 @@ const displayText = (el: ScreenplayElement): string => {
 };
 
 export const wrapElement = (el: ScreenplayElement, width = elementWidthChars(el.type)): WrappedLine[] =>
-  wrapText(displayText(el), width);
+  wrapText(displayText(el), width, width + firstLineWidthChars(el.type) - elementWidthChars(el.type));
+
+// Offsets where a new sentence starts: after . ! ? … (and closing quotes or
+// brackets) plus spaces, and after a hard line break
+const sentenceStarts = (text: string): number[] => {
+  const starts: number[] = [];
+  const re = /[.!?…]+["'”’)\]]*( +)|\n/g;
+  for (let m = re.exec(text); m; m = re.exec(text)) {
+    const at = m.index + m[0].length;
+    if (at < text.length) starts.push(at);
+  }
+  return starts;
+};
 
 // ---------------------------------------------------------------------------
 // Units: single elements, or a dual dialogue block
@@ -182,6 +214,7 @@ interface SingleUnit {
   index: number;
   el: ScreenplayElement;
   type: ElementType;
+  text: string; // display text (with any automatic CONT'D)
   lines: WrappedLine[];
 }
 
@@ -194,8 +227,6 @@ interface DualUnit {
 }
 
 type Unit = SingleUnit | DualUnit;
-
-const DIALOGUE_BLOCK: ReadonlySet<ElementType> = new Set(['Character', 'Dialogue', 'Parenthetical']);
 
 const buildColumn = (elements: ScreenplayElement[], from: number, to: number): DualColumnPart[] => {
   const parts: DualColumnPart[] = [];
@@ -212,8 +243,22 @@ const buildColumn = (elements: ScreenplayElement[], from: number, to: number): D
 const columnHeight = (col: DualColumnPart[]): number =>
   col.reduce((sum, p) => sum + p.lines.length, 0);
 
-const buildUnits = (elements: ScreenplayElement[]): Unit[] => {
+const CONTD_RE = /\s*\(CONT['’]D\)\s*$/i;
+
+// Speaker name for the (CONT'D) line: the Character text without a trailing (CONT'D)
+const characterName = (text: string): string => text.replace(CONTD_RE, '').trim().toUpperCase();
+
+// The bare name, without extensions such as (V.O.), to tell speakers apart
+const speakerKey = (text: string): string => characterName(text).replace(/\s*\(.*$/, '').trim();
+
+const buildUnits = (
+  elements: ScreenplayElement[],
+  autoContd: boolean,
+  contdText: string,
+  continuedCharacters: number[],
+): Unit[] => {
   const units: Unit[] = [];
+  let lastSpeaker = ''; // previous speaker in this scene
   let i = 0;
   while (i < elements.length) {
     const el = elements[i];
@@ -226,11 +271,24 @@ const buildUnits = (elements: ScreenplayElement[]): Unit[] => {
         const left = buildColumn(elements, i, mid);
         const right = buildColumn(elements, mid, j);
         units.push({ kind: 'dual', index: i, left, right, height: Math.max(columnHeight(left), columnHeight(right)) });
+        lastSpeaker = '';
         i = j;
         continue;
       }
     }
-    units.push({ kind: 'single', index: i, el, type: el.type, lines: wrapElement(el) });
+
+    let text = displayText(el);
+    if (el.type === 'Scene Heading') lastSpeaker = '';
+    if (el.type === 'Character') {
+      const speaker = speakerKey(text);
+      if (autoContd && speaker && speaker === lastSpeaker && !CONTD_RE.test(text)) {
+        text = `${text.trimEnd()} ${contdText}`;
+        continuedCharacters.push(i);
+      }
+      lastSpeaker = speaker;
+    }
+    const lines = wrapText(text, elementWidthChars(el.type), firstLineWidthChars(el.type));
+    units.push({ kind: 'single', index: i, el, type: el.type, text, lines });
     i++;
   }
   return units;
@@ -238,37 +296,36 @@ const buildUnits = (elements: ScreenplayElement[]): Unit[] => {
 
 const unitHeight = (u: Unit): number => (u.kind === 'dual' ? u.height : u.lines.length);
 
-// A dual block spaces like a Character before it and like Dialogue after it.
+// A dual block spaces like a Character
 const spaceBeforeOf = (u: Unit): number =>
   ELEMENT_FORMATTING[u.kind === 'dual' ? 'Character' : u.type].spaceBeforeLines;
-const spaceAfterOf = (u: Unit): number =>
-  ELEMENT_FORMATTING[u.kind === 'dual' ? 'Dialogue' : u.type].spaceAfterLines;
 
-// True when u continues the dialogue block of the unit before it.
+// True when u continues the dialogue block of the unit before it
 const inDialogueBlock = (prev: Unit | undefined, u: Unit): boolean =>
   !!prev && prev.kind === 'single' && u.kind === 'single' &&
-  DIALOGUE_BLOCK.has(prev.type) && (u.type === 'Dialogue' || u.type === 'Parenthetical');
+  (prev.type === 'Character' || prev.type === 'Dialogue' || prev.type === 'Parenthetical') &&
+  (u.type === 'Dialogue' || u.type === 'Parenthetical');
 
-const spacingBetween = (prev: Unit | undefined, u: Unit): number => {
-  if (!prev) return 0;
-  if (inDialogueBlock(prev, u)) return 0;
-  return Math.max(spaceAfterOf(prev), spaceBeforeOf(u));
-};
-
-const keepsWithNext = (u: Unit, next: Unit | undefined): boolean => {
+const keepsWithNext = (u: Unit, next: Unit | undefined): next is Unit => {
   if (!next || u.kind === 'dual') return false;
   if (next.kind === 'single' && next.type === 'Transition') return true;
   if (u.type === 'Scene Heading' || u.type === 'Shot' || u.type === 'Character') return true;
   return u.type === 'Parenthetical' && inDialogueBlock(u, next);
 };
 
-const isSplittable = (u: Unit): u is SingleUnit =>
+const isSplittable = (u: Unit): boolean =>
   u.kind === 'single' && (u.type === 'Action' || u.type === 'General' || u.type === 'Dialogue');
 
-const SENTENCE_END = /([.!?…]["')\]]*|--)$/;
-
-const characterName = (el: ScreenplayElement): string =>
-  displayText(el).replace(/\s*\(CONT['’]D\)\s*$/i, '').trim().toUpperCase();
+// Lines of u's text from offset `from` up to `to`, wrapped as a fresh piece
+// (the first piece keeps the element's first-line indent)
+const wrapRange = (u: SingleUnit, from: number, to = u.text.length): WrappedLine[] => {
+  const width = elementWidthChars(u.type);
+  const piece = u.text.slice(from, to).replace(/\n$/, ''); // a cut after a line break adds no blank line
+  const lines = wrapText(piece, width, from === 0 ? firstLineWidthChars(u.type) : width)
+    .map((l) => ({ ...l, start: l.start + from, end: l.end + from }));
+  lines[lines.length - 1].end = to;
+  return lines;
+};
 
 // ---------------------------------------------------------------------------
 // Pagination
@@ -278,7 +335,8 @@ export const paginate = (elements: ScreenplayElement[], options: PaginateOptions
   const moreText = options.moreText ?? '(MORE)';
   const contdText = options.contdText ?? "(CONT'D)";
 
-  const units = buildUnits(elements);
+  const continuedCharacters: number[] = [];
+  const units = buildUnits(elements, options.autoCharacterContinueds ?? true, contdText, continuedCharacters);
   const pages: Page[] = [{ number: 1, items: [], linesUsed: 0 }];
   const breaks: PageBreak[] = [];
   const elementPages: number[] = new Array(elements.length).fill(1);
@@ -301,20 +359,20 @@ export const paginate = (elements: ScreenplayElement[], options: PaginateOptions
     page.linesUsed += 1;
   };
 
-  // Lines unit k needs on the current page if it starts there (without its own spacing).
+  // Lines unit k needs on the current page if it starts there (without its own spacing)
   const minLead = (k: number): number => {
     const u = units[k];
     const n = unitHeight(u);
     const next = units[k + 1];
-    if (isSplittable(u) && n >= 2 * MIN_SPLIT_LINES) {
+    if (u.kind === 'single' && isSplittable(u) && n >= 2 * MIN_SPLIT_LINES && sentenceStarts(u.text).length > 0) {
       return MIN_SPLIT_LINES + (u.type === 'Dialogue' ? 1 : 0);
     }
-    if (keepsWithNext(u, next)) return n + spacingBetween(u, next) + minLead(k + 1);
-    // A block that carries on past this unit needs a line for (MORE).
+    if (keepsWithNext(u, next)) return n + spaceBeforeOf(next) + minLead(k + 1);
+    // A block that carries on past this unit needs a line for (MORE)
     return n + (next && inDialogueBlock(u, next) ? 1 : 0);
   };
 
-  // Lines from unit k to the end of its dialogue block, including spacing.
+  // Lines from unit k to the end of its dialogue block
   const restOfBlock = (k: number): number => {
     let total = unitHeight(units[k]);
     for (let j = k + 1; j < units.length && inDialogueBlock(units[j - 1], units[j]); j++) {
@@ -323,7 +381,7 @@ export const paginate = (elements: ScreenplayElement[], options: PaginateOptions
     return total;
   };
 
-  const placeElement = (u: SingleUnit, from: number, to: number, space: number, continued: boolean) => {
+  const placeElement = (u: SingleUnit, lines: WrappedLine[], placedBefore: number, space: number) => {
     page.items.push({
       kind: 'element',
       top: page.linesUsed + space,
@@ -331,24 +389,56 @@ export const paginate = (elements: ScreenplayElement[], options: PaginateOptions
       elementIndex: u.index,
       elementId: u.el.id,
       type: u.type,
-      firstLine: from,
-      lines: u.lines.slice(from, to),
-      continued,
-      continues: to < u.lines.length,
+      firstLine: placedBefore,
+      lines,
+      continued: placedBefore > 0,
+      continues: lines[lines.length - 1].end < u.text.length,
     });
-    page.linesUsed += space + (to - from);
+    page.linesUsed += space + lines.length;
   };
 
-  // Chooses how many of lines[from..] stay on this page, or 0 to move them all.
-  const chooseSplit = (u: SingleUnit, from: number, avail: number, mustSplit: boolean): number => {
-    const remaining = u.lines.length - from;
+  // Where to cut u's text (from offset `from`) so the first piece fits in
+  // `avail` lines: the latest sentence start that leaves MIN_SPLIT_LINES on
+  // both sides, or -1 when there is none. With mustSplit (the text is taller
+  // than a page) fall back to cutting after the last line that fits.
+  const chooseCut = (u: SingleUnit, from: number, avail: number, mustSplit: boolean): number => {
     const minBefore = mustSplit ? 1 : MIN_SPLIT_LINES;
-    const maxK = Math.min(avail, remaining - MIN_SPLIT_LINES);
-    if (maxK < minBefore) return mustSplit ? Math.max(1, Math.min(avail, remaining - 1)) : 0;
-    for (let k = maxK; k >= minBefore; k--) {
-      if (SENTENCE_END.test(u.lines[from + k - 1].text)) return k;
+    const starts = sentenceStarts(u.text).filter((s) => s > from);
+    for (let i = starts.length - 1; i >= 0; i--) {
+      const kept = wrapRange(u, from, starts[i]).length;
+      if (kept > avail) continue;
+      if (kept < minBefore) break;
+      if (wrapRange(u, starts[i]).length >= MIN_SPLIT_LINES) return starts[i];
     }
-    return maxK;
+    if (!mustSplit) return -1;
+    const lines = wrapRange(u, from);
+    return lines[Math.max(1, Math.min(avail, lines.length - 1))].start;
+  };
+
+  // Places u's text from offset `cut` onwards on following pages, splitting again as needed
+  const continueElement = (u: SingleUnit, cut: number, placed: number, isDialogue: boolean) => {
+    while (cut < u.text.length) {
+      if (isDialogue) addMore();
+      newPage({
+        elementIndex: u.index,
+        elementId: u.el.id,
+        line: placed,
+        offset: cut,
+        more: isDialogue ? moreText : undefined,
+        contd: isDialogue ? `${speaker} ${contdText}` : undefined,
+      });
+      const rest = wrapRange(u, cut);
+      const room = cap - page.linesUsed;
+      if (rest.length <= room) {
+        placeElement(u, rest, placed, 0);
+        return;
+      }
+      const next = chooseCut(u, cut, room - (isDialogue ? 1 : 0), true);
+      const piece = wrapRange(u, cut, next);
+      placeElement(u, piece, placed, 0);
+      placed += piece.length;
+      cut = next;
+    }
   };
 
   for (let k = 0; k < units.length; k++) {
@@ -358,7 +448,7 @@ export const paginate = (elements: ScreenplayElement[], options: PaginateOptions
     const n = unitHeight(u);
 
     if (u.kind === 'single') {
-      if (u.type === 'Character') speaker = characterName(u.el);
+      if (u.type === 'Character') speaker = characterName(u.text);
       else if (!inDialogueBlock(prev, u)) speaker = '';
     } else {
       speaker = '';
@@ -366,16 +456,14 @@ export const paginate = (elements: ScreenplayElement[], options: PaginateOptions
     const continuesBlock = inDialogueBlock(prev, u) && speaker !== '';
     const isDialogue = u.kind === 'single' && u.type === 'Dialogue' && speaker !== '';
 
-    const atTop = () => page.linesUsed === 0 || (page.linesUsed === 1 && page.items[0]?.kind === 'contd');
-    const spacing = () => (atTop() ? 0 : spacingBetween(prev, u));
-
-    const s = spacing();
+    const atTop = page.linesUsed === 0 || (page.linesUsed === 1 && page.items[0]?.kind === 'contd');
+    const s = atTop ? 0 : spaceBeforeOf(u);
     const free = cap - page.linesUsed - s;
     const nextInBlock = !!next && inDialogueBlock(u, next) && speaker !== '';
-    // Leave a line for (MORE) if the block will have to break after this unit.
+    // Leave a line for (MORE) if the block will have to break after this unit
     const reserve = nextInBlock && !keepsWithNext(u, next) && restOfBlock(k) > free ? 1 : 0;
-    const keepOk = !keepsWithNext(u, next) || atTop() ||
-      n + spacingBetween(u, next) + minLead(k + 1) <= free;
+    const keepOk = !keepsWithNext(u, next) || atTop ||
+      n + spaceBeforeOf(next) + minLead(k + 1) <= free;
 
     elementPages[u.index] = page.number;
 
@@ -385,48 +473,28 @@ export const paginate = (elements: ScreenplayElement[], options: PaginateOptions
         page.linesUsed += s + n;
         for (const p of [...u.left, ...u.right]) elementPages[p.elementIndex] = page.number;
       } else {
-        placeElement(u, 0, n, s, false);
+        placeElement(u, u.lines, 0, s);
       }
       continue;
     }
 
-    // Try to split a long Action/General/Dialogue across the break.
-    if (isSplittable(u) && !atTop()) {
-      const kept = chooseSplit(u, 0, free - (isDialogue ? 1 : 0), false);
-      if (kept > 0) {
-        placeElement(u, 0, kept, s, false);
-        let from = kept;
-        while (from < u.lines.length) {
-          if (isDialogue) addMore();
-          newPage({
-            elementIndex: u.index,
-            elementId: u.el.id,
-            line: from,
-            offset: u.lines[from].start,
-            more: isDialogue ? moreText : undefined,
-            contd: isDialogue ? `${speaker} ${contdText}` : undefined,
-          });
-          const room = cap - page.linesUsed;
-          const left = u.lines.length - from;
-          if (left <= room) {
-            placeElement(u, from, u.lines.length, 0, true);
-            from = u.lines.length;
-          } else {
-            const more = chooseSplit(u, from, room - (isDialogue ? 1 : 0), true);
-            placeElement(u, from, from + more, 0, true);
-            from += more;
-          }
-        }
+    // Split a long Action/General/Dialogue at a sentence end
+    if (u.kind === 'single' && isSplittable(u) && !atTop) {
+      const cut = chooseCut(u, 0, free - (isDialogue ? 1 : 0), false);
+      if (cut > 0) {
+        const piece = wrapRange(u, 0, cut);
+        placeElement(u, piece, 0, s);
+        continueElement(u, cut, piece.length, isDialogue);
         continue;
       }
     }
 
-    // Move the whole unit to a new page (unless it already starts one).
-    if (!atTop()) {
+    // Move the whole unit to a new page (unless it already starts one)
+    if (!atTop) {
       if (continuesBlock) addMore();
       newPage({
         elementIndex: u.index,
-        elementId: u.kind === 'single' ? u.el.id : elements[u.index].id,
+        elementId: elements[u.index].id,
         line: 0,
         offset: 0,
         more: continuesBlock ? moreText : undefined,
@@ -442,33 +510,22 @@ export const paginate = (elements: ScreenplayElement[], options: PaginateOptions
       continue;
     }
 
-    // Taller than a page: cut it into page-sized pieces.
-    let from = 0;
-    for (;;) {
-      const room = cap - page.linesUsed;
-      const left = u.lines.length - from;
-      if (left <= room) {
-        placeElement(u, from, u.lines.length, 0, from > 0);
-        break;
-      }
-      const kept = isSplittable(u)
-        ? chooseSplit(u, from, room - (isDialogue ? 1 : 0), true)
-        : Math.max(1, room);
-      placeElement(u, from, from + kept, 0, from > 0);
-      from += kept;
-      if (isDialogue) addMore();
-      newPage({
-        elementIndex: u.index,
-        elementId: u.el.id,
-        line: from,
-        offset: u.lines[from].start,
-        more: isDialogue ? moreText : undefined,
-        contd: isDialogue ? `${speaker} ${contdText}` : undefined,
-      });
+    const room = cap - page.linesUsed;
+    if (n <= room) {
+      placeElement(u, u.lines, 0, 0);
+      continue;
     }
+
+    // Taller than a page: cut it into page-sized pieces
+    const cut = isSplittable(u)
+      ? chooseCut(u, 0, room - (isDialogue ? 1 : 0), true)
+      : u.lines[Math.max(1, room)].start;
+    const piece = wrapRange(u, 0, cut);
+    placeElement(u, piece, 0, 0);
+    continueElement(u, cut, piece.length, isDialogue);
   }
 
-  return { pages, pageCount: pages.length, breaks, elementPages, linesPerPage: cap };
+  return { pages, pageCount: pages.length, breaks, elementPages, continuedCharacters, contdText, linesPerPage: cap };
 };
 
 // The editor, stats and navigator all paginate the same elements array on each

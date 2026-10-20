@@ -1,7 +1,7 @@
 import { useRef, useCallback, useEffect } from 'react';
 import type { ScreenplayElement, ElementType } from '../types/screenplay';
 import { ELEMENT_FORMATTING, MARGIN_LEFT } from '../types/screenplay';
-import { CHARS_PER_INCH, elementWidthChars, paginateScript, type PageBreak, type Pagination } from '../engine/paginate';
+import { CHARS_PER_INCH, elementWidthChars, firstLineWidthChars, paginateScript, type PageBreak, type Pagination } from '../engine/paginate';
 import { useScreenplayStore } from '../store/screenplayStore';
 import { useShallow } from 'zustand/react/shallow';
 import { generateId, createTextRuns } from '../utils/fdx';
@@ -20,6 +20,7 @@ const indentChars = (type: ElementType): number =>
 const applyElementLayout = (div: HTMLElement, type: ElementType, spaceBefore?: number) => {
   div.style.marginLeft = `${indentChars(type)}ch`;
   div.style.width = `${elementWidthChars(type)}ch`;
+  div.style.textIndent = `${elementWidthChars(type) - firstLineWidthChars(type)}ch`;
   div.style.textAlign = ELEMENT_FORMATTING[type].alignment;
   if (spaceBefore !== undefined) {
     div.style.marginTop = `${spaceBefore * LINE_HEIGHT_PX}px`;
@@ -51,9 +52,11 @@ const makePageBreak = (brk: PageBreak, tag: 'div' | 'span', indent: number): HTM
   return box;
 };
 
-// Identifies where pages break, to tell whether the DOM needs rebuilding
+// Identifies where pages break and which names get an automatic (CONT'D),
+// to tell whether the DOM needs rebuilding
 const layoutKey = (p: Pagination): string =>
-  p.breaks.map((b) => [b.elementId, b.line, b.offset, b.more, b.contd].join(':')).join('|');
+  p.breaks.map((b) => [b.elementId, b.line, b.offset, b.more, b.contd].join(':')).join('|') +
+  `#${p.continuedCharacters.join(',')}`;
 
 // Element type formatting info
 const ELEMENT_FORMAT: Record<ElementType, {
@@ -225,8 +228,9 @@ export const ScriptEditor = () => {
       if (item.kind === 'dual') spaceBefore.set(item.left[0].elementId, item.spaceBefore);
     }));
     const characterIndent = indentChars('Character');
+    const continuedCharacters = new Set(pagination.continuedCharacters);
 
-    screenplay.elements.forEach((element) => {
+    screenplay.elements.forEach((element, index) => {
       const text = getPlainText(element.content);
       const format = ELEMENT_FORMAT[element.type];
 
@@ -262,6 +266,16 @@ export const ScriptEditor = () => {
         div.appendChild(document.createTextNode(text));
       } else {
         div.appendChild(document.createElement('br'));
+      }
+
+      // Automatic (CONT'D) for a character speaking again in the same scene
+      if (continuedCharacters.has(index)) {
+        const contd = document.createElement('span');
+        contd.className = 'auto-contd';
+        contd.textContent = ` ${pagination.contdText}`;
+        contd.setAttribute('contenteditable', 'false');
+        contd.setAttribute(DECORATION_ATTR, '');
+        div.appendChild(contd);
       }
 
       const breaks = breaksByElement.get(element.id) || [];
