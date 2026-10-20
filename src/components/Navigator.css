@@ -216,3 +216,21 @@
   font-size: 11px;
   color: var(--text-muted);
 }
+
+/* Fountain sections and synopses in the Scenes list */
+.outline-item {
+  padding: 6px 8px 2px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.outline-item.section {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.outline-item.synopsis {
+  font-style: italic;
+  padding-top: 0;
+}

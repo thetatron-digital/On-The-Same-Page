@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useRef, useCallback } from 'react';
 import { useScreenplayStore } from '../store/screenplayStore';
 import { useShallow } from 'zustand/react/shallow';
 import { ScriptEditor } from './ScriptEditor';
@@ -10,10 +10,10 @@ import { BeatBoard } from './BeatBoard';
 import { SplitView } from './SplitView';
 import { StoryMode } from './StoryMode';
 import { NotePopover } from './ScriptNotes';
+import { useCommandShortcuts } from '../commands/useCommandShortcuts';
 import { paginateScript } from '../engine/paginate';
 import { getRevisionSettings, pageRevision } from '../engine/production';
 import { ELEMENT_BEHAVIOR } from '../types/screenplay';
-import { saveOpenProject } from '../services/saveOpenProject';
 import { PAGE_GAP, PAGE_HEIGHT } from './pageLayout';
 import './Editor.css';
 
@@ -121,43 +121,8 @@ export const Editor = () => {
     }
   };
 
-  // Handle keyboard shortcuts at editor level
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl/Cmd + Z - Undo
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        useScreenplayStore.getState().undo();
-      }
-
-      // Ctrl/Cmd + Shift + Z or Ctrl/Cmd + Y - Redo
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'z' && e.shiftKey || e.key === 'y')) {
-        e.preventDefault();
-        useScreenplayStore.getState().redo();
-      }
-
-      // Mod+Alt+N - New document (browsers keep Mod+N for a new window)
-      if ((e.ctrlKey || e.metaKey) && e.altKey && e.code === 'KeyN') {
-        e.preventDefault();
-        useScreenplayStore.getState().newScreenplay();
-      }
-
-      // Mod+S - Save to the open project (FDX is under Export)
-      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.code === 'KeyS') {
-        e.preventDefault();
-        saveOpenProject().catch(() => alert('Failed to save. Please try again.'));
-      }
-
-      // Mod+O - Open a project (the project list on Home)
-      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.code === 'KeyO') {
-        e.preventDefault();
-        useScreenplayStore.getState().setActiveApp('home');
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  // Menu commands from the keyboard (undo, save, element shortcuts, ...)
+  useCommandShortcuts(activeApp === 'rewriter');
 
   // Calculate zoom scale
   const scale = zoom / 100;

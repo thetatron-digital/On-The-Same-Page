@@ -267,6 +267,8 @@ const buildUnits = (
   let i = 0;
   while (i < elements.length) {
     const el = elements[i];
+    // Non-printing structure (sections, synopses, boneyard) takes no space
+    if (el.outline) { i++; continue; }
     if (el.isDualDialogue && el.dualDialoguePosition === 'left') {
       let j = i;
       while (j < elements.length && elements[j].isDualDialogue && elements[j].dualDialoguePosition === 'left') j++;
@@ -393,7 +395,10 @@ export const paginate = (elements: ScreenplayElement[], options: PaginateOptions
   const atTop = () => page.linesUsed === 0 || (page.linesUsed === 1 && page.items[0]?.kind === 'contd');
 
   // Keep-with-next never reaches across a locked page boundary
-  const keeps = (k: number): boolean => keepsWithNext(units[k], units[k + 1]) && !lockAtStart(k + 1);
+  // A page break the writer inserted (Insert > Page Break, Fountain ===)
+  const breakBefore = (k: number): boolean => !!units[k] && !!elements[units[k].index].pageBreakBefore;
+  const keeps = (k: number): boolean =>
+    keepsWithNext(units[k], units[k + 1]) && !lockAtStart(k + 1) && !breakBefore(k + 1);
 
   // Lines unit k needs on the current page if it starts there (without its own spacing)
   const minLead = (k: number): number => {
@@ -411,7 +416,7 @@ export const paginate = (elements: ScreenplayElement[], options: PaginateOptions
   // Lines from unit k to the end of its dialogue block
   const restOfBlock = (k: number): number => {
     let total = unitHeight(units[k]);
-    for (let j = k + 1; j < units.length && inDialogueBlock(units[j - 1], units[j]) && !lockAtStart(j); j++) {
+    for (let j = k + 1; j < units.length && inDialogueBlock(units[j - 1], units[j]) && !lockAtStart(j) && !breakBefore(j); j++) {
       total += unitHeight(units[j]);
     }
     return total;
@@ -493,9 +498,9 @@ export const paginate = (elements: ScreenplayElement[], options: PaginateOptions
     const continuesBlock = inDialogueBlock(prev, u) && speaker !== '';
     const isDialogue = u.kind === 'single' && u.type === 'Dialogue' && speaker !== '';
 
-    // A locked page starts here
+    // A locked page, or an inserted page break, starts here
     const lock = lockAtStart(k);
-    if (lock && k > 0) {
+    if ((lock && k > 0) || (breakBefore(k) && !atTop())) {
       if (continuesBlock) addMore();
       newPage({
         elementIndex: u.index,
@@ -504,7 +509,7 @@ export const paginate = (elements: ScreenplayElement[], options: PaginateOptions
         offset: 0,
         more: continuesBlock ? moreText : undefined,
         contd: continuesBlock ? `${speaker} ${contdText}` : undefined,
-      }, lock.label);
+      }, lock?.label);
     }
 
     elementPages[u.index] = page.number;
@@ -553,7 +558,7 @@ export const paginate = (elements: ScreenplayElement[], options: PaginateOptions
       const tail = !last
         ? (isDialogue ? 1 : 0)
         : (next && inDialogueBlock(u, next) && speaker !== '' && !keeps(k) &&
-          (!!lockAtStart(k + 1) || restOfBlock(k) > free)) ? 1 : 0;
+          (!!lockAtStart(k + 1) || breakBefore(k + 1) || restOfBlock(k) > free)) ? 1 : 0;
       const keepOk = !last || !keeps(k) || atTop() || n + spaceBeforeOf(next!) + minLead(k + 1) <= free;
 
       if (n + tail <= free && keepOk) {
@@ -604,6 +609,9 @@ export const paginate = (elements: ScreenplayElement[], options: PaginateOptions
       placed = continueElement(u, cut, to, placed + piece.length, isDialogue, last ? 0 : tail);
     }
   }
+
+  // Non-printing paragraphs sit on the page of the paragraph before them
+  elements.forEach((el, idx) => { if (el.outline && idx > 0) elementPages[idx] = elementPages[idx - 1]; });
 
   return { pages, pageCount: pages.length, breaks, elementPages, continuedCharacters, contdText, linesPerPage: cap };
 };

@@ -1,6 +1,6 @@
 import { useRef, useCallback, useEffect } from 'react';
 import type { ScreenplayElement, ElementType } from '../types/screenplay';
-import { ELEMENT_BEHAVIOR, ELEMENT_FORMATTING, ELEMENT_SHORTCUTS, MARGIN_LEFT, NOTE_COLORS } from '../types/screenplay';
+import { ELEMENT_BEHAVIOR, ELEMENT_FORMATTING, MARGIN_LEFT, NOTE_COLORS } from '../types/screenplay';
 import { applyMacro, findMacro, getMacros, macroBank } from '../engine/scriptTools';
 import { getRevisionSettings, showsRevisionMark } from '../engine/production';
 import { CHARS_PER_INCH, elementWidthChars, firstLineWidthChars, paginateScript, wrapElement, type PageBreak, type Pagination } from '../engine/paginate';
@@ -9,8 +9,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { generateId, createTextRuns } from '../utils/fdx';
 import { detectAutoCompleteTrigger } from '../utils/scriptParser';
 import { AutoComplete } from './AutoComplete';
-import { editSceneNumberAt } from './productionActions';
-import { addAltHere, insertBookmark, insertNote, isMac, removeAltHere } from './writingActions';
+import { isMac } from './writingActions';
 import { DECORATION_ATTR, editableText, offsetInElement, offsetTopWithin, positionAt, setSelectedElementIds } from './editorDom';
 import { LINE_HEIGHT_PX, PAGE_STRIDE } from './pageLayout';
 import './ScriptEditor.css';
@@ -150,7 +149,7 @@ export const ScriptEditor = () => {
     // Check if elements actually changed (not just selection)
     const revisions = getRevisionSettings(screenplay);
     const openNotes = showNotes ? scriptNotes.filter((n) => !n.resolved && n.elementId) : [];
-    const elementsKey = screenplay.elements.map(e => `${e.id}:${e.type}:${getPlainText(e.content)}:${e.revisionId ?? ''}:${e.omitted ? 'o' : ''}:${e.bookmark ?? ''}:${showAlts ? e.alts?.length ?? 0 : ''}`).join('|') +
+    const elementsKey = screenplay.elements.map(e => `${e.id}:${e.type}:${getPlainText(e.content)}:${e.revisionId ?? ''}:${e.omitted ? 'o' : ''}:${e.bookmark ?? ''}:${showAlts ? e.alts?.length ?? 0 : ''}:${e.pageBreakBefore ? 'p' : ''}${e.centered ? 'c' : ''}${e.lyric ? 'l' : ''}${e.outline ? 'h' : ''}`).join('|') +
       `#${revisions.activeSetId}:${revisions.marksShown}:${JSON.stringify(screenplay.lockedPages ?? [])}` +
       `#${openNotes.map((n) => `${n.id}:${n.elementId}:${n.color}`).join(',')}`;
     if (elementsKey === lastElementsRef.current) {
@@ -236,6 +235,11 @@ export const ScriptEditor = () => {
       div.setAttribute('data-element-type', element.type);
       div.className = `script-element ${getElementClass(element.type)}`;
       applyElementLayout(div, element.type, spaceBefore.get(element.id));
+      if (element.centered) div.style.textAlign = 'center';
+      if (element.lyric) div.style.fontStyle = 'italic';
+      // Sections, synopses and boneyard keep their place but take no space
+      // (the Navigator lists sections and synopses)
+      if (element.outline) div.style.display = 'none';
 
       if (!text && format.placeholder) {
         div.setAttribute('data-placeholder', format.placeholder);
@@ -608,7 +612,6 @@ export const ScriptEditor = () => {
       }
     }
 
-    const mod = isMac ? e.metaKey : e.ctrlKey;
     const digit = /^Digit(\d)$/.exec(e.code)?.[1];
 
     // Macros: Ctrl+Opt+digit (Mac) or Alt+Shift+digit; bank 2 adds Shift / Ctrl
@@ -628,63 +631,8 @@ export const ScriptEditor = () => {
       }
     }
 
-    // Insert > ScriptNote (Mod+Shift+K), General Note (Mod+Shift+G), Bookmark (Mod+\)
-    if (mod && e.shiftKey && !e.altKey && (e.code === 'KeyK' || e.key.toLowerCase() === 'k')) {
-      e.preventDefault();
-      insertNote('script');
-      return;
-    }
-    if (mod && e.shiftKey && !e.altKey && (e.code === 'KeyG' || e.key.toLowerCase() === 'g')) {
-      e.preventDefault();
-      insertNote('general');
-      return;
-    }
-    if (mod && !e.shiftKey && !e.altKey && (e.code === 'Backslash' || e.key === '\\')) {
-      e.preventDefault();
-      insertBookmark();
-      return;
-    }
-
-    // Insert > Add Alt (Mod+Shift+.) and Remove Alt (Mod+Shift+,)
-    if (mod && e.shiftKey && !e.altKey && (e.code === 'Period' || e.key === '>' || e.key === '.')) {
-      e.preventDefault();
-      addAltHere();
-      return;
-    }
-    if (mod && e.shiftKey && !e.altKey && (e.code === 'Comma' || e.key === '<' || e.key === ',')) {
-      e.preventDefault();
-      removeAltHere();
-      return;
-    }
-
-    // Mod+Alt+digit - change element (Final Draft's numbering; browsers keep Mod+digit)
-    if (mod && e.altKey && !e.shiftKey && digit && ELEMENT_SHORTCUTS[digit]) {
-      e.preventDefault();
-      if (!current) return;
-      const type = ELEMENT_SHORTCUTS[digit];
-      const elements = state.screenplay.elements.map(el => el.id === current.element.id ? { ...el, type } : el);
-      state.setScreenplay({ ...state.screenplay, elements });
-      setCurrentElementType(type);
-      setCursorPosition(current.element.id, current.offset);
-      return;
-    }
-
-    // Mod+] Mark Revised, Mod+[ Clear Revised (selected paragraphs, active set)
-    const bracket = e.code === 'BracketRight' || e.key === ']' ? ']' : e.code === 'BracketLeft' || e.key === '[' ? '[' : '';
-    if (mod && !e.altKey && bracket) {
-      e.preventDefault();
-      const ids = selectedElementIds();
-      if (bracket === ']') state.markRevised(ids);
-      else state.clearRevised(ids);
-      return;
-    }
-
-    // Mod+Shift+J - Edit Scene Number
-    if (mod && e.shiftKey && (e.code === 'KeyJ' || e.key.toLowerCase() === 'j')) {
-      e.preventDefault();
-      if (current) editSceneNumberAt(current.element.id);
-      return;
-    }
+    // Element, Insert, Production and other menu shortcuts are handled by
+    // the command registry (commands/registry.ts)
 
     // Shift+Enter - insert newline within same element
     if (e.key === 'Enter' && e.shiftKey) {
@@ -813,17 +761,20 @@ export const ScriptEditor = () => {
         const elements = [...state.screenplay.elements];
         const currentIndex = elements.findIndex(el => el.id === current.element.id);
 
-        if (currentIndex === 0) return;
+        // Merge into the previous visible paragraph (skipping hidden sections etc.)
+        let prevIndex = currentIndex - 1;
+        while (prevIndex >= 0 && elements[prevIndex].outline) prevIndex--;
+        if (prevIndex < 0) return;
 
         e.preventDefault();
 
         const text = getPlainText(current.element.content);
-        const previousElement = elements[currentIndex - 1];
+        const previousElement = elements[prevIndex];
         const previousText = getPlainText(previousElement.content);
 
         state.saveToHistory();
 
-        elements[currentIndex - 1] = {
+        elements[prevIndex] = {
           ...previousElement,
           content: createTextRuns(previousText + text),
         };
@@ -847,11 +798,14 @@ export const ScriptEditor = () => {
         const elements = [...state.screenplay.elements];
         const currentIndex = elements.findIndex(el => el.id === current.element.id);
 
-        if (currentIndex >= elements.length - 1) return;
+        // Merge the next visible paragraph in (skipping hidden sections etc.)
+        let nextIndex = currentIndex + 1;
+        while (nextIndex < elements.length && elements[nextIndex].outline) nextIndex++;
+        if (nextIndex >= elements.length) return;
 
         e.preventDefault();
 
-        const nextElement = elements[currentIndex + 1];
+        const nextElement = elements[nextIndex];
         const nextText = getPlainText(nextElement.content);
 
         state.saveToHistory();
@@ -860,14 +814,14 @@ export const ScriptEditor = () => {
           ...current.element,
           content: createTextRuns(text + nextText),
         };
-        elements.splice(currentIndex + 1, 1);
+        elements.splice(nextIndex, 1);
 
         state.setScreenplay({ ...state.screenplay, elements });
         setCursorPosition(current.element.id, text.length);
         return;
       }
     }
-  }, [getCurrentElement, selectElement, setCurrentElementType, setCursorPosition, handleInput, selectedElementIds]);
+  }, [getCurrentElement, selectElement, setCurrentElementType, setCursorPosition, handleInput]);
 
   // Handle selection change to track current element (without re-render)
   const handleSelectionChange = useCallback(() => {

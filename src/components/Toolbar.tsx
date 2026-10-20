@@ -3,14 +3,7 @@ import { useScreenplayStore } from '../store/screenplayStore';
 import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore, useProjectsStore } from '../services/projectService';
 import { saveOpenProject } from '../services/saveOpenProject';
-import { getRevisionSettings, sceneHeadingIndex } from '../engine/production';
-import { RevisionsDialog, SceneNumbersDialog } from './ProductionDialogs';
-import { editSceneNumberAt, lockPagesWithPrompt, selectionIds } from './productionActions';
-import { addAltHere, insertBookmark, insertNote, removeAltHere } from './writingActions';
-import { BookmarksDialog, MacrosDialog, ReportsDialog, type ReportType } from './WritingDialogs';
-
-// Shortcut hint prefix: ⌘ on Apple platforms, Ctrl+ elsewhere
-const MOD = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+';
+import { exportFountain, openScriptFile } from '../services/scriptFiles';
 import { googleAuth } from '../services/googleAuth';
 import { downloadPDF } from '../utils/pdf';
 import { downloadOTSP, generateBreakdownXML, generateScheduleXML, generateShotListXML, generateSupervisorXML, generateArtCartCSV } from '../utils/exportFormats';
@@ -19,7 +12,7 @@ import type { ElementType } from '../types/screenplay';
 import './Toolbar.css';
 
 // Export format options
-type ScreenplayExportFormat = 'fdx' | 'pdf';
+type ScreenplayExportFormat = 'fdx' | 'fountain' | 'pdf';
 
 const ELEMENT_TYPES: ElementType[] = [
   'Scene Heading',
@@ -150,12 +143,7 @@ export const Toolbar = () => {
   const [showVersionModal, setShowVersionModal] = useState(false);
   const [newVersionName, setNewVersionName] = useState('');
   const [showExportModal, setShowExportModal] = useState(false);
-  const [showRevisionsDialog, setShowRevisionsDialog] = useState(false);
-  const [showSceneNumbersDialog, setShowSceneNumbersDialog] = useState(false);
   const [revisedPagesOnly, setRevisedPagesOnly] = useState(false);
-  const [writingDialog, setWritingDialog] = useState<'macros' | 'bookmarks' | null>(null);
-  const [reportType, setReportType] = useState<ReportType | null>(null);
-  const openReport = (type: ReportType) => setReportType(type);
   const [exportFormat, setExportFormat] = useState<ScreenplayExportFormat>('fdx');
   const [isExporting, setIsExporting] = useState(false);
 
@@ -223,10 +211,6 @@ export const Toolbar = () => {
     createVersion,
     switchVersion,
     deleteVersion,
-    toggleSceneNumbers,
-    generateSceneNumbers,
-    setWatermarkSettings,
-    toggleWatermark,
     getProjectData,
   } = useScreenplayStore(
     useShallow((s) => ({
@@ -260,10 +244,6 @@ export const Toolbar = () => {
       createVersion: s.createVersion,
       switchVersion: s.switchVersion,
       deleteVersion: s.deleteVersion,
-      toggleSceneNumbers: s.toggleSceneNumbers,
-      generateSceneNumbers: s.generateSceneNumbers,
-      setWatermarkSettings: s.setWatermarkSettings,
-      toggleWatermark: s.toggleWatermark,
       getProjectData: s.getProjectData,
     }))
   );
@@ -272,12 +252,6 @@ export const Toolbar = () => {
   const { user, signIn, signOut } = useAuthStore();
   const { currentProjectId, isSaving } = useProjectsStore();
   const isGoogleConfigured = googleAuth.isConfigured();
-
-  // Production menu state
-  const revisionSettings = getRevisionSettings(screenplay);
-  const pagesLocked = !!screenplay.lockedPages;
-  const selectedHeading = selectedElementId ? sceneHeadingIndex(screenplay.elements, selectedElementId) : -1;
-  const selectedSceneOmitted = selectedHeading >= 0 && !!screenplay.elements[selectedHeading].omitted;
 
   const handleNew = () => {
     if (isDirty) {
@@ -308,7 +282,10 @@ export const Toolbar = () => {
       const fileType = detectFileType(file.name, content);
 
       // Handle based on current app and file type
-      if (activeApp === 'rewriter' && (fileType === 'fdx' || file.name.endsWith('.fdx'))) {
+      if (activeApp === 'rewriter' && (fileType === 'fountain' || /\.txt$/i.test(file.name))) {
+        // Fountain import for screenplay
+        await openScriptFile(file);
+      } else if (activeApp === 'rewriter' && (fileType === 'fdx' || file.name.endsWith('.fdx'))) {
         // FDX import for screenplay
         const result = importFDX(content);
         if (result.success && result.data) {
@@ -396,7 +373,9 @@ export const Toolbar = () => {
   const handleExportScreenplay = (format: ScreenplayExportFormat) => {
     setShowExportModal(false);
 
-    if (format === 'pdf') {
+    if (format === 'fountain') {
+      exportFountain();
+    } else if (format === 'pdf') {
       const pdfFileName = fileName.replace(/\.fdx$/i, '') + '.pdf';
       downloadPDF(screenplay, pdfFileName, {
         showSceneNumbers,
@@ -438,7 +417,7 @@ export const Toolbar = () => {
   const getAcceptedFileTypes = () => {
     switch (activeApp) {
       case 'rewriter':
-        return '.fdx,.xml';
+        return '.fdx,.fountain,.spmd,.txt,.xml';
       case 'breakdown':
         return '.xml';
       case 'basecamp':
@@ -1041,256 +1020,6 @@ export const Toolbar = () => {
           )}
         </div>
 
-        {/* Insert, Document and Tools menus (Final Draft's order and shortcuts) */}
-        <div className="dropdown-container">
-          <button
-            className={`menu-btn dropdown-trigger ${openDropdown === 'insert' ? 'active' : ''}`}
-            onClick={() => toggleDropdown('insert')}
-            title="Insert"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <path d="M12 8v8M8 12h8" />
-            </svg>
-            <span>Insert</span>
-            <svg className="dropdown-arrow" viewBox="0 0 12 12" fill="currentColor">
-              <path d="M2 4l4 4 4-4" />
-            </svg>
-          </button>
-          {openDropdown === 'insert' && (
-            <div className="dropdown-menu" onClick={closeDropdowns}>
-              <button className="dropdown-item" onClick={addAltHere}>
-                <span className="check-mark"></span>
-                Add Alt
-                <span className="dropdown-shortcut">{MOD}⇧.</span>
-              </button>
-              <button className="dropdown-item" onClick={removeAltHere}>
-                <span className="check-mark"></span>
-                Remove Alt
-                <span className="dropdown-shortcut">{MOD}⇧,</span>
-              </button>
-              <div className="dropdown-divider" />
-              <button className="dropdown-item" onClick={insertBookmark}>
-                <span className="check-mark"></span>
-                Bookmark
-                <span className="dropdown-shortcut">{MOD}\</span>
-              </button>
-              <button className="dropdown-item" onClick={() => insertNote('script')}>
-                <span className="check-mark"></span>
-                ScriptNote
-                <span className="dropdown-shortcut">{MOD}⇧K</span>
-              </button>
-              <button className="dropdown-item" onClick={() => insertNote('general')}>
-                <span className="check-mark"></span>
-                General Note
-                <span className="dropdown-shortcut">{MOD}⇧G</span>
-              </button>
-            </div>
-          )}
-        </div>
-        <div className="dropdown-container">
-          <button
-            className={`menu-btn dropdown-trigger ${openDropdown === 'document' ? 'active' : ''}`}
-            onClick={() => toggleDropdown('document')}
-            title="Document"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-              <path d="M8 13h8M8 17h6" />
-            </svg>
-            <span>Document</span>
-            <svg className="dropdown-arrow" viewBox="0 0 12 12" fill="currentColor">
-              <path d="M2 4l4 4 4-4" />
-            </svg>
-          </button>
-          {openDropdown === 'document' && (
-            <div className="dropdown-menu" onClick={closeDropdowns}>
-              <button className="dropdown-item" onClick={() => setWritingDialog('macros')}>
-                <span className="check-mark"></span>
-                Macros…
-              </button>
-              <button className="dropdown-item" onClick={() => setWritingDialog('bookmarks')}>
-                <span className="check-mark"></span>
-                Bookmarks…
-              </button>
-            </div>
-          )}
-        </div>
-        <div className="dropdown-container">
-          <button
-            className={`menu-btn dropdown-trigger ${openDropdown === 'tools' ? 'active' : ''}`}
-            onClick={() => toggleDropdown('tools')}
-            title="Tools (Reports, Navigator)"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M3 3v18h18" />
-              <path d="M7 15l4-4 3 3 5-6" />
-            </svg>
-            <span>Tools</span>
-            <svg className="dropdown-arrow" viewBox="0 0 12 12" fill="currentColor">
-              <path d="M2 4l4 4 4-4" />
-            </svg>
-          </button>
-          {openDropdown === 'tools' && (
-            <div className="dropdown-menu" onClick={closeDropdowns}>
-              <div className="dropdown-section-title">Reports</div>
-              <button className="dropdown-item" onClick={() => openReport('scene')}>
-                <span className="check-mark"></span>
-                Scene Report…
-              </button>
-              <button className="dropdown-item" onClick={() => openReport('location')}>
-                <span className="check-mark"></span>
-                Location Report…
-              </button>
-              <div className="dropdown-divider" />
-              <button className="dropdown-item" onClick={() => openReport('character')}>
-                <span className="check-mark"></span>
-                Character Report…
-              </button>
-              <button className="dropdown-item" onClick={() => openReport('cast')}>
-                <span className="check-mark"></span>
-                Cast Report…
-              </button>
-              <div className="dropdown-divider" />
-              <button className="dropdown-item" onClick={() => togglePanel('navigator')}>
-                <span className="check-mark"></span>
-                Show Navigator
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Production Features Dropdown */}
-        <div className="dropdown-container">
-          <button
-            className={`menu-btn dropdown-trigger ${openDropdown === 'production' ? 'active' : ''}`}
-            onClick={() => toggleDropdown('production')}
-            title="Production Features"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10" />
-              <polygon points="10 8 16 12 10 16 10 8" />
-            </svg>
-            <span>Production</span>
-            <svg className="dropdown-arrow" viewBox="0 0 12 12" fill="currentColor">
-              <path d="M2 4l4 4 4-4" />
-            </svg>
-          </button>
-          {openDropdown === 'production' && (
-            <div className="dropdown-menu production-menu" onClick={(e) => e.stopPropagation()}>
-              {/* Final Draft's Production menu order (ui-parity-spec §1.1) */}
-              <button className="dropdown-item" onClick={() => { closeDropdowns(); setShowSceneNumbersDialog(true); }}>
-                <span className="check-mark"></span>
-                Scene Numbers…
-              </button>
-              <button className="dropdown-item" onClick={() => { closeDropdowns(); editSceneNumberAt(useScreenplayStore.getState().selectedElementId); }}>
-                <span className="check-mark"></span>
-                Edit Scene Number…
-                <span className="dropdown-shortcut">{MOD}⇧J</span>
-              </button>
-              <button
-                className={`dropdown-item ${showSceneNumbers ? 'checked' : ''}`}
-                onClick={() => {
-                  if (!showSceneNumbers && !screenplay.elements.some((el) => el.sceneNumber)) {
-                    generateSceneNumbers();
-                  } else {
-                    toggleSceneNumbers();
-                  }
-                }}
-              >
-                <span className="check-mark">{showSceneNumbers ? '✓' : ''}</span>
-                Show Scene Numbers
-              </button>
-              <div className="dropdown-divider" />
-              <button
-                className="dropdown-item"
-                onClick={() => {
-                  closeDropdowns();
-                  const id = useScreenplayStore.getState().selectedElementId;
-                  if (id) useScreenplayStore.getState().toggleOmitScene(id);
-                }}
-              >
-                <span className="check-mark"></span>
-                {selectedSceneOmitted ? 'Restore Omitted Scene' : 'Omit Scene'}
-              </button>
-              <div className="dropdown-divider" />
-              <button className="dropdown-item" onClick={() => { closeDropdowns(); setShowRevisionsDialog(true); }}>
-                <span className="check-mark"></span>
-                Revisions…
-              </button>
-              <button
-                className={`dropdown-item ${revisionSettings.revisionMode ? 'checked' : ''}`}
-                onClick={() => useScreenplayStore.getState().toggleRevisionMode()}
-              >
-                <span className="check-mark">{revisionSettings.revisionMode ? '✓' : ''}</span>
-                Revision Mode
-              </button>
-              <button className="dropdown-item" onClick={() => { closeDropdowns(); useScreenplayStore.getState().markRevised(selectionIds()); }}>
-                <span className="check-mark"></span>
-                Mark Revised
-                <span className="dropdown-shortcut">{MOD}]</span>
-              </button>
-              <button className="dropdown-item" onClick={() => { closeDropdowns(); useScreenplayStore.getState().clearRevised(selectionIds()); }}>
-                <span className="check-mark"></span>
-                Clear Revised
-                <span className="dropdown-shortcut">{MOD}[</span>
-              </button>
-              <div className="dropdown-divider" />
-              <button className="dropdown-item" onClick={() => { closeDropdowns(); lockPagesWithPrompt(); }} disabled={pagesLocked}>
-                <span className="check-mark">{pagesLocked ? '✓' : ''}</span>
-                Lock Pages
-              </button>
-              <button className="dropdown-item" onClick={() => { closeDropdowns(); useScreenplayStore.getState().unlockAPages(); }} disabled={!pagesLocked}>
-                <span className="check-mark"></span>
-                Unlock "A" Pages
-              </button>
-              <button className="dropdown-item" onClick={() => { closeDropdowns(); useScreenplayStore.getState().unlockAllPages(); }} disabled={!pagesLocked}>
-                <span className="check-mark"></span>
-                Unlock All Pages
-              </button>
-              <div className="dropdown-submenu-title">Locking Tools</div>
-              <button className="dropdown-item indented" onClick={() => { closeDropdowns(); useScreenplayStore.getState().lockPages(); }} disabled={!pagesLocked}>
-                Relock Pages…
-              </button>
-              <div className="dropdown-divider" />
-              <div className="dropdown-section-title">Watermark</div>
-              <button
-                className={`dropdown-item ${watermarkSettings.enabled ? 'checked' : ''}`}
-                onClick={toggleWatermark}
-              >
-                <span className="check-mark">{watermarkSettings.enabled ? '✓' : ''}</span>
-                Enable Watermark
-              </button>
-              {watermarkSettings.enabled && (
-                <>
-                  <div className="dropdown-item watermark-input">
-                    <input
-                      type="text"
-                      value={watermarkSettings.text}
-                      onChange={(e) => setWatermarkSettings({ text: e.target.value })}
-                      placeholder="Watermark text"
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </div>
-                  <div className="dropdown-item watermark-select">
-                    <select
-                      value={watermarkSettings.position}
-                      onChange={(e) => setWatermarkSettings({ position: e.target.value as 'diagonal' | 'center' | 'header' | 'footer' })}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <option value="diagonal">Diagonal</option>
-                      <option value="center">Center</option>
-                      <option value="header">Header</option>
-                      <option value="footer">Footer</option>
-                    </select>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-
         {/* Version Management Dropdown */}
         <div className="dropdown-container">
           <button
@@ -1573,11 +1302,6 @@ export const Toolbar = () => {
         </div>
       )}
 
-      {showRevisionsDialog && <RevisionsDialog onClose={() => setShowRevisionsDialog(false)} />}
-      {writingDialog === 'macros' && <MacrosDialog onClose={() => setWritingDialog(null)} />}
-      {writingDialog === 'bookmarks' && <BookmarksDialog onClose={() => setWritingDialog(null)} />}
-      {reportType && <ReportsDialog initial={reportType} onClose={() => setReportType(null)} />}
-      {showSceneNumbersDialog && <SceneNumbersDialog onClose={() => setShowSceneNumbersDialog(false)} />}
 
       {/* Export Format Modal */}
       {showExportModal && (
@@ -1602,6 +1326,23 @@ export const Toolbar = () => {
                   <span className="export-option-desc">Industry-standard screenplay format. Compatible with Final Draft, WriterSolo, and other screenwriting software.</span>
                 </div>
                 {exportFormat === 'fdx' && <span className="export-check">✓</span>}
+              </button>
+              <button
+                className={`export-option ${exportFormat === 'fountain' ? 'selected' : ''}`}
+                onClick={() => setExportFormat('fountain')}
+              >
+                <div className="export-option-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <path d="M8 12h8M8 16h8M8 20h5" />
+                  </svg>
+                </div>
+                <div className="export-option-info">
+                  <span className="export-option-name">Fountain (.fountain)</span>
+                  <span className="export-option-desc">Plain-text screenplay format that most screenwriting apps open. ScriptNotes are kept as [[notes]].</span>
+                </div>
+                {exportFormat === 'fountain' && <span className="export-check">✓</span>}
               </button>
               <button
                 className={`export-option ${exportFormat === 'pdf' ? 'selected' : ''}`}

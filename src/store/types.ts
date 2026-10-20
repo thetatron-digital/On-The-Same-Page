@@ -173,6 +173,7 @@ export interface ScriptSlice {
   mergeWithPrevious: (id: string) => string | null;
   // File actions
   loadFromFDX: (content: string) => void;
+  loadFromFountain: (content: string) => void;
   exportToFDX: () => string;
   setFileName: (name: string) => void;
   setDirty: (dirty: boolean) => void;

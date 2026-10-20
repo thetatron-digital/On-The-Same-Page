@@ -41,13 +41,15 @@ export const Navigator = () => {
   const [showResolved, setShowResolved] = useState(false);
   const match = (text: string) => !filter || text.toLowerCase().includes(filter.toLowerCase());
 
-  // Scene headings, with the scene each element belongs to
+  // Scene headings, plus Fountain sections and synopses (which don't print)
+  let sceneCount = 0;
   const scenes = screenplay.elements
-    .map((el, index) => ({ el, index }))
-    .filter(({ el }) => el.type === 'Scene Heading')
-    .map(({ el }, i) => ({
+    .filter((el) => el.type === 'Scene Heading' || el.outline?.kind === 'section' || el.outline?.kind === 'synopsis')
+    .map((el) => ({
       id: el.id,
-      number: el.sceneNumber ?? String(i + 1),
+      kind: el.outline?.kind ?? 'scene',
+      depth: el.outline?.kind === 'section' ? el.outline.depth : 0,
+      number: el.outline ? '' : el.sceneNumber ?? String(++sceneCount),
       text: getPlainText(el.content) || 'Untitled Scene',
     }));
 
@@ -96,14 +98,24 @@ export const Navigator = () => {
               <li className="empty-state">No scenes</li>
             ) : (
               scenes.filter((s) => match(s.text)).map((scene) => (
-                <li
-                  key={scene.id}
-                  className={`scene-item ${selectedElementId === scene.id ? 'active' : ''}`}
-                  onClick={() => goToElement(scene.id)}
-                >
-                  <span className="scene-number">{scene.number}.</span>
-                  <span className="scene-text">{scene.text}</span>
-                </li>
+                scene.kind === 'scene' ? (
+                  <li
+                    key={scene.id}
+                    className={`scene-item ${selectedElementId === scene.id ? 'active' : ''}`}
+                    onClick={() => goToElement(scene.id)}
+                  >
+                    <span className="scene-number">{scene.number}.</span>
+                    <span className="scene-text">{scene.text}</span>
+                  </li>
+                ) : (
+                  <li
+                    key={scene.id}
+                    className={`outline-item ${scene.kind}`}
+                    style={{ paddingLeft: `${8 + Math.max(0, scene.depth - 1) * 10}px` }}
+                  >
+                    {scene.text}
+                  </li>
+                )
               ))
             )}
           </ul>
