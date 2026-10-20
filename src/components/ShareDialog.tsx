@@ -4,6 +4,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { googleDrive, projectLink, type ProjectMember } from '../services/googleDrive';
 import { useAuthStore, useProjectsStore } from '../services/projectService';
+import { shareMediaWith } from '../services/driveMedia';
+import { useScreenplayStore } from '../store/screenplayStore';
 import './ShareDialog.css';
 
 type Access = 'edit' | 'comment' | 'view';
@@ -58,6 +60,11 @@ export function ShareDialog({ projectId, onClose }: Props) {
     if (!EMAIL.test(address)) { setError('Enter an email address.'); return; }
     void run(async () => {
       await googleDrive.shareProject(projectId!, address, access, message);
+      // Dailies clips live as separate Drive files: let them watch those too
+      if (projectId === useProjectsStore.getState().currentProjectId) {
+        const media = (useScreenplayStore.getState().dailies?.clips ?? []).filter((c) => c.media.store === 'drive').map((c) => c.media.id);
+        if (media.length) void shareMediaWith(media, [address]);
+      }
       setEmail('');
       setMessage('');
     });
