@@ -9,6 +9,7 @@ import {
   addAccount, addCategory, addDetail, applyDoodDays, blankDetail, deleteAccount, deleteCategory, deleteDetail, newBudgetId, updateAccount, updateCategory, updateDetail,
 } from '../../engine/budget/edit';
 import { castLinesFromDood } from '../../engine/budget/scheduleLink';
+import { crewLinesFromPeople } from '../../engine/budget/crewLink';
 import { buildScheduleDOOD, CAST_CATEGORY } from '../../utils/doodReport';
 import type { Comparison } from './comparison';
 import { artCartSpend } from '../../engine/budget/actuals';
@@ -58,11 +59,25 @@ function AddRow({ cols, onAdd, numberLabel, nameLabel, withSection }: { cols: nu
 export function Topsheet({ budget, totals, compare, onOpen, onChange }: { budget: Budget; totals: BudgetTotals; compare: Comparison | null; onOpen: (id: string) => void; onChange: Change }) {
   const c = budget.currency;
   const pct = (cents: number) => (totals.grandTotal ? `${((cents / totals.grandTotal) * 100).toFixed(1)}%` : '');
+  const people = useScreenplayStore((s) => s.productionData.people);
+  const [crewMessage, setCrewMessage] = useState<string | null>(null);
+  const addCrew = () => {
+    const lines = crewLinesFromPeople(budget, people, () => newBudgetId('d'));
+    if (lines.length) onChange((b) => lines.reduce((acc, l) => addDetail(acc, l.accountId, l.detail), b));
+    const unpaid = people.filter((p) => p.group === 'Crew' && !p.payRate?.amount).length;
+    setCrewMessage(lines.length
+      ? `${lines.length} crew line${lines.length === 1 ? '' : 's'} added from People (pay rate × shoot days or weeks).${unpaid ? ` ${unpaid} crew without a pay rate were skipped.` : ''}`
+      : unpaid ? `Add pay rates to crew in BaseCamp > All People first (${unpaid} without one).` : 'Everyone with a pay rate is already in the budget.');
+  };
   return (
     <div className="bl-sheet">
       <div className="bl-sheet-head">
         <input className="bl-title" value={budget.name} onChange={(e) => onChange((b) => ({ ...b, name: e.target.value }))} aria-label="Budget name" />
         <span className="bl-grand">{money(totals.grandTotal, c)}</span>
+      </div>
+      <div className="bl-callout">
+        <button className="bl-btn" onClick={addCrew} title="A line per crew member with a pay rate, in their department's account">Add Crew from People</button>
+        {crewMessage && <span className="bl-muted">{crewMessage}</span>}
       </div>
       <table className="bl-table">
         <thead><tr><th className="num">Acct #</th><th>Category</th><th className="money">Total</th><CompareHeads compare={compare} /><th className="money">%</th><th></th></tr></thead>
@@ -216,6 +231,7 @@ export function AccountLevel({ budget, category, account, totals, onChange }: { 
                   <td>
                     <input className="bl-cell wide" value={d.description} placeholder="Description" aria-label="Description" onChange={(e) => onChange((b) => updateDetail(b, d.id, { description: e.target.value }))} />
                     {d.doodElement && <span className="bl-link-badge" title="Days come from the Day Out of Days">DOOD</span>}
+                    {d.personId && <span className="bl-link-badge" title="Made from a person in BaseCamp People">PEOPLE</span>}
                   </td>
                   {cell('amount', 'Amount')}
                   <td>

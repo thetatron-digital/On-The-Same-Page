@@ -47,6 +47,8 @@ export interface BudgetDetail {
   note?: string;
   // Filled from the schedule: Day Out of Days work days for a cast member
   doodElement?: string;
+  // Crew line made from a BaseCamp person (their pay rate)
+  personId?: string;
 }
 
 export interface BudgetAccount {
