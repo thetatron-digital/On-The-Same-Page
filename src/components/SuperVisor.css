@@ -814,3 +814,8 @@
   background: var(--accent-color);
   color: white;
 }
+
+/* Take has clips in Dailies */
+.dailies-btn {
+  color: #6c63ff !important;
+}

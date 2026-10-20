@@ -3,6 +3,7 @@ import { useScreenplayStore } from '../store/screenplayStore';
 import { useShallow } from 'zustand/react/shallow';
 import type { TakeEntry } from '../types/screenplay';
 import { Dailies } from './dailies/Dailies';
+import { useDailiesUi } from './dailies/dailiesUi';
 import './SuperVisor.css';
 
 type ViewTab = 'takes' | 'continuity' | 'reports' | 'dailies';
@@ -27,6 +28,7 @@ const SuperVisor: React.FC = () => {
     setSuperVisorCameraFilter,
     getTakesForScene,
     getCircledTakes,
+    dailiesClips,
   } = useScreenplayStore(
     useShallow((s) => ({
       darkMode: s.darkMode,
@@ -47,6 +49,7 @@ const SuperVisor: React.FC = () => {
       setSuperVisorCameraFilter: s.setSuperVisorCameraFilter,
       getTakesForScene: s.getTakesForScene,
       getCircledTakes: s.getCircledTakes,
+      dailiesClips: s.dailies?.clips,
     }))
   );
 
@@ -457,6 +460,19 @@ const SuperVisor: React.FC = () => {
                       {take.editorNotes && <span className="note editor">{take.editorNotes}</span>}
                     </span>
                     <span className="col-actions">
+                      {(() => {
+                        // Dailies linked to this take: open the newest version
+                        const linked = (dailiesClips ?? []).filter((c) => c.takeId === take.id).sort((a, b) => b.version - a.version);
+                        return linked.length > 0 && (
+                          <button
+                            className="dailies-btn"
+                            title={`Review in Dailies (${linked.length} clip${linked.length === 1 ? '' : 's'})`}
+                            onClick={() => { useDailiesUi.getState().set({ openClipId: linked[0].id, compareClipId: null }); setActiveTab('dailies'); }}
+                          >
+                            ▶
+                          </button>
+                        );
+                      })()}
                       <button
                         className={`circle-btn ${take.circled ? 'active' : ''}`}
                         onClick={() => circleTake(take.id, !take.circled)}
