@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { AppMenuBar } from './components/AppMenuBar';
 import { DialogHost } from './components/DialogHost';
+import { SharedProjectPrompt } from './components/SharedProjectPrompt';
 import { Toolbar } from './components/Toolbar';
 import { Editor } from './components/Editor';
 import { Breakdown } from './components/Breakdown';
@@ -104,6 +105,7 @@ function App() {
       <Toolbar />
       {renderApp()}
       <DialogHost />
+      <SharedProjectPrompt />
     </div>
   );
 }

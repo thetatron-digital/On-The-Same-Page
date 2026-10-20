@@ -87,6 +87,7 @@ export const COMMANDS: Command[] = [
   { id: 'file.exportFdx', label: 'Final Draft (.fdx)', run: exportFdx },
   { id: 'file.exportFountain', label: 'Fountain (.fountain)', run: exportFountain },
   { id: 'file.sides', label: 'Sides…', run: () => dialogs().show('sides') },
+  { id: 'file.share', label: 'Share…', run: () => dialogs().show('share') },
   { id: 'file.print', label: 'Print…', keys: [letter('p', { mod: true, soft: true })], run: () => dialogs().show('pdf') },
 
   // Edit
@@ -271,7 +272,7 @@ export const MENUS: { title: string; items: MenuEntry[] }[] = [
     items: [
       'file.new', 'file.open', 'file.import', '---',
       'file.save', 'file.savePdf', { submenu: 'Export', items: ['file.exportFdx', 'file.exportFountain'] }, '---',
-      'file.sides', '---', 'file.print',
+      'file.sides', 'file.share', '---', 'file.print',
     ],
   },
   {
