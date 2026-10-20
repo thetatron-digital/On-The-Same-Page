@@ -1371,6 +1371,16 @@ export interface DOODDayStatus {
   status: DOODStatus;
 }
 
+// An inactive stripboard: its own day breaks, Boneyard and calendar
+export interface StripboardSnapshot {
+  id: string;
+  name: string;
+  description?: string;
+  shootDays: ShootDay[];
+  unscheduledStrips: string[];
+  calendar?: import('../engine/schedule/calendar').ProductionCalendar;
+}
+
 // Schedule overview
 export interface Schedule {
   id: string;
@@ -1405,6 +1415,13 @@ export interface Schedule {
 
   // Day Out of Days preferences (codes, hold/drop rules)
   doodSettings?: import('../engine/schedule/dood').DOODSettings;
+
+  // Stripboard Manager (Movie Magic): the fields above are the active
+  // board; other boards over the same strips are kept as snapshots
+  activeBoardId?: string;
+  activeBoardName?: string;
+  activeBoardDescription?: string;
+  otherBoards?: StripboardSnapshot[];
 
   // Red Flags (dated notes on elements) and the flag name list
   redFlags?: import('../engine/schedule/redFlags').RedFlag[];

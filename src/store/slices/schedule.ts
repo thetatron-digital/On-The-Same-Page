@@ -12,6 +12,7 @@ import type {
 import { stripColorFor } from '../../types/screenplay';
 import { generateId } from '../../utils/fdx';
 import type { ScreenplayState, ScheduleSlice, StripSortLevel } from '../types';
+import type { StripboardSnapshot } from '../../types/screenplay';
 import { shootDates } from '../../engine/schedule/calendar';
 import { DEFAULT_DOOD_SETTINGS } from '../../engine/schedule/dood';
 import { DEFAULT_RED_FLAG_NAMES, doodFlagClash } from '../../engine/schedule/redFlags';
@@ -36,6 +37,31 @@ const stampDays = (schedule: Schedule): Schedule => {
     updatedAt: new Date(),
   };
 };
+
+// Point each strip at the day that holds it on the active board
+const assignStripDays = (schedule: Schedule): Schedule => {
+  const dayOf = new Map<string, { dayId: string; order: number }>();
+  schedule.shootDays.forEach((d) => d.strips.forEach((id, order) => dayOf.set(id, { dayId: d.id, order })));
+  return {
+    ...schedule,
+    strips: schedule.strips.map((s) => {
+      const at = dayOf.get(s.id);
+      return { ...s, scheduledDayId: at?.dayId, orderInDay: at?.order };
+    }),
+  };
+};
+
+const DEFAULT_BOARD_NAME = 'Main Board';
+
+// Snapshot of the active board, for when another board becomes active
+const snapshotActive = (schedule: Schedule): StripboardSnapshot => ({
+  id: schedule.activeBoardId ?? 'board-main',
+  name: schedule.activeBoardName ?? DEFAULT_BOARD_NAME,
+  description: schedule.activeBoardDescription,
+  shootDays: schedule.shootDays,
+  unscheduledStrips: schedule.unscheduledStrips,
+  calendar: schedule.calendar,
+});
 
 // Re-date days after they are added, removed or reordered
 const restamp = (schedule: Schedule): Schedule => (schedule.calendar ? stampDays(schedule) : schedule);
@@ -881,6 +907,89 @@ export const createScheduleSlice: StateCreator<ScreenplayState, [], [], Schedule
       },
       isDirty: true,
     });
+  },
+
+  // Stripboard Manager: a new board over the same strips, copying the
+  // active board's days or starting with everything in the Boneyard
+  createStripboard: (name, mode, description) => {
+    if (!get().schedule) get().initializeSchedule();
+    const schedule = get().schedule!;
+    const id = generateId();
+    const shootDays: ShootDay[] =
+      mode === 'copy'
+        ? schedule.shootDays.map((d) => ({ ...d, id: generateId(), banners: d.banners?.map((b) => ({ ...b, id: generateId() })) }))
+        : [];
+    const unscheduledStrips =
+      mode === 'copy' ? [...schedule.unscheduledStrips] : schedule.strips.map((s) => s.id);
+    const next: Schedule = {
+      ...schedule,
+      otherBoards: [...(schedule.otherBoards ?? []), snapshotActive(schedule)],
+      activeBoardId: id,
+      activeBoardName: name.trim() || 'New Board',
+      activeBoardDescription: description,
+      shootDays,
+      unscheduledStrips,
+      calendar: schedule.calendar, // new boards start on the active board's calendar
+    };
+    set({ schedule: stampDays(assignStripDays(next)), selectedShootDayId: null, selectedStripId: null, isDirty: true });
+    return id;
+  },
+
+  switchStripboard: (boardId) => {
+    const schedule = get().schedule;
+    if (!schedule || boardId === (schedule.activeBoardId ?? 'board-main')) return;
+    const target = schedule.otherBoards?.find((b) => b.id === boardId);
+    if (!target) return;
+    const next: Schedule = {
+      ...schedule,
+      otherBoards: [...(schedule.otherBoards ?? []).filter((b) => b.id !== boardId), snapshotActive(schedule)],
+      activeBoardId: target.id,
+      activeBoardName: target.name,
+      activeBoardDescription: target.description,
+      shootDays: target.shootDays,
+      unscheduledStrips: target.unscheduledStrips,
+      calendar: target.calendar,
+    };
+    set({ schedule: restamp(assignStripDays({ ...next, totalShootDays: target.shootDays.length })), selectedShootDayId: null, selectedStripId: null, isDirty: true });
+  },
+
+  renameStripboard: (boardId, name, description) => {
+    const schedule = get().schedule;
+    if (!schedule || !name.trim()) return;
+    if (boardId === (schedule.activeBoardId ?? 'board-main')) {
+      set({ schedule: { ...schedule, activeBoardName: name.trim(), activeBoardDescription: description, updatedAt: new Date() }, isDirty: true });
+    } else {
+      set({
+        schedule: {
+          ...schedule,
+          otherBoards: (schedule.otherBoards ?? []).map((b) => (b.id === boardId ? { ...b, name: name.trim(), description } : b)),
+          updatedAt: new Date(),
+        },
+        isDirty: true,
+      });
+    }
+  },
+
+  deleteStripboard: (boardId) => {
+    const schedule = get().schedule;
+    if (!schedule) return null;
+    if (boardId === (schedule.activeBoardId ?? 'board-main')) return 'Switch to another board before deleting this one.';
+    set({ schedule: { ...schedule, otherBoards: (schedule.otherBoards ?? []).filter((b) => b.id !== boardId), updatedAt: new Date() }, isDirty: true });
+    return null;
+  },
+
+  // Movie Magic's "Move All Strips to Unscheduled"
+  moveAllStripsToBoneyard: () => {
+    const schedule = get().schedule;
+    if (!schedule) return;
+    const scheduled = scheduledStripIds(schedule);
+    const next: Schedule = {
+      ...schedule,
+      shootDays: schedule.shootDays.map((d) => ({ ...d, strips: [] })),
+      unscheduledStrips: [...schedule.unscheduledStrips, ...scheduled.filter((id) => !schedule.unscheduledStrips.includes(id))],
+      updatedAt: new Date(),
+    };
+    set({ schedule: assignStripDays(next), isDirty: true });
   },
 
   addRedFlag: (flag) => {
