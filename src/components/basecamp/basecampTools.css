@@ -1,0 +1,248 @@
+/* BaseCamp: Calendar, Day Out of Days, board tools (bct- prefix) */
+
+.bct-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.bct-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bct-inline-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.bct-inline-label select,
+.bct-special-add select,
+.bct-special-add input,
+.bct-sort-table select,
+.bct-code-grid input {
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #ccc);
+  background: var(--bg-secondary, transparent);
+  color: inherit;
+}
+
+.bct-empty {
+  padding: 48px 16px;
+  text-align: center;
+  opacity: 0.85;
+}
+
+.bct-error {
+  color: #E74C3C;
+  font-size: 13px;
+}
+
+.bct-muted {
+  opacity: 0.6;
+}
+
+.bct-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0;
+  font-size: 14px;
+}
+
+/* Day Out of Days table */
+.bct-table-wrap {
+  overflow: auto;
+  max-height: calc(100vh - 180px);
+}
+
+.bct-dood-table {
+  border-collapse: collapse;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.bct-dood-table th,
+.bct-dood-table td {
+  border: 1px solid #D5DBE3;
+  padding: 4px 6px;
+  text-align: center;
+  min-width: 28px;
+}
+
+.bct-dood-table thead th {
+  font-weight: 600;
+  background: #2C3E50;
+  color: #fff;
+}
+
+.bct-sticky {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: #F5F7FA;
+  text-align: left !important;
+}
+
+/* Match BaseCamp's dark theme (see .bc-table in BaseCamp.css) */
+.basecamp-container.dark .bct-dood-table th,
+.basecamp-container.dark .bct-dood-table td { border-color: #2d3548; }
+.basecamp-container.dark .bct-dood-table thead th { background: #1e2538; }
+.basecamp-container.dark .bct-sticky { background: #1a1e2e; }
+.basecamp-container.dark .bct-dood-table thead .bct-sticky { background: #1e2538; }
+.basecamp-container.dark .bct-month-cell,
+.basecamp-container.dark .bct-special-list li { border-color: #2d3548; }
+
+.bc-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.bct-name {
+  font-weight: 600;
+  min-width: 160px;
+}
+
+.bct-special { opacity: 0.7; font-style: italic; }
+.bct-work { font-weight: 700; }
+.bct-hold { color: #D35400; }
+.bct-holiday,
+.bct-companyTravel { opacity: 0.7; }
+.bct-travel,
+.bct-rehearsal,
+.bct-fitting { color: #2980B9; }
+.bct-total { font-weight: 700; }
+.bct-date { font-variant-numeric: tabular-nums; }
+.bct-totals-head { letter-spacing: 0.05em; }
+
+.bct-code-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.bct-code-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.bct-code-grid input {
+  width: 56px;
+  text-transform: uppercase;
+}
+
+/* Calendar */
+.bct-calendar-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .bct-calendar-layout { grid-template-columns: 1fr; }
+}
+
+.bct-weekdays {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+.bct-special-add {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.bct-special-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+  font-size: 13px;
+}
+
+.bct-special-list li {
+  display: grid;
+  grid-template-columns: 110px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border-color, #e5e5e5);
+}
+
+.bct-month-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.bct-month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.bct-month-head {
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  padding: 4px 0;
+  opacity: 0.7;
+}
+
+.bct-month-cell {
+  min-height: 64px;
+  padding: 4px;
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 4px;
+  font-size: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bct-other-month { opacity: 0.35; }
+.bct-shoot { background: rgba(52, 152, 219, 0.18); border-color: #3498DB; }
+.bct-off { background: repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(231, 76, 60, 0.12) 4px, rgba(231, 76, 60, 0.12) 8px); }
+.bct-holiday { background: rgba(241, 196, 15, 0.25); }
+.bct-travel { background: rgba(155, 89, 182, 0.2); }
+.bct-date-num { font-weight: 600; }
+.bct-day-label { font-size: 10px; }
+
+/* Strip Board tools */
+.bct-board-tools {
+  display: flex;
+  gap: 6px;
+}
+
+.bct-sort-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.bct-sort-table th,
+.bct-sort-table td {
+  padding: 4px;
+  text-align: left;
+}
+
+@media print {
+  .bc-sidebar,
+  .bct-actions,
+  .toolbar,
+  .bc-form-hint { display: none !important; }
+  .bct-table-wrap { max-height: none; overflow: visible; }
+}

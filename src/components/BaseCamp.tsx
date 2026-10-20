@@ -10,6 +10,9 @@ import { fetchWeather, geocodeAddress, generateMapsLink, findNearbyHospitals, lo
 import { generateCallSheetPDF } from '../utils/callSheetPdf';
 import { DEFAULT_DISCLAIMER } from '../types/screenplay';
 import './BaseCamp.css';
+import { BoardTools } from './basecamp/BoardTools';
+import { DayOutOfDays } from './basecamp/DayOutOfDays';
+import { ProductionCalendar } from './basecamp/ProductionCalendar';
 
 // ============================================
 // BASECAMP - Production Management & Call Sheets
@@ -241,6 +244,10 @@ const BaseCamp: React.FC = () => {
         return <SettingsView />;
       case 'stripboard':
         return <StripBoardView />;
+      case 'calendar':
+        return <ProductionCalendar />;
+      case 'dood':
+        return <DayOutOfDays />;
       default:
         return <DashboardView />;
     }
@@ -253,6 +260,8 @@ const BaseCamp: React.FC = () => {
     { id: 'locations', label: 'Locations', icon: '◉' },
     { id: 'scenes', label: 'Scenes', icon: '☰' },
     { id: 'stripboard', label: 'Strip Board', icon: '▥' },
+    { id: 'calendar', label: 'Calendar', icon: '▦' },
+    { id: 'dood', label: 'Day Out of Days', icon: '▤' },
     { id: 'callsheets', label: 'Call Sheets', icon: '▤' },
     { id: 'settings', label: 'Settings', icon: '⚙' },
   ];
@@ -2622,6 +2631,7 @@ const BaseCamp: React.FC = () => {
         <div className="bc-sb-main">
           <div className="main-header">
             <h2>Strip Board</h2>
+            <BoardTools />
             <div className="strip-legend">
               <span className="legend-item" style={{ backgroundColor: STRIP_COLOR_HEX['White'] }}>Day Ext</span>
               <span className="legend-item" style={{ backgroundColor: STRIP_COLOR_HEX['Yellow'] }}>Day Int</span>
