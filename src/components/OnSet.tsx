@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useScreenplayStore } from '../store/screenplayStore';
 import { useShallow } from 'zustand/react/shallow';
 import type { OnSetViewMode } from '../types/screenplay';
-import { STRIP_COLOR_HEX } from '../types/screenplay';
+import { STRIP_COLOR_HEX, stripTextColor } from '../types/screenplay';
 import './OnSet.css';
 
 const OnSet: React.FC = () => {
@@ -375,7 +375,7 @@ const OnSet: React.FC = () => {
                 className="scene-strip"
                 style={{
                   backgroundColor: STRIP_COLOR_HEX[currentStrip.color] || '#FFFFFF',
-                  color: currentStrip.color === 'Black' || currentStrip.color === 'Blue' ? '#FFFFFF' : '#1a1a1a',
+                  color: stripTextColor(currentStrip.color),
                 }}
               >
                 <span className="strip-number">{currentStrip.sceneNumber}</span>
@@ -418,7 +418,7 @@ const OnSet: React.FC = () => {
                   className={`upcoming-strip ${index === 0 ? 'next' : ''}`}
                   style={{
                     backgroundColor: STRIP_COLOR_HEX[strip!.color] || '#FFFFFF',
-                    color: strip!.color === 'Black' || strip!.color === 'Blue' ? '#FFFFFF' : '#1a1a1a',
+                    color: stripTextColor(strip!.color),
                   }}
                   onClick={() => markStripInProgress(strip!.id)}
                 >

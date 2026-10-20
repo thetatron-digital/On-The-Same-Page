@@ -177,3 +177,19 @@ describe('Sort strips', () => {
     expect(sorted.map((s) => s.id)).toEqual(['1', '3', '4', '2']);
   });
 });
+
+describe('strip colors (Movie Magic default grid)', () => {
+  it('maps Int/Ext × time of day like Movie Magic', async () => {
+    const { stripColorFor, stripTextColor } = await import('../../types/screenplay');
+    expect(stripColorFor('INT', 'Day')).toBe('White');
+    expect(stripColorFor('EXT', 'DAY')).toBe('Yellow');
+    expect(stripColorFor('INT', 'NIGHT')).toBe('DarkGreen');
+    expect(stripColorFor('EXT', 'Night')).toBe('Blue');
+    expect(stripColorFor('I/E', 'NIGHT')).toBe('Green');
+    expect(stripColorFor('EXT', 'MORNING')).toBe('Pink');
+    expect(stripColorFor('INT', 'Dusk')).toBe('Orange');
+    expect(stripColorFor('INT', 'CONTINUOUS')).toBe('White');
+    expect(stripTextColor('Blue')).toBe('#FFFFFF');
+    expect(stripTextColor('Yellow')).toBe('#1a1a1a');
+  });
+});

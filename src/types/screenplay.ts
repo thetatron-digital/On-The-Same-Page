@@ -1014,39 +1014,61 @@ export interface ViewFinder {
 // ============================================
 
 // Strip colors (industry standard)
+// Strip colors follow Movie Magic Scheduling's default color grid
+// (Int/Ext columns × Day/Night rows, from its shipped template):
+//   INT Day white, EXT Day yellow, INT/EXT green,
+//   INT Night dark green, EXT Night dark blue (both with white text),
+//   Morning pink, Evening orange.
+// 'Black' and 'Purple' are kept so older saved strips still render.
 export type StripColor =
-  | 'White'      // Day exterior
-  | 'Yellow'     // Day interior
-  | 'Green'      // Day ext/int
-  | 'Blue'       // Night exterior
-  | 'Black'      // Night interior (often shown as dark blue)
-  | 'Purple'     // Night ext/int
-  | 'Orange'     // Dawn/Dusk
-  | 'Pink';      // Special (VFX, stunts, etc.)
+  | 'White'      // INT / Day
+  | 'Yellow'     // EXT / Day
+  | 'Green'      // INT/EXT (day or night)
+  | 'DarkGreen'  // INT / Night
+  | 'Blue'       // EXT / Night
+  | 'Pink'       // Morning / Dawn
+  | 'Orange'     // Evening / Dusk
+  | 'Black'      // legacy
+  | 'Purple';    // legacy
 
 export const STRIP_COLOR_MAP: Record<string, StripColor> = {
-  'EXT-DAY': 'White',
-  'INT-DAY': 'Yellow',
+  'INT-DAY': 'White',
+  'EXT-DAY': 'Yellow',
   'INT/EXT-DAY': 'Green',
+  'INT-NIGHT': 'DarkGreen',
   'EXT-NIGHT': 'Blue',
-  'INT-NIGHT': 'Black',
-  'INT/EXT-NIGHT': 'Purple',
-  'EXT-DAWN': 'Orange',
-  'EXT-DUSK': 'Orange',
-  'INT-DAWN': 'Orange',
+  'INT/EXT-NIGHT': 'Green',
+  'INT-DAWN': 'Pink',
+  'EXT-DAWN': 'Pink',
+  'INT/EXT-DAWN': 'Green',
   'INT-DUSK': 'Orange',
+  'EXT-DUSK': 'Orange',
+  'INT/EXT-DUSK': 'Green',
 };
 
 export const STRIP_COLOR_HEX: Record<StripColor, string> = {
-  'White': '#FFFFFF',
-  'Yellow': '#FEF08A',
-  'Green': '#86EFAC',
-  'Blue': '#93C5FD',
+  'White': '#F8F8FA',
+  'Yellow': '#D2D354',
+  'Green': '#35A135',
+  'DarkGreen': '#519528',
+  'Blue': '#005085',
+  'Pink': '#FF9999',
+  'Orange': '#FF9933',
   'Black': '#1E3A5F',
   'Purple': '#C4B5FD',
-  'Orange': '#FED7AA',
-  'Pink': '#FBCFE8',
 };
+
+// Strip colors that need white text
+const LIGHT_TEXT: ReadonlySet<StripColor> = new Set(['DarkGreen', 'Blue', 'Black']);
+export const stripTextColor = (color: StripColor) => (LIGHT_TEXT.has(color) ? '#FFFFFF' : '#1a1a1a');
+
+// Color for a scene's Int/Ext and time of day ("Day", "NIGHT", "Dawn", "MORNING"...)
+export function stripColorFor(intExt: string, timeOfDay: string): StripColor {
+  const ie = intExt.toUpperCase().replace(/\.$/, '').replace('I/E', 'INT/EXT');
+  const tod = timeOfDay.toUpperCase();
+  const row = /NIGHT/.test(tod) ? 'NIGHT' : /DAWN|MORNING|SUNRISE/.test(tod) ? 'DAWN' : /DUSK|EVENING|SUNSET|MAGIC/.test(tod) ? 'DUSK' : 'DAY';
+  return STRIP_COLOR_MAP[`${ie}-${row}`] ?? 'White';
+}
 
 // Scene strip for strip board
 export interface SceneStrip {

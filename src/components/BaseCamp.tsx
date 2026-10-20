@@ -5,7 +5,7 @@ import type {
   ShootDay, SceneStrip, ProductionPerson, ProductionLocation, ProductionScene,
   CallSheet, PersonRole, CallSheetScene,
 } from '../types/screenplay';
-import { STRIP_COLOR_HEX } from '../types/screenplay';
+import { STRIP_COLOR_HEX, stripTextColor } from '../types/screenplay';
 import { fetchWeather, geocodeAddress, generateMapsLink, findNearbyHospitals, lookupTimezone, type WeatherData, type NearestHospitalResult } from '../utils/weather';
 import { generateCallSheetPDF } from '../utils/callSheetPdf';
 import { DEFAULT_DISCLAIMER } from '../types/screenplay';
@@ -2545,14 +2545,14 @@ const BaseCamp: React.FC = () => {
       const strip = getStrip(stripId);
       if (!strip) return null;
       const bgColor = STRIP_COLOR_HEX[strip.color] || '#FFFFFF';
-      const isDark = strip.color === 'Black' || strip.color === 'Blue';
+      const textColor = stripTextColor(strip.color);
       const shotCount = getShotCountForScene(strip.sceneId);
 
       return (
         <div
           key={strip.id}
           className={`strip ${selectedStripId === strip.id ? 'selected' : ''} ${strip.isLocked ? 'locked' : ''}`}
-          style={{ backgroundColor: bgColor, color: isDark ? '#FFFFFF' : '#1a1a1a' }}
+          style={{ backgroundColor: bgColor, color: textColor }}
           draggable={!strip.isLocked}
           onDragStart={(e) => handleDragStart(e, strip.id)}
           onClick={() => selectStrip(strip.id)}
@@ -2633,10 +2633,9 @@ const BaseCamp: React.FC = () => {
             <h2>Strip Board</h2>
             <BoardTools />
             <div className="strip-legend">
-              <span className="legend-item" style={{ backgroundColor: STRIP_COLOR_HEX['White'] }}>Day Ext</span>
-              <span className="legend-item" style={{ backgroundColor: STRIP_COLOR_HEX['Yellow'] }}>Day Int</span>
-              <span className="legend-item" style={{ backgroundColor: STRIP_COLOR_HEX['Blue'], color: 'white' }}>Night Ext</span>
-              <span className="legend-item" style={{ backgroundColor: STRIP_COLOR_HEX['Black'], color: 'white' }}>Night Int</span>
+              {([['White', 'Int Day'], ['Yellow', 'Ext Day'], ['DarkGreen', 'Int Night'], ['Blue', 'Ext Night'], ['Green', 'Int/Ext']] as const).map(([c, label]) => (
+                <span key={c} className="legend-item" style={{ backgroundColor: STRIP_COLOR_HEX[c], color: stripTextColor(c) }}>{label}</span>
+              ))}
             </div>
           </div>
 
