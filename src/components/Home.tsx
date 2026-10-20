@@ -22,22 +22,6 @@ export const Home = () => {
   } = useProjectsStore();
 
   const {
-    screenplay,
-    storyOutline,
-    beatBoards,
-    versions,
-    scriptNotes,
-    splitContent,
-    breakdown,
-    artCart,
-    viewFinder,
-    schedule,
-    onSet,
-    superVisor,
-    showSceneNumbers,
-    sceneNumberStyle,
-    pageLocks,
-    watermarkSettings,
     setActiveApp,
     loadFromProjectData,
     resetToNew,
@@ -59,28 +43,6 @@ export const Home = () => {
     fetchProjects();
   }, [user]);
 
-  // Get current project data
-  const getCurrentProjectData = (): ProjectData => ({
-    screenplay,
-    storyOutline,
-    beatBoards,
-    versions,
-    scriptNotes,
-    splitContent,
-    breakdown: breakdown || undefined,
-    artCart: artCart || undefined,
-    viewFinder: viewFinder || undefined,
-    schedule: schedule || undefined,
-    onSet: onSet || undefined,
-    superVisor: superVisor || undefined,
-    showSceneNumbers,
-    sceneNumberStyle,
-    pageLocks,
-    watermarkSettings,
-    version: 1,
-    savedAt: new Date(),
-  });
-
   // Handle create new project
   const handleCreateProject = async () => {
     if (!newProjectName.trim()) return;
@@ -89,9 +51,14 @@ export const Home = () => {
       // Reset store to new screenplay
       resetToNew();
 
-      // Get fresh data after reset
-      const data = getCurrentProjectData();
-      data.screenplay.title = newProjectName;
+      // Read the store directly: values destructured above are from the
+      // previous render and would still hold the old project.
+      const fresh = useScreenplayStore.getState().getProjectData();
+      const data: ProjectData = {
+        ...fresh,
+        screenplay: { ...fresh.screenplay, title: newProjectName },
+      };
+      loadFromProjectData(data);
 
       await createProject(newProjectName, data);
       setShowNewProject(false);

@@ -126,6 +126,9 @@ export interface ProjectData {
   onSet?: import('./screenplay').OnSet;
   superVisor?: import('./screenplay').SuperVisor;
 
+  // BaseCamp production management (people, locations, scenes, call sheets)
+  productionData?: import('./screenplay').ProductionData;
+
   // Settings
   showSceneNumbers?: boolean;
   sceneNumberStyle?: 'numeric' | 'alphanumeric';
@@ -138,4 +141,5 @@ export interface ProjectData {
 }
 
 // Current data format version
-export const PROJECT_DATA_VERSION = 1;
+// v2: added productionData (see MIGRATIONS in src/utils/projectData.ts)
+export const PROJECT_DATA_VERSION = 2;

@@ -12,6 +12,7 @@ import {
   type Project,
   type ProjectData
 } from '../types/user';
+import { migrateProjectData, parseProjectData, reviveDates } from '../utils/projectData';
 
 const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
 const UPLOAD_API_BASE = 'https://www.googleapis.com/upload/drive/v3';
@@ -201,14 +202,7 @@ class GoogleDriveService {
       throw new Error('Failed to load project');
     }
 
-    const data = await response.json();
-
-    // Handle date parsing
-    if (data.savedAt) {
-      data.savedAt = new Date(data.savedAt);
-    }
-
-    return data;
+    return parseProjectData(await response.text());
   }
 
   // Save/update a project
@@ -453,14 +447,15 @@ class LocalStorageService {
   // Load project from local storage
   loadProject(id: string): ProjectData | null {
     const projects = this.getLocalProjects();
-    return projects[id]?.data || null;
+    const data = projects[id]?.data;
+    return data ? migrateProjectData(data) : null;
   }
 
   // Get all local projects
   getLocalProjects(): Record<string, { data: ProjectData; savedAt: string }> {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.LOCAL_PROJECTS);
-      return stored ? JSON.parse(stored) : {};
+      return stored ? JSON.parse(stored, reviveDates) : {};
     } catch {
       return {};
     }

@@ -356,16 +356,19 @@ let autoSaveTimeout: ReturnType<typeof setTimeout> | null = null;
 export function scheduleAutoSave(
   projectId: string,
   getData: () => ProjectData,
-  delay: number = 30000 // 30 seconds default
+  delay: number = 30000, // 30 seconds default
+  onSaved?: (data: ProjectData) => void
 ): void {
   if (autoSaveTimeout) {
     clearTimeout(autoSaveTimeout);
   }
 
   autoSaveTimeout = setTimeout(async () => {
+    autoSaveTimeout = null;
     try {
       const data = getData();
       await useProjectsStore.getState().saveProject(projectId, data);
+      onSaved?.(data);
       console.log('Auto-saved project');
     } catch (error) {
       console.error('Auto-save failed:', error);
