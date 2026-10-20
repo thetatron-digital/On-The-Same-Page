@@ -8,6 +8,7 @@
 
 import { useScreenplayStore, type ScreenplayState } from '../store/screenplayStore';
 import { cancelAutoSave, scheduleAutoSave, useProjectsStore } from './projectService';
+import { isReadOnlyProject } from './projectSync';
 import type { ProjectData } from '../types/user';
 
 // Keep in sync with getProjectData() in screenplayStore.ts
@@ -46,6 +47,8 @@ export function startAutoSave(delay: number = AUTO_SAVE_DELAY_MS): () => void {
 
     const projectId = useProjectsStore.getState().currentProjectId;
     if (!projectId) return;
+    // Shared with us as Viewer/Commenter: edits stay local
+    if (isReadOnlyProject(projectId)) return;
 
     scheduleAutoSave(
       projectId,

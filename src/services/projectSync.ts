@@ -18,6 +18,8 @@ import { cancelAutoSave } from './projectService';
 import { deepEqual, merge3 } from '../utils/merge3';
 import { PERSISTED_KEYS } from './autoSave';
 import type { ProjectData } from '../types/user';
+import { googleAuth } from './googleAuth';
+import { decodePresence, encodePresence, presenceKey, stalePresenceKeys, type Presence } from '../utils/presence';
 
 export const PULL_INTERVAL_MS = 20_000;
 
@@ -25,6 +27,14 @@ interface SyncBase {
   projectId: string;
   data: ProjectData;
   revision: string;
+  canEdit: boolean;
+}
+
+/** Saving a project shared with you as Viewer or Commenter */
+export class ReadOnlyProjectError extends Error {
+  constructor() {
+    super('You have view-only access to this project, so changes aren\'t saved. Ask the owner for Editor access.');
+  }
 }
 
 export interface SyncStatus {
@@ -34,9 +44,13 @@ export interface SyncStatus {
   by?: string;
   /** Values both sides changed; ours were kept */
   conflicts: string[];
+  /** Shared with us as Viewer or Commenter: nothing is saved */
+  readOnly: boolean;
+  /** Collaborators who have the project open now */
+  others: Presence[];
 }
 
-export const useSyncStatus = create<SyncStatus>(() => ({ state: 'idle', conflicts: [] }));
+export const useSyncStatus = create<SyncStatus>(() => ({ state: 'idle', conflicts: [], readOnly: false, others: [] }));
 
 let base: SyncBase | null = null;
 let busy: Promise<unknown> | null = null;
@@ -56,11 +70,44 @@ async function exclusive<T>(work: () => Promise<T>): Promise<T> {
 }
 
 export function clearSyncBase() {
+  if (base) leaveProject(base.projectId);
   base = null;
-  useSyncStatus.setState({ state: 'idle', conflicts: [], by: undefined, at: undefined });
+  useSyncStatus.setState({ state: 'idle', conflicts: [], by: undefined, at: undefined, readOnly: false, others: [] });
 }
 
 export const syncBaseFor = (projectId: string) => (base?.projectId === projectId ? base : null);
+
+export const isReadOnlyProject = (projectId: string | null) => !!projectId && syncBaseFor(projectId)?.canEdit === false;
+
+// ---------- presence ----------
+
+const me = () => googleAuth.getStoredUser();
+
+// Who else is here, and whether we can edit, from a revision check
+function noteRevision(rev: DriveRevision) {
+  useSyncStatus.setState({ readOnly: rev.canEdit === false, others: decodePresence(rev.presence, me()?.id, Date.now()) });
+}
+
+/** Refresh our presence note (and tidy up old ones). Editors only. */
+export async function heartbeat(projectId: string, presence?: Record<string, string>): Promise<void> {
+  const user = me();
+  const b = syncBaseFor(projectId);
+  if (!user || !b?.canEdit) return;
+  const key = presenceKey(user.id);
+  const now = Date.now();
+  const notes: Record<string, string | null> = {
+    [key]: encodePresence({ name: user.name || user.email, app: useScreenplayStore.getState().activeApp, at: now }, key),
+  };
+  for (const stale of stalePresenceKeys(presence, now)) if (stale !== key) notes[stale] = null;
+  await googleDrive.setPresence(projectId, notes).catch(() => {});
+}
+
+/** Remove our presence note (closing the project or the tab) */
+export function leaveProject(projectId: string) {
+  const user = me();
+  if (!user || base?.projectId !== projectId || !base.canEdit) return;
+  void googleDrive.setPresence(projectId, { [presenceKey(user.id)]: null }).catch(() => {});
+}
 
 /** Load a Drive project and remember it as the base for later merges */
 export async function loadDriveProject(projectId: string): Promise<ProjectData> {
@@ -68,8 +115,11 @@ export async function loadDriveProject(projectId: string): Promise<ProjectData> 
   // sees a newer revision and merges, which is safe either way
   const revision = await googleDrive.getRevision(projectId);
   const data = await googleDrive.loadProject(projectId);
-  base = { projectId, data, revision: revision.revision };
+  if (base && base.projectId !== projectId) leaveProject(base.projectId);
+  base = { projectId, data, revision: revision.revision, canEdit: revision.canEdit !== false };
   useSyncStatus.setState({ state: 'synced', at: new Date(), conflicts: [], by: undefined });
+  noteRevision(revision);
+  void heartbeat(projectId, revision.presence);
   return data;
 }
 
@@ -98,12 +148,19 @@ function mergeWithRemote(b: SyncBase, local: ProjectData, remote: ProjectData, r
  */
 export function saveDriveProject(projectId: string, local: ProjectData): Promise<ProjectData> {
   return exclusive(async () => {
+    const b = syncBaseFor(projectId);
+    if (b && !b.canEdit) throw new ReadOnlyProjectError();
     useSyncStatus.setState((s) => ({ ...s, state: 'syncing' }));
     let toSave = local;
-    const b = syncBaseFor(projectId);
     try {
       if (b) {
         const current = await googleDrive.getRevision(projectId);
+        noteRevision(current);
+        if (current.canEdit === false) {
+          b.canEdit = false;
+          useSyncStatus.setState((st) => ({ ...st, state: 'synced' }));
+          throw new ReadOnlyProjectError();
+        }
         if (current.revision !== b.revision) {
           const remote = await googleDrive.loadProject(projectId);
           // Merge with what is in the editor now, which may be newer than `local`
@@ -111,12 +168,12 @@ export function saveDriveProject(projectId: string, local: ProjectData): Promise
         }
       }
       const saved = await googleDrive.saveProject(projectId, toSave);
-      base = { projectId, data: toSave, revision: saved.revision };
+      base = { projectId, data: toSave, revision: saved.revision, canEdit: true };
       if (useSyncStatus.getState().state === 'syncing') useSyncStatus.setState({ state: 'synced', at: new Date() });
       else useSyncStatus.setState({ at: new Date() });
       return toSave;
     } catch (error) {
-      useSyncStatus.setState((s) => ({ ...s, state: 'offline' }));
+      if (!(error instanceof ReadOnlyProjectError)) useSyncStatus.setState((s) => ({ ...s, state: 'offline' }));
       throw error;
     }
   });
@@ -137,6 +194,9 @@ export function pullRemoteChanges(projectId: string): Promise<boolean> {
       useSyncStatus.setState((s) => ({ ...s, state: 'offline' }));
       return false;
     }
+    noteRevision(current);
+    b.canEdit = current.canEdit !== false;
+    void heartbeat(projectId, current.presence);
     if (current.revision === b.revision) {
       if (useSyncStatus.getState().state === 'offline') useSyncStatus.setState({ state: 'synced', at: new Date() });
       return false;
@@ -152,7 +212,7 @@ export function pullRemoteChanges(projectId: string): Promise<boolean> {
     } else {
       mergeWithRemote(b, local, remote, current); // auto-save writes the merge
     }
-    base = { projectId, data: remote, revision: current.revision };
+    base = { projectId, data: remote, revision: current.revision, canEdit: current.canEdit !== false };
     return true;
   });
 }
@@ -167,9 +227,12 @@ export function startRemoteSync(getProjectId: () => string | null, interval = PU
   };
   const timer = setInterval(pull, interval);
   const onVisible = () => { if (document.visibilityState === 'visible') pull(); };
+  const onLeave = () => { const id = getProjectId(); if (id) leaveProject(id); };
   document.addEventListener('visibilitychange', onVisible);
+  window.addEventListener('pagehide', onLeave);
   return () => {
     clearInterval(timer);
     document.removeEventListener('visibilitychange', onVisible);
+    window.removeEventListener('pagehide', onLeave);
   };
 }
