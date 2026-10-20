@@ -445,6 +445,11 @@ export interface ScheduleSlice {
   setScheduleCalendar: (calendar: ProductionCalendar | null) => void;
   autoAssignDayBreaks: (options: AutoDayBreakOptions) => string | null;
   sortScheduledStrips: (levels: StripSortLevel[]) => string | null;
+  insertDayBreakAfter: (stripId: string) => string | null;
+  deleteAllDayBreaks: () => string | null;
+  addBanner: (dayId: string, text: string, options?: { beforeStripId?: string; color?: string }) => string | null;
+  updateBanner: (dayId: string, bannerId: string, updates: { text?: string; color?: string }) => void;
+  deleteBanner: (dayId: string, bannerId: string) => void;
   updateDOODSettings: (updates: Partial<DOODSettings>) => void;
   // Schedule settings
   updateScheduleSettings: (settings: Partial<Pick<Schedule, 'defaultCallTime' | 'defaultLunchDuration' | 'showLunchOnBoard'>>) => void;

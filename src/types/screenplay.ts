@@ -1241,6 +1241,14 @@ export interface ShotPackage {
   notes?: string;
 }
 
+// Banner strip (Movie Magic): a note on the board, e.g. "COMPANY MOVE"
+export interface BoardBanner {
+  id: string;
+  text: string;
+  color?: string;            // background, hex
+  beforeStripId?: string;    // shown before this strip; at the end of the day if unset
+}
+
 // Shoot day
 export interface ShootDay {
   id: string;
@@ -1250,6 +1258,7 @@ export interface ShootDay {
   // Scheduling
   strips: string[];          // SceneStrip IDs in order
   shotPackages: string[];    // ShotPackage IDs in order
+  banners?: BoardBanner[];   // banner strips placed among the day's strips
 
   // Times
   callTime: string;          // e.g., "6:00 AM"

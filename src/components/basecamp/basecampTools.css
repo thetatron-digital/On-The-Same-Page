@@ -224,6 +224,38 @@
 .bct-board-tools {
   display: flex;
   gap: 6px;
+  flex-wrap: wrap;
+}
+
+.bct-banner-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.bct-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px 8px;
+  margin: 2px 0;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #1a1a1a;
+}
+
+.bct-banner button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  color: inherit;
+  opacity: 0.6;
 }
 
 .bct-sort-table {
@@ -245,4 +277,23 @@
   .toolbar,
   .bc-form-hint { display: none !important; }
   .bct-table-wrap { max-height: none; overflow: visible; }
+}
+
+/* Strip Board header: title + legend on one row, tools on the next */
+.bc-sb-main .main-header {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.bc-sb-main .main-header .bct-board-tools {
+  order: 3;
+  flex-basis: 100%;
+}
+
+.bc-sb-main .main-header .strip-legend {
+  flex-wrap: wrap;
+}
+
+.bct-board-tools .bc-btn {
+  white-space: nowrap;
 }
