@@ -27,6 +27,7 @@ export interface DailiesClip {
   kind: 'video' | 'audio' | 'image';
   durationS: number;
   fps: number;        // for frame stepping and timecode (detected or set)
+  fpsSetByUser?: boolean; // don't replace with the detected rate
   width?: number;
   height?: number;
   startTimecode?: string; // source timecode of the first frame, HH:MM:SS:FF

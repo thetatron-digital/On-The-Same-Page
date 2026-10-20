@@ -64,16 +64,23 @@ function loadPicker(): Promise<PickerApi> {
  * id, when they followed a link). Resolves to the file id, or null when
  * they cancel.
  */
-export async function pickSharedProject(fileId?: string): Promise<string | null> {
+export function pickSharedProject(fileId?: string): Promise<string | null> {
+  return pickDriveFile({ fileId, mimeTypes: 'application/json', title: fileId ? 'Open the shared project' : 'Projects shared with you' });
+}
+
+/** Give OTSP access to a dailies clip someone else uploaded */
+export const pickSharedClip = (fileId: string) => pickDriveFile({ fileId, title: 'Give OTSP access to this clip' });
+
+async function pickDriveFile({ fileId, mimeTypes, title }: { fileId?: string; mimeTypes?: string; title: string }): Promise<string | null> {
   if (!isPickerConfigured()) {
     throw new Error('Opening shared projects needs the Google Picker set up (VITE_GOOGLE_API_KEY and VITE_GOOGLE_APP_ID; see .env.example).');
   }
   const [picker, token] = await Promise.all([loadPicker(), googleAuth.getAccessToken()]);
   if (!token) throw new Error('Sign in with Google first.');
   const view = new picker.DocsView(picker.ViewId.DOCS)
-    .setMimeTypes('application/json')
     .setIncludeFolders(false)
     .setMode(picker.DocsViewMode.LIST);
+  if (mimeTypes) view.setMimeTypes(mimeTypes);
   if (fileId) view.setFileIds(fileId);
   else view.setOwnedByMe(false);
   return new Promise((resolve) => {
@@ -81,7 +88,7 @@ export async function pickSharedProject(fileId?: string): Promise<string | null>
       .setOAuthToken(token)
       .setDeveloperKey(GOOGLE_CONFIG.API_KEY)
       .setAppId(GOOGLE_CONFIG.APP_ID)
-      .setTitle(fileId ? 'Open the shared project' : 'Projects shared with you')
+      .setTitle(title)
       .addView(view)
       .setCallback((data) => {
         if (data.action === picker.Action.PICKED) resolve(data.docs?.[0]?.id ?? null);
