@@ -149,6 +149,16 @@ export const createBreakdownSlice: StateCreator<ScreenplayState, [], [], Breakdo
     });
   },
 
+  updateBreakdownSheet: (sceneId, updates) => {
+    const { breakdown } = get();
+    if (!breakdown) return;
+    const sheets = breakdown.sheets ?? {};
+    set({
+      breakdown: { ...breakdown, sheets: { ...sheets, [sceneId]: { ...sheets[sceneId], ...updates } }, updatedAt: new Date() },
+      isDirty: true,
+    });
+  },
+
   syncElements: () => {
     const { breakdown } = get();
     if (!breakdown) return;

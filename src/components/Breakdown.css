@@ -533,3 +533,63 @@
     width: 240px;
   }
 }
+
+/* Breakdown sheet fields (Movie Magic layout) */
+.sheet-strip-bar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.sheet-grid {
+  grid-template-columns: 1fr 1fr;
+}
+
+.sheet-grid .info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+}
+
+.sheet-grid .info-item > span {
+  color: var(--text-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sheet-grid .info-wide {
+  grid-column: 1 / -1;
+}
+
+.sheet-grid input,
+.sheet-grid textarea {
+  padding: 5px 7px;
+  border-radius: 5px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: inherit;
+  font: inherit;
+  min-width: 0;
+}
+
+.sheet-grid textarea {
+  resize: vertical;
+}
+
+.element-board-id {
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+.element-manager-btn {
+  width: auto !important;
+  padding: 4px 10px !important;
+  font-size: 12px;
+}

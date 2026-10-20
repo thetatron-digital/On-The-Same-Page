@@ -527,39 +527,67 @@ export const TIME_OF_DAY_OPTIONS = [
 // BREAKDOWN APP TYPES
 // ============================================
 
-// Industry-standard breakdown categories (14 core)
+// Breakdown categories: Movie Magic Scheduling's standard set and names
+// (Set, Location, Sequence, Script Day and Unit are sheet fields instead)
 export type BreakdownCategory =
-  | 'Cast'
-  | 'Extras'
+  | 'Cast Members'
+  | 'Background Actors'
   | 'Stunts'
-  | 'SFX'
-  | 'Props'
   | 'Vehicles'
-  | 'Animals'
+  | 'Props'
+  | 'Camera'
+  | 'Special Effects'
   | 'Wardrobe'
-  | 'Makeup'
+  | 'Makeup/Hair'
+  | 'Animals'
+  | 'Animal Wrangler'
+  | 'Music'
   | 'Sound'
+  | 'Art Department'
   | 'Set Dressing'
   | 'Greenery'
   | 'Special Equipment'
-  | 'VFX';
+  | 'Security'
+  | 'Additional Labor'
+  | 'Visual Effects'
+  | 'Mechanical Effects'
+  | 'Miscellaneous'
+  | 'Notes';
 
-// Category metadata with colors (industry standard colors)
+// Category metadata: tag color and a short description
 export const BREAKDOWN_CATEGORY_INFO: Record<BreakdownCategory, { color: string; description: string }> = {
-  'Cast': { color: '#EF4444', description: 'Speaking roles / principal actors' },
-  'Extras': { color: '#22C55E', description: 'Background / atmosphere' },
-  'Stunts': { color: '#F97316', description: 'Stunt work and coordination' },
-  'SFX': { color: '#3B82F6', description: 'On-set special effects (practical)' },
-  'Props': { color: '#8B5CF6', description: 'Hand props for actors' },
+  'Cast Members': { color: '#EF4444', description: 'Speaking roles and principal actors' },
+  'Background Actors': { color: '#22C55E', description: 'Extras, atmosphere, stand-ins' },
+  'Stunts': { color: '#F97316', description: 'Stunt performers and coordination' },
   'Vehicles': { color: '#EC4899', description: 'Picture vehicles' },
-  'Animals': { color: '#EAB308', description: 'Animals with handler' },
+  'Props': { color: '#8B5CF6', description: 'Hand props used by actors' },
+  'Camera': { color: '#0EA5E9', description: 'Special camera needs (lenses, rigs, formats)' },
+  'Special Effects': { color: '#3B82F6', description: 'Practical on-set effects' },
   'Wardrobe': { color: '#92400E', description: 'Costume pieces' },
-  'Makeup': { color: '#D97706', description: 'Makeup, hair, prosthetics' },
-  'Sound': { color: '#78350F', description: 'Sound effects, playback music' },
+  'Makeup/Hair': { color: '#D97706', description: 'Makeup, hair and prosthetics' },
+  'Animals': { color: '#EAB308', description: 'Animals on screen' },
+  'Animal Wrangler': { color: '#CA8A04', description: 'Handlers and trainers' },
+  'Music': { color: '#DB2777', description: 'On-camera music and playback' },
+  'Sound': { color: '#78350F', description: 'Special sound needs and effects' },
+  'Art Department': { color: '#A855F7', description: 'Construction and art direction' },
   'Set Dressing': { color: '#7C3AED', description: 'Set decoration' },
-  'Greenery': { color: '#15803D', description: 'Plants, landscaping' },
-  'Special Equipment': { color: '#64748B', description: 'Non-standard gear (cranes, etc.)' },
-  'VFX': { color: '#06B6D4', description: 'Post-production visual effects' },
+  'Greenery': { color: '#15803D', description: 'Plants and landscaping' },
+  'Special Equipment': { color: '#64748B', description: 'Cranes, rigs and non-standard gear' },
+  'Security': { color: '#475569', description: 'Security and police' },
+  'Additional Labor': { color: '#0F766E', description: 'Extra crew for the day' },
+  'Visual Effects': { color: '#06B6D4', description: 'Post-production visual effects' },
+  'Mechanical Effects': { color: '#2563EB', description: 'Mechanical rigs and effects' },
+  'Miscellaneous': { color: '#9CA3AF', description: 'Anything else' },
+  'Notes': { color: '#6B7280', description: 'Notes for this scene' },
+};
+
+// Older OTSP category names, renamed by the v3 project migration
+export const LEGACY_CATEGORY_NAMES: Record<string, BreakdownCategory> = {
+  Cast: 'Cast Members',
+  Extras: 'Background Actors',
+  SFX: 'Special Effects',
+  Makeup: 'Makeup/Hair',
+  VFX: 'Visual Effects',
 };
 
 // Custom category created by user
@@ -581,6 +609,21 @@ export interface BreakdownElement {
   endOffset: number;
   notes?: string;
   elementRefId?: string; // the master ElementRecord this tag is an occurrence of
+}
+
+// Breakdown sheet fields entered by the user (Movie Magic's sheet).
+// Kept apart from BreakdownScene, which is regenerated from the script.
+export interface BreakdownSheetFields {
+  sheetNumber?: string;
+  set?: string; // story place, e.g. "JOHN'S KITCHEN" (defaults to the heading's location)
+  location?: string; // real place where it is shot
+  synopsis?: string;
+  sequence?: string;
+  scriptDay?: string;
+  scriptPage?: string;
+  estTime?: string; // e.g. "2:30"
+  comments?: string;
+  unit?: string;
 }
 
 // Master element, as in Movie Magic's Element Manager: one record per
@@ -652,6 +695,7 @@ export interface Breakdown {
   versionInfo: BreakdownVersionInfo;
   elements: BreakdownElement[];
   elementList?: ElementRecord[]; // master elements (built from tags if missing)
+  sheets?: Record<string, BreakdownSheetFields>; // user-entered sheet fields, by scene id
   scenes: BreakdownScene[];
   customCategories: CustomCategory[];
   castList: BreakdownCastMember[];

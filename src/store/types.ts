@@ -28,6 +28,7 @@ import type {
   Breakdown,
   BreakdownElement,
   ElementRecord,
+  BreakdownSheetFields,
   BreakdownScene,
   BreakdownCategory,
   CustomCategory,
@@ -310,6 +311,9 @@ export interface BreakdownSlice {
   deleteBreakdownElement: (elementId: string) => void;
   addCustomCategory: (category: CustomCategory) => void;
   getBreakdownElementsForScene: (sceneId: string) => BreakdownElement[];
+
+  // Breakdown sheet fields (Set, Synopsis, Script Day...)
+  updateBreakdownSheet: (sceneId: string, updates: Partial<BreakdownSheetFields>) => void;
 
   // Element Manager (master element list)
   syncElements: () => void;

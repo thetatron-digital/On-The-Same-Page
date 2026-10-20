@@ -51,11 +51,13 @@ export const createArtCartSlice: StateCreator<ScreenplayState, [], [], ArtCartSl
 
     // Art-related categories to import
     const artCategories = ['Props', 'Set Dressing', 'Greenery', 'Vehicles', 'Wardrobe', 'Makeup', 'Special Equipment'];
+    // Breakdown uses Movie Magic's "Makeup/Hair"; ArtCart calls it "Makeup"
+    const toArtCategory = (category: string) => (category === 'Makeup/Hair' ? 'Makeup' : category);
 
     // Filter breakdown elements to art categories
-    const artElements = state.breakdown.elements.filter(el =>
-      artCategories.includes(el.category)
-    );
+    const artElements = state.breakdown.elements
+      .map(el => ({ ...el, category: toArtCategory(el.category) }))
+      .filter(el => artCategories.includes(el.category));
 
     // Create ArtCartItems from breakdown elements
     const newItems: ArtCartItem[] = artElements.map(el => ({

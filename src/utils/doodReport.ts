@@ -15,7 +15,7 @@ import {
   type DOODRow,
 } from '../engine/schedule/dood';
 
-export const CAST_CATEGORY = 'Cast';
+export const CAST_CATEGORY = 'Cast Members';
 
 export interface DOODReport {
   category: string;
@@ -66,12 +66,15 @@ function castElements(schedule: Schedule, breakdown: Breakdown | null, people: P
   return [...ids].map(([id, stripNumber]) => {
     const person = people.find((p) => p.id === id);
     const castMember = breakdown?.castList.find((c) => c.id === id);
+    const record = breakdown?.elementList?.find((e) => e.id === id);
     const character = person?.roles.find((r) => r.group === 'Talent')?.characterName;
     const name =
       character?.toUpperCase() ||
+      record?.name ||
       castMember?.characterName ||
       (person ? `${person.firstName} ${person.lastName}`.trim() : id);
-    const number = person?.castNumber ?? stripNumber;
+    const recordNumber = record?.boardId && !Number.isNaN(Number(record.boardId)) ? Number(record.boardId) : undefined;
+    const number = person?.castNumber ?? recordNumber ?? stripNumber;
     return {
       id,
       name,

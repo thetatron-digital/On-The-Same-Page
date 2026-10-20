@@ -74,7 +74,7 @@ const NO_HOLDS: DOODElementOptions = {
 // Cast shows holds by default, as on a standard DOOD report
 export const DEFAULT_DOOD_SETTINGS: DOODSettings = {
   codes: DEFAULT_DOOD_CODES,
-  categoryOptions: { Cast: { ...NO_HOLDS, allowHold: true } },
+  categoryOptions: { 'Cast Members': { ...NO_HOLDS, allowHold: true } },
   elementOptions: {},
 };
 
