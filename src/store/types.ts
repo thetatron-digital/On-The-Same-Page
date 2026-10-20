@@ -1,4 +1,7 @@
 // Types for the OTSP store. Each app owns one slice; ScreenplayState is their union.
+import type { ProductionCalendar } from '../engine/schedule/calendar';
+import type { DOODSettings } from '../engine/schedule/dood';
+import type { AutoDayBreakOptions, SortDirection } from '../engine/schedule/stripboard';
 import type {
   Screenplay,
   ElementType,
@@ -407,6 +410,12 @@ export interface ScheduleSlice {
   // DOOD actions
   updateDOOD: (castId: string, dayId: string, status: DOODStatus) => void;
   recalculateDOOD: () => void;
+
+  // Movie Magic-style board tools. Each returns an error message, or null.
+  setScheduleCalendar: (calendar: ProductionCalendar | null) => void;
+  autoAssignDayBreaks: (options: AutoDayBreakOptions) => string | null;
+  sortScheduledStrips: (levels: StripSortLevel[]) => string | null;
+  updateDOODSettings: (updates: Partial<DOODSettings>) => void;
   // Schedule settings
   updateScheduleSettings: (settings: Partial<Pick<Schedule, 'defaultCallTime' | 'defaultLunchDuration' | 'showLunchOnBoard'>>) => void;
   // Selection
@@ -519,3 +528,11 @@ export type ScreenplayState =
   OnSetSlice &
   SuperVisorSlice &
   ProjectSlice;
+
+// Fields a Strip Board sort level can use (Movie Magic's Sort window)
+export type StripSortField = 'sceneNumber' | 'intExt' | 'location' | 'timeOfDay' | 'pageCount' | 'color' | 'castCount' | 'firstCast';
+
+export interface StripSortLevel {
+  field: StripSortField;
+  direction: SortDirection;
+}

@@ -1211,6 +1211,13 @@ export interface Schedule {
   estimatedEndDate?: Date;
   totalShootDays: number;
 
+  // Production calendar (Movie Magic-style). When set, shoot day dates
+  // are derived from it, skipping days off.
+  calendar?: import('../engine/schedule/calendar').ProductionCalendar;
+
+  // Day Out of Days preferences (codes, hold/drop rules)
+  doodSettings?: import('../engine/schedule/dood').DOODSettings;
+
   // Settings
   defaultCallTime: string;
   defaultLunchDuration: number;

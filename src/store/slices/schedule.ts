@@ -11,7 +11,71 @@ import type {
 } from '../../types/screenplay';
 import { STRIP_COLOR_MAP } from '../../types/screenplay';
 import { generateId } from '../../utils/fdx';
-import type { ScreenplayState, ScheduleSlice } from '../types';
+import type { ScreenplayState, ScheduleSlice, StripSortLevel } from '../types';
+import { shootDates } from '../../engine/schedule/calendar';
+import { DEFAULT_DOOD_SETTINGS } from '../../engine/schedule/dood';
+import { autoDayBreaks, sortStrips, type SortLevel } from '../../engine/schedule/stripboard';
+
+// Scheduled strips in board order (day by day)
+const scheduledStripIds = (schedule: Schedule) => schedule.shootDays.flatMap((d) => d.strips);
+
+// Give shoot days their numbers, and dates from the calendar if there is one
+const stampDays = (schedule: Schedule): Schedule => {
+  const dates = schedule.calendar ? shootDates(schedule.calendar, schedule.shootDays.length) : null;
+  const shootDays = schedule.shootDays.map((day, i) => ({
+    ...day,
+    dayNumber: i + 1,
+    ...(dates ? { date: new Date(`${dates[i]}T12:00:00`) } : {}),
+  }));
+  return {
+    ...schedule,
+    shootDays,
+    totalShootDays: shootDays.length,
+    ...(dates ? { startDate: shootDays[0]?.date, estimatedEndDate: shootDays[shootDays.length - 1]?.date } : {}),
+    updatedAt: new Date(),
+  };
+};
+
+// Re-date days after they are added, removed or reordered
+const restamp = (schedule: Schedule): Schedule => (schedule.calendar ? stampDays(schedule) : schedule);
+
+// Put `groups` of strip ids into shoot days, reusing existing days in order
+const fillDays = (schedule: Schedule, groups: string[][]): Schedule => {
+  const template = (): ShootDay => ({
+    id: generateId(),
+    dayNumber: 0,
+    strips: [],
+    shotPackages: [],
+    callTime: schedule.defaultCallTime || '7:00 AM',
+    estimatedWrap: '7:00 PM',
+    lunchDuration: schedule.defaultLunchDuration || 30,
+    isLocked: false,
+    hasNightWork: false,
+  });
+  const days = schedule.shootDays.map((d, i) => ({ ...d, strips: groups[i] ?? [] }));
+  for (let i = days.length; i < groups.length; i++) days.push({ ...template(), strips: groups[i] });
+  // Drop trailing days left with nothing scheduled
+  while (days.length > 1 && days[days.length - 1].strips.length === 0 && days[days.length - 1].shotPackages.length === 0) {
+    days.pop();
+  }
+  const dayOf = new Map<string, { dayId: string; order: number }>();
+  days.forEach((d) => d.strips.forEach((id, order) => dayOf.set(id, { dayId: d.id, order })));
+  const strips = schedule.strips.map((s) =>
+    dayOf.has(s.id) ? { ...s, scheduledDayId: dayOf.get(s.id)!.dayId, orderInDay: dayOf.get(s.id)!.order } : s
+  );
+  return stampDays({ ...schedule, shootDays: days, strips });
+};
+
+const SORT_KEYS: Record<StripSortLevel['field'], (s: SceneStrip) => string | number | undefined> = {
+  sceneNumber: (s) => s.sceneNumber,
+  intExt: (s) => s.intExt,
+  location: (s) => s.location,
+  timeOfDay: (s) => s.timeOfDay,
+  pageCount: (s) => s.pageCount,
+  color: (s) => s.color,
+  castCount: (s) => s.castIds.length,
+  firstCast: (s) => (s.castNumbers.length ? Math.min(...s.castNumbers) : undefined),
+};
 
 export const createScheduleSlice: StateCreator<ScreenplayState, [], [], ScheduleSlice> = (set, get) => ({
   // BaseCamp state
@@ -204,12 +268,12 @@ export const createScheduleSlice: StateCreator<ScreenplayState, [], [], Schedule
     };
 
     set({
-      schedule: {
+      schedule: restamp({
         ...state.schedule!,
         shootDays: [...state.schedule!.shootDays, newDay],
         totalShootDays: dayNumber,
         updatedAt: new Date(),
-      },
+      }),
       isDirty: true,
     });
 
@@ -250,15 +314,22 @@ export const createScheduleSlice: StateCreator<ScreenplayState, [], [], Schedule
       .filter(d => d.id !== dayId)
       .map((d, index) => ({ ...d, dayNumber: index + 1 }));
 
+    // Strips sent back to Unscheduled no longer belong to a day
+    const released = new Set(day.strips);
+    const strips = state.schedule.strips.map(s =>
+      released.has(s.id) ? { ...s, scheduledDayId: undefined, orderInDay: undefined } : s
+    );
+
     set({
-      schedule: {
+      schedule: restamp({
         ...state.schedule,
+        strips,
         shootDays: remainingDays,
         unscheduledStrips: unassignedStrips,
         unscheduledPackages: unassignedPackages,
         totalShootDays: remainingDays.length,
         updatedAt: new Date(),
-      },
+      }),
       isDirty: true,
     });
   },
@@ -275,11 +346,11 @@ export const createScheduleSlice: StateCreator<ScreenplayState, [], [], Schedule
       .filter((d): d is ShootDay => d !== null);
 
     set({
-      schedule: {
+      schedule: restamp({
         ...state.schedule,
         shootDays: reorderedDays,
         updatedAt: new Date(),
-      },
+      }),
       isDirty: true,
     });
   },
@@ -671,6 +742,58 @@ export const createScheduleSlice: StateCreator<ScreenplayState, [], [], Schedule
         dood,
         updatedAt: new Date(),
       },
+    });
+  },
+
+  setScheduleCalendar: (calendar) => {
+    const state = get();
+    if (!state.schedule) get().initializeSchedule();
+    const schedule = get().schedule!;
+    set({ schedule: stampDays({ ...schedule, calendar: calendar ?? undefined }), isDirty: true });
+  },
+
+  autoAssignDayBreaks: (options) => {
+    const schedule = get().schedule;
+    if (!schedule) return 'There is no schedule yet.';
+    const ids = scheduledStripIds(schedule);
+    if (ids.length === 0) return 'Schedule some strips first.';
+    const byId = new Map(schedule.strips.map((s) => [s.id, s]));
+    if (ids.some((id) => byId.get(id)?.isLocked)) return 'Unlock all scheduled strips before using Auto Day Breaks.';
+    try {
+      const groups = autoDayBreaks(
+        ids.map((id) => ({ id, eighths: Math.round((byId.get(id)?.pageCount ?? 0) * 8) })),
+        options
+      );
+      set({ schedule: fillDays(schedule, groups.map((g) => g.map((s) => s.id))), isDirty: true });
+      return null;
+    } catch (error) {
+      return error instanceof Error ? error.message : 'Auto Day Breaks failed.';
+    }
+  },
+
+  // Like Movie Magic, sorting removes all day breaks: the sorted strips
+  // land on the first day, ready for Auto Day Breaks.
+  sortScheduledStrips: (levels) => {
+    const schedule = get().schedule;
+    if (!schedule) return 'There is no schedule yet.';
+    if (levels.length === 0) return 'Add at least one sort level.';
+    const byId = new Map(schedule.strips.map((s) => [s.id, s]));
+    const ids = scheduledStripIds(schedule);
+    if (ids.some((id) => byId.get(id)?.isLocked)) return 'Unlock all scheduled strips before sorting.';
+    const engineLevels: SortLevel<SceneStrip>[] = levels.map((l) => ({ key: SORT_KEYS[l.field], direction: l.direction }));
+    const sorted = sortStrips(ids.map((id) => byId.get(id)!).filter(Boolean), engineLevels);
+    set({ schedule: fillDays(schedule, [sorted.map((s) => s.id)]), isDirty: true });
+    return null;
+  },
+
+  updateDOODSettings: (updates) => {
+    const state = get();
+    if (!state.schedule) get().initializeSchedule();
+    const schedule = get().schedule!;
+    const current = schedule.doodSettings ?? DEFAULT_DOOD_SETTINGS;
+    set({
+      schedule: { ...schedule, doodSettings: { ...current, ...updates }, updatedAt: new Date() },
+      isDirty: true,
     });
   },
 
