@@ -570,7 +570,7 @@ export interface CustomCategory {
   description?: string;
 }
 
-// A tagged element in the breakdown
+// A tagged element in the breakdown (one occurrence in one scene)
 export interface BreakdownElement {
   id: string;
   text: string;
@@ -579,6 +579,20 @@ export interface BreakdownElement {
   sourceElementId: string;
   startOffset: number;
   endOffset: number;
+  notes?: string;
+  elementRefId?: string; // the master ElementRecord this tag is an occurrence of
+}
+
+// Master element, as in Movie Magic's Element Manager: one record per
+// prop/cast member/vehicle..., referenced by every scene that uses it
+export interface ElementRecord {
+  id: string;
+  name: string; // canonical name (upper case)
+  category: BreakdownCategory | string;
+  boardId?: string; // e.g. cast number "1"
+  lockBoardId: boolean; // keep the Board ID when renumbering
+  excludeFromStripboard: boolean;
+  properties?: Record<string, string>; // custom fields (e.g. actor, agent)
   notes?: string;
 }
 
@@ -637,6 +651,7 @@ export interface Breakdown {
   scriptVersionId: string;
   versionInfo: BreakdownVersionInfo;
   elements: BreakdownElement[];
+  elementList?: ElementRecord[]; // master elements (built from tags if missing)
   scenes: BreakdownScene[];
   customCategories: CustomCategory[];
   castList: BreakdownCastMember[];
