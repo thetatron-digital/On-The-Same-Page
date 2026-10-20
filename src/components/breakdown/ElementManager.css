@@ -1,0 +1,136 @@
+/* Element Manager (em- prefix). Uses BreakDown's theme variables. */
+.em-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.em-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  flex-wrap: wrap;
+}
+
+.em-toolbar h3 { margin: 0; font-size: 16px; }
+.em-toolbar-actions { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+
+.em-btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.em-btn:hover:not(:disabled) { background: var(--bg-hover); }
+.em-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.em-primary { background: #3498DB; border-color: #3498DB; color: #fff; }
+.em-primary:hover:not(:disabled) { background: #2980B9; }
+.em-danger { color: #E74C3C; }
+
+.em-body { display: flex; flex: 1; min-height: 0; }
+
+.em-categories {
+  width: 200px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border-color);
+  overflow-y: auto;
+  padding: 8px 0;
+  background: var(--bg-primary);
+}
+
+.em-categories button {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: 7px 14px;
+  border: none;
+  background: none;
+  color: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.em-categories button span { color: var(--text-muted); font-size: 12px; }
+.em-categories button:hover { background: var(--bg-hover); }
+.em-categories button.active { background: rgba(52, 152, 219, 0.18); font-weight: 600; }
+
+.em-table-wrap { flex: 1; overflow: auto; }
+
+.em-table { border-collapse: collapse; width: 100%; font-size: 12px; white-space: nowrap; }
+.em-table th,
+.em-table td { padding: 6px 8px; border-bottom: 1px solid var(--border-color); text-align: center; }
+.em-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--bg-primary);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  z-index: 1;
+}
+.em-table .em-left { text-align: left; }
+.em-table tbody tr { cursor: pointer; }
+.em-table tbody tr:hover { background: var(--bg-hover); }
+.em-table tbody tr.selected { background: rgba(52, 152, 219, 0.18); }
+.em-name { font-weight: 600; }
+.em-tag { margin-left: 8px; font-size: 10px; font-weight: 400; color: var(--text-muted); border: 1px solid var(--border-color); border-radius: 4px; padding: 0 4px; }
+
+.em-empty { padding: 48px 16px; text-align: center; color: var(--text-muted); }
+
+.em-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.em-modal {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  width: min(520px, 100%);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.em-modal-header,
+.em-modal-footer { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; }
+.em-modal-header { border-bottom: 1px solid var(--border-color); }
+.em-modal-header h3 { margin: 0; font-size: 16px; }
+.em-modal-footer { border-top: 1px solid var(--border-color); justify-content: flex-end; gap: 8px; }
+.em-modal-body { padding: 12px 16px; overflow-y: auto; }
+
+.em-modal fieldset { border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 12px 12px; margin: 0 0 12px; }
+.em-modal legend { font-size: 12px; font-weight: 600; padding: 0 4px; color: var(--text-muted); }
+.em-modal label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; margin-top: 8px; }
+.em-modal label.em-check { flex-direction: row; align-items: center; gap: 6px; }
+.em-modal input:not([type='checkbox']),
+.em-modal textarea {
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: inherit;
+  font: inherit;
+}
+.em-modal textarea { min-height: 60px; resize: vertical; }
+.em-prop-row { display: flex; gap: 6px; align-items: center; margin-top: 8px; }
+.em-prop-row input { flex: 1; }
+.em-usage { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; font-size: 13px; margin-top: 6px; }
+.em-close { background: none; border: none; color: inherit; font-size: 18px; cursor: pointer; line-height: 1; }

@@ -6,6 +6,7 @@ import type { BreakdownCategory, BreakdownElement } from '../types/screenplay';
 import { getPlainText } from '../utils/fdx';
 import { formatEighths } from '../utils/breakdown';
 import './Breakdown.css';
+import { ElementManager } from './breakdown/ElementManager';
 
 // Category colors as CSS variables for consistent styling
 const CATEGORY_COLORS: Record<BreakdownCategory, string> = {
@@ -59,6 +60,7 @@ export const Breakdown = () => {
   );
 
   const [showSceneList, setShowSceneList] = useState(true);
+  const [showElementManager, setShowElementManager] = useState(false);
   const [selectedText, setSelectedText] = useState('');
   const [selectionInfo, setSelectionInfo] = useState<{
     elementId: string;
@@ -159,6 +161,14 @@ export const Breakdown = () => {
     window.getSelection()?.removeAllRanges();
   };
 
+  if (showElementManager) {
+    return (
+      <div className={`breakdown-container ${darkMode ? 'dark' : 'light'}`}>
+        <ElementManager onClose={() => setShowElementManager(false)} />
+      </div>
+    );
+  }
+
   return (
     <div className={`breakdown-container ${darkMode ? 'dark' : 'light'}`}>
       {/* Scene List Sidebar */}
@@ -211,6 +221,9 @@ export const Breakdown = () => {
         <div className="tag-palette">
           <div className="palette-header">
             <h4>Categories</h4>
+            <button className="collapse-btn element-manager-btn" onClick={() => setShowElementManager(true)} title="All elements, Board IDs and Day Out of Days figures">
+              Element Manager
+            </button>
             {selectedText && (
               <div className="selection-hint">
                 Select category to tag: "{selectedText.slice(0, 30)}{selectedText.length > 30 ? '...' : ''}"

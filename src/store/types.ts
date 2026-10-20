@@ -24,6 +24,7 @@ import type {
   WatermarkSettings,
   Breakdown,
   BreakdownElement,
+  ElementRecord,
   BreakdownScene,
   BreakdownCategory,
   CustomCategory,
@@ -291,6 +292,13 @@ export interface BreakdownSlice {
   deleteBreakdownElement: (elementId: string) => void;
   addCustomCategory: (category: CustomCategory) => void;
   getBreakdownElementsForScene: (sceneId: string) => BreakdownElement[];
+
+  // Element Manager (master element list)
+  syncElements: () => void;
+  updateElementRecord: (id: string, updates: Partial<Omit<ElementRecord, 'id'>>) => void;
+  mergeElementRecords: (targetId: string, sourceIds: string[]) => void;
+  renumberElementBoardIds: (category: string) => void;
+  deleteElementRecord: (id: string) => void;
 }
 
 // ArtCart: items, options/approvals, vendors, shopping lists, budget

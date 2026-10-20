@@ -3,6 +3,7 @@ import type { StateCreator } from 'zustand';
 import type { Breakdown } from '../../types/screenplay';
 import { generateId } from '../../utils/fdx';
 import { generateBreakdownScenes, getElementsForScene } from '../../utils/breakdown';
+import { deleteElement, mergeElements, renumberBoardIds, syncElementList } from '../../utils/elements';
 import type { ScreenplayState, BreakdownSlice } from '../types';
 
 export const createBreakdownSlice: StateCreator<ScreenplayState, [], [], BreakdownSlice> = (set, get) => ({
@@ -92,12 +93,13 @@ export const createBreakdownSlice: StateCreator<ScreenplayState, [], [], Breakdo
     );
 
     set({
-      breakdown: {
+      // Every new tag joins (or creates) its master element
+      breakdown: syncElementList({
         ...state.breakdown,
         elements: newElements,
         scenes: updatedScenes,
         updatedAt: new Date(),
-      },
+      }),
       breakdownScenes: updatedScenes,
       isDirty: true,
     });
@@ -145,6 +147,48 @@ export const createBreakdownSlice: StateCreator<ScreenplayState, [], [], Breakdo
       breakdownScenes: updatedScenes,
       isDirty: true,
     });
+  },
+
+  syncElements: () => {
+    const { breakdown } = get();
+    if (!breakdown) return;
+    const synced = syncElementList(breakdown);
+    if (synced !== breakdown) set({ breakdown: synced });
+  },
+
+  updateElementRecord: (id, updates) => {
+    const { breakdown } = get();
+    if (!breakdown) return;
+    set({
+      breakdown: {
+        ...breakdown,
+        elementList: (breakdown.elementList ?? []).map((e) => (e.id === id ? { ...e, ...updates } : e)),
+        updatedAt: new Date(),
+      },
+      isDirty: true,
+    });
+  },
+
+  mergeElementRecords: (targetId, sourceIds) => {
+    const { breakdown } = get();
+    if (!breakdown) return;
+    set({ breakdown: { ...mergeElements(breakdown, targetId, sourceIds), updatedAt: new Date() }, isDirty: true });
+  },
+
+  renumberElementBoardIds: (category) => {
+    const { breakdown, breakdownScenes } = get();
+    if (!breakdown) return;
+    // Script order first; scenes only known to the saved breakdown go last
+    const known = new Set(breakdownScenes.map((sc) => sc.id));
+    const scenes = [...breakdownScenes, ...breakdown.scenes.filter((sc) => !known.has(sc.id))];
+    set({ breakdown: { ...renumberBoardIds(syncElementList(breakdown), scenes, category), updatedAt: new Date() }, isDirty: true });
+  },
+
+  deleteElementRecord: (id) => {
+    const { breakdown } = get();
+    if (!breakdown) return;
+    const next = deleteElement(breakdown, id);
+    set({ breakdown: { ...next, updatedAt: new Date() }, breakdownScenes: next.scenes, isDirty: true });
   },
 
   addCustomCategory: (category) => {

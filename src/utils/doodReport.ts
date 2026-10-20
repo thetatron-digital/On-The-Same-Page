@@ -83,6 +83,26 @@ function castElements(schedule: Schedule, breakdown: Breakdown | null, people: P
 
 function taggedElements(schedule: Schedule, breakdown: Breakdown | null, category: string): Element[] {
   const stripById = new Map(schedule.strips.map((s) => [s.id, s]));
+
+  // Master element list (Element Manager): names, Board IDs, exclusions
+  if (breakdown?.elementList?.length) {
+    const scenesOf = new Map<string, Set<string>>();
+    for (const tag of breakdown.elements) {
+      if (!tag.elementRefId) continue;
+      const set = scenesOf.get(tag.elementRefId) ?? new Set<string>();
+      set.add(tag.sceneId);
+      scenesOf.set(tag.elementRefId, set);
+    }
+    return breakdown.elementList
+      .filter((e) => e.category === category && !e.excludeFromStripboard)
+      .map((e) => ({
+        id: e.id,
+        name: e.name,
+        boardId: e.boardId,
+        works: (stripId: string) => scenesOf.get(e.id)?.has(stripById.get(stripId)?.sceneId ?? '') ?? false,
+      }));
+  }
+
   const groups = new Map<string, { name: string; sceneIds: Set<string> }>();
   for (const el of breakdown?.elements ?? []) {
     if (el.category !== category) continue;
