@@ -1583,6 +1583,9 @@ export interface Schedule {
   redFlags?: import('../engine/schedule/redFlags').RedFlag[];
   redFlagNames?: string[];
 
+  // Daily Production Reports: what happened on each shoot day
+  productionReports?: import('../engine/schedule/productionReport').ProductionReportEntry[];
+
   // Settings
   defaultCallTime: string;
   defaultLunchDuration: number;
