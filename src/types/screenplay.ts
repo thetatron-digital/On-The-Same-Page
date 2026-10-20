@@ -12,6 +12,7 @@ export type ElementType =
 export interface TextRun {
   text: string;
   style?: 'Bold' | 'Italic' | 'Underline' | 'Bold+Italic' | 'Bold+Underline' | 'Italic+Underline' | 'Bold+Italic+Underline';
+  revisionId?: number; // FDX <Text RevisionID>; 0/undefined = unrevised
 }
 
 export interface ScreenplayElement {
@@ -21,6 +22,61 @@ export interface ScreenplayElement {
   sceneNumber?: string;
   isDualDialogue?: boolean; // For dual dialogue (side-by-side)
   dualDialoguePosition?: 'left' | 'right'; // Position in dual dialogue
+  revisionId?: number; // revision set this paragraph was last revised in
+  omitted?: ScreenplayElement[]; // Omit Scene: the scene as it was; this heading then reads OMITTED
+}
+
+// ============================================
+// REVISIONS AND LOCKED PAGES (Production menu)
+// ============================================
+
+// A revision set ("Blue", "Pink", ...). ids match FDX <Revision ID>.
+export interface RevisionSet {
+  id: number;
+  label: string;
+  mark: string; // margin mark, usually "*"
+  pageColor: string; // #rrggbb
+  date?: string; // shown with the label in the page header
+}
+
+export interface RevisionSettings {
+  sets: RevisionSet[];
+  activeSetId: number;
+  revisionMode: boolean; // stamp edits with the active set
+  marksShown: 'active' | 'all'; // which sets' margin marks to show
+  showPageColors: boolean;
+  markLocation: number; // inches from the left edge of the page
+}
+
+// Industry-standard revision color order: 9 colors, then the "2nd" round.
+// Page colors are our own approximations.
+const REVISION_COLORS: [string, string][] = [
+  ['Blue', '#d6e6ff'], ['Pink', '#ffd9e3'], ['Yellow', '#fff5b3'], ['Green', '#d8f5cf'],
+  ['Goldenrod', '#f4d98a'], ['Buff', '#f2e4c8'], ['Salmon', '#ffcab3'], ['Cherry', '#f4aab9'],
+  ['Tan', '#e2cfb0'],
+];
+
+export const createDefaultRevisionSettings = (): RevisionSettings => ({
+  sets: [
+    ...REVISION_COLORS.map(([name, pageColor], i) => ({ id: i + 1, label: `${name} Revision`, mark: '*', pageColor })),
+    ...[['White', '#ffffff'] as [string, string], ...REVISION_COLORS].map(([name, pageColor], i) => ({
+      id: i + 10, label: `2nd ${name} Revision`, mark: '*', pageColor,
+    })),
+  ],
+  activeSetId: 1,
+  revisionMode: false,
+  marksShown: 'active',
+  showPageColors: false,
+  markLocation: 7.75,
+});
+
+// A locked page boundary: the page labelled `label` starts at character
+// `offset` of element `elementId`. Content that no longer fits before the
+// next locked boundary flows onto A-pages (12A, 12B, ...).
+export interface LockedPage {
+  label: string;
+  elementId: string;
+  offset: number;
 }
 
 // Page lock for production readiness
@@ -212,6 +268,8 @@ export interface Screenplay {
   draftDate?: string;
   copyright?: string;
   elements: ScreenplayElement[];
+  revisions?: RevisionSettings;
+  lockedPages?: LockedPage[]; // set while pages are locked
 }
 
 export interface DocumentMetadata {
@@ -354,38 +412,42 @@ export const getPageDimensionsPixels = (ppi: number = DEFAULT_PPI, zoom: number 
   };
 };
 
-// Keyboard shortcuts for element switching
+// Element shortcuts, numbered as in Final Draft (findings/ui-parity-spec.md
+// §1.1). Bound to Mod+Alt+digit in the editor, since browsers keep Mod+digit.
 export const ELEMENT_SHORTCUTS: Record<string, ElementType> = {
+  '0': 'General',
   '1': 'Scene Heading',
   '2': 'Action',
   '3': 'Character',
-  '4': 'Dialogue',
-  '5': 'Parenthetical',
+  '4': 'Parenthetical',
+  '5': 'Dialogue',
   '6': 'Transition',
+  '7': 'Shot',
 };
 
-// Smart element progression (what comes next after Enter)
-export const ELEMENT_PROGRESSION: Record<ElementType, ElementType> = {
-  'Scene Heading': 'Action',
-  'Action': 'Action',
-  'Character': 'Dialogue',
-  'Dialogue': 'Character',
-  'Parenthetical': 'Dialogue',
-  'Transition': 'Scene Heading',
-  'Shot': 'Action',
-  'General': 'Action',
+// What Enter (Return) and Tab switch to, per element (Final Draft's defaults).
+// The editor's keys and the status-bar hints both read this one table.
+export const ELEMENT_BEHAVIOR: Record<ElementType, { returnKey: ElementType; tabKey: ElementType }> = {
+  'General': { returnKey: 'General', tabKey: 'General' },
+  'Scene Heading': { returnKey: 'Action', tabKey: 'Action' },
+  'Action': { returnKey: 'Action', tabKey: 'Character' },
+  'Character': { returnKey: 'Dialogue', tabKey: 'Transition' },
+  'Parenthetical': { returnKey: 'Dialogue', tabKey: 'Dialogue' },
+  'Dialogue': { returnKey: 'Action', tabKey: 'Parenthetical' },
+  'Transition': { returnKey: 'Scene Heading', tabKey: 'Scene Heading' },
+  'Shot': { returnKey: 'Action', tabKey: 'Action' },
 };
 
 // Element display names and shortcuts
 export const ELEMENT_INFO: Record<ElementType, { name: string; shortcut: string; description: string }> = {
-  'Scene Heading': { name: 'Scene Heading', shortcut: 'Ctrl+1', description: 'INT./EXT. LOCATION - TIME' },
-  'Action': { name: 'Action', shortcut: 'Ctrl+2', description: 'Describe what happens' },
-  'Character': { name: 'Character', shortcut: 'Ctrl+3', description: 'CHARACTER NAME' },
-  'Dialogue': { name: 'Dialogue', shortcut: 'Ctrl+4', description: 'What the character says' },
-  'Parenthetical': { name: 'Parenthetical', shortcut: 'Ctrl+5', description: '(how they say it)' },
-  'Transition': { name: 'Transition', shortcut: 'Ctrl+6', description: 'CUT TO:' },
-  'Shot': { name: 'Shot', shortcut: '', description: 'Camera direction' },
-  'General': { name: 'General', shortcut: '', description: 'General text' },
+  'Scene Heading': { name: 'Scene Heading', shortcut: 'Mod+Alt+1', description: 'INT./EXT. LOCATION - TIME' },
+  'Action': { name: 'Action', shortcut: 'Mod+Alt+2', description: 'Describe what happens' },
+  'Character': { name: 'Character', shortcut: 'Mod+Alt+3', description: 'CHARACTER NAME' },
+  'Dialogue': { name: 'Dialogue', shortcut: 'Mod+Alt+5', description: 'What the character says' },
+  'Parenthetical': { name: 'Parenthetical', shortcut: 'Mod+Alt+4', description: '(how they say it)' },
+  'Transition': { name: 'Transition', shortcut: 'Mod+Alt+6', description: 'CUT TO:' },
+  'Shot': { name: 'Shot', shortcut: 'Mod+Alt+7', description: 'Camera direction' },
+  'General': { name: 'General', shortcut: 'Mod+Alt+0', description: 'General text' },
 };
 
 // ============================================

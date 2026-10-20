@@ -35,7 +35,7 @@ export const SceneNavigator = () => {
   const scenes = useMemo(() => {
     const sceneList: SceneInfo[] = [];
     // Scene pages come from the shared pagination engine (same as the editor and PDF)
-    const { elementPages } = paginateScript(screenplay.elements);
+    const { elementPages } = paginateScript(screenplay);
 
     screenplay.elements.forEach((element, index) => {
       const text = getPlainText(element.content);
@@ -67,7 +67,7 @@ export const SceneNavigator = () => {
     });
 
     return sceneList;
-  }, [screenplay.elements]);
+  }, [screenplay]);
 
   // Don't render if hidden
   if (!visibility.sceneNavigator) {

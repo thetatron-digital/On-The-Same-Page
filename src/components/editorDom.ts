@@ -66,3 +66,9 @@ export const offsetTopWithin = (el: HTMLElement, ancestor: HTMLElement): number 
   }
   return y;
 };
+
+// Paragraphs covered by the script selection, kept for Production menu
+// commands (Mark Revised, Omit Scene) that run after focus leaves the editor
+let selectedIds: string[] = [];
+export const setSelectedElementIds = (ids: string[]) => { selectedIds = ids; };
+export const getSelectedElementIds = (): string[] => selectedIds;

@@ -25,8 +25,11 @@
 // - Automatic character continueds: when the same character speaks again in a
 //   scene with no other speaker in between, their name gets (CONT'D).
 // - Dual dialogue is one block, as tall as its taller column, and never splits.
+// - Locked pages: each locked page starts exactly where it did when locked.
+//   Text that no longer fits before the next locked page flows onto A-pages
+//   (12A, 12B, ...); a page that shrinks keeps its place and ends short.
 
-import type { ElementType, ScreenplayElement } from '../types/screenplay';
+import type { ElementType, LockedPage, Screenplay, ScreenplayElement } from '../types/screenplay';
 import { ELEMENT_FORMATTING, LINES_PER_PAGE } from '../types/screenplay';
 
 export const CHARS_PER_INCH = 10; // Courier 12pt
@@ -34,6 +37,7 @@ export const MIN_SPLIT_LINES = 2;
 export const DUAL_COLUMN_CHARS = 25; // 2.5" per dual dialogue column
 
 export interface PaginateOptions {
+  lockedPages?: LockedPage[];
   linesPerPage?: number;
   moreText?: string;
   contdText?: string;
@@ -85,7 +89,8 @@ export interface DualItem {
 export type PageItem = ElementItem | MarkerItem | DualItem;
 
 export interface Page {
-  number: number;
+  number: number; // position in the document, from 1
+  label: string; // printed page number: "12", or "12A" for an A-page while locked
   items: PageItem[];
   linesUsed: number;
 }
@@ -330,6 +335,16 @@ const wrapRange = (u: SingleUnit, from: number, to = u.text.length): WrappedLine
 // ---------------------------------------------------------------------------
 // Pagination
 
+// Label of the page after `label` while pages are locked: 12 → 12A → 12B
+export const nextPageLabel = (label: string): string => {
+  const m = /^(.*\d)([A-Z]*)$/.exec(label);
+  if (!m) return `${label}A`;
+  const [, base, letters] = m;
+  if (!letters) return `${base}A`;
+  const last = letters[letters.length - 1];
+  return last === 'Z' ? `${base}${letters}A` : `${base}${letters.slice(0, -1)}${String.fromCharCode(last.charCodeAt(0) + 1)}`;
+};
+
 export const paginate = (elements: ScreenplayElement[], options: PaginateOptions = {}): Pagination => {
   const cap = Math.max(4, options.linesPerPage ?? LINES_PER_PAGE);
   const moreText = options.moreText ?? '(MORE)';
@@ -337,17 +352,33 @@ export const paginate = (elements: ScreenplayElement[], options: PaginateOptions
 
   const continuedCharacters: number[] = [];
   const units = buildUnits(elements, options.autoCharacterContinueds ?? true, contdText, continuedCharacters);
-  const pages: Page[] = [{ number: 1, items: [], linesUsed: 0 }];
   const breaks: PageBreak[] = [];
   const elementPages: number[] = new Array(elements.length).fill(1);
 
+  // Locked page boundaries by element id, in text order
+  const locked = !!options.lockedPages?.length;
+  const locks = new Map<string, LockedPage[]>();
+  for (const lock of options.lockedPages ?? []) {
+    locks.set(lock.elementId, [...(locks.get(lock.elementId) ?? []), lock].sort((a, b) => a.offset - b.offset));
+  }
+  const lockAtStart = (k: number): LockedPage | undefined => {
+    const u = units[k];
+    return u && locks.get(elements[u.index].id)?.find((l) => l.offset === 0);
+  };
+  const midLocks = (u: SingleUnit): LockedPage[] =>
+    (locks.get(u.el.id) ?? []).filter((l) => l.offset > 0 && l.offset < u.text.length);
+
+  const pages: Page[] = [{ number: 1, label: lockAtStart(0)?.label ?? '1', items: [], linesUsed: 0 }];
   let page = pages[0];
   let speaker = ''; // current dialogue block's character name
 
-  const newPage = (brk: Omit<PageBreak, 'page'>) => {
-    page = { number: pages.length + 1, items: [], linesUsed: 0 };
+  // Starts a page. A locked boundary brings its own label; any other page is
+  // the next number, or the next A-page while pages are locked.
+  const newPage = (brk: Omit<PageBreak, 'page'>, label?: string) => {
+    const number = pages.length + 1;
+    page = { number, label: label ?? (locked ? nextPageLabel(page.label) : String(number)), items: [], linesUsed: 0 };
     pages.push(page);
-    breaks.push({ ...brk, page: page.number });
+    breaks.push({ ...brk, page: number });
     if (brk.contd) {
       page.items.push({ kind: 'contd', top: 0, text: brk.contd });
       page.linesUsed = 1;
@@ -359,6 +390,11 @@ export const paginate = (elements: ScreenplayElement[], options: PaginateOptions
     page.linesUsed += 1;
   };
 
+  const atTop = () => page.linesUsed === 0 || (page.linesUsed === 1 && page.items[0]?.kind === 'contd');
+
+  // Keep-with-next never reaches across a locked page boundary
+  const keeps = (k: number): boolean => keepsWithNext(units[k], units[k + 1]) && !lockAtStart(k + 1);
+
   // Lines unit k needs on the current page if it starts there (without its own spacing)
   const minLead = (k: number): number => {
     const u = units[k];
@@ -367,7 +403,7 @@ export const paginate = (elements: ScreenplayElement[], options: PaginateOptions
     if (u.kind === 'single' && isSplittable(u) && n >= 2 * MIN_SPLIT_LINES && sentenceStarts(u.text).length > 0) {
       return MIN_SPLIT_LINES + (u.type === 'Dialogue' ? 1 : 0);
     }
-    if (keepsWithNext(u, next)) return n + spaceBeforeOf(next) + minLead(k + 1);
+    if (keeps(k)) return n + spaceBeforeOf(next) + minLead(k + 1);
     // A block that carries on past this unit needs a line for (MORE)
     return n + (next && inDialogueBlock(u, next) ? 1 : 0);
   };
@@ -375,7 +411,7 @@ export const paginate = (elements: ScreenplayElement[], options: PaginateOptions
   // Lines from unit k to the end of its dialogue block
   const restOfBlock = (k: number): number => {
     let total = unitHeight(units[k]);
-    for (let j = k + 1; j < units.length && inDialogueBlock(units[j - 1], units[j]); j++) {
+    for (let j = k + 1; j < units.length && inDialogueBlock(units[j - 1], units[j]) && !lockAtStart(j); j++) {
       total += unitHeight(units[j]);
     }
     return total;
@@ -397,27 +433,28 @@ export const paginate = (elements: ScreenplayElement[], options: PaginateOptions
     page.linesUsed += space + lines.length;
   };
 
-  // Where to cut u's text (from offset `from`) so the first piece fits in
+  // Where to cut u's text between `from` and `to` so the first piece fits in
   // `avail` lines: the latest sentence start that leaves MIN_SPLIT_LINES on
   // both sides, or -1 when there is none. With mustSplit (the text is taller
   // than a page) fall back to cutting after the last line that fits.
-  const chooseCut = (u: SingleUnit, from: number, avail: number, mustSplit: boolean): number => {
+  const chooseCut = (u: SingleUnit, from: number, to: number, avail: number, mustSplit: boolean): number => {
     const minBefore = mustSplit ? 1 : MIN_SPLIT_LINES;
-    const starts = sentenceStarts(u.text).filter((s) => s > from);
+    const starts = sentenceStarts(u.text).filter((s) => s > from && s < to);
     for (let i = starts.length - 1; i >= 0; i--) {
       const kept = wrapRange(u, from, starts[i]).length;
       if (kept > avail) continue;
       if (kept < minBefore) break;
-      if (wrapRange(u, starts[i]).length >= MIN_SPLIT_LINES) return starts[i];
+      if (wrapRange(u, starts[i], to).length >= MIN_SPLIT_LINES) return starts[i];
     }
     if (!mustSplit) return -1;
-    const lines = wrapRange(u, from);
+    const lines = wrapRange(u, from, to);
     return lines[Math.max(1, Math.min(avail, lines.length - 1))].start;
   };
 
-  // Places u's text from offset `cut` onwards on following pages, splitting again as needed
-  const continueElement = (u: SingleUnit, cut: number, placed: number, isDialogue: boolean) => {
-    while (cut < u.text.length) {
+  // Places u's text from `cut` to `to` on following pages, splitting again as
+  // needed. `tail` lines stay free on the last page (for a (MORE) to come).
+  const continueElement = (u: SingleUnit, cut: number, to: number, placed: number, isDialogue: boolean, tail: number): number => {
+    while (cut < to) {
       if (isDialogue) addMore();
       newPage({
         elementIndex: u.index,
@@ -427,25 +464,25 @@ export const paginate = (elements: ScreenplayElement[], options: PaginateOptions
         more: isDialogue ? moreText : undefined,
         contd: isDialogue ? `${speaker} ${contdText}` : undefined,
       });
-      const rest = wrapRange(u, cut);
+      const rest = wrapRange(u, cut, to);
       const room = cap - page.linesUsed;
-      if (rest.length <= room) {
+      if (rest.length + tail <= room) {
         placeElement(u, rest, placed, 0);
-        return;
+        return placed + rest.length;
       }
-      const next = chooseCut(u, cut, room - (isDialogue ? 1 : 0), true);
+      const next = chooseCut(u, cut, to, room - (isDialogue ? 1 : 0), true);
       const piece = wrapRange(u, cut, next);
       placeElement(u, piece, placed, 0);
       placed += piece.length;
       cut = next;
     }
+    return placed;
   };
 
   for (let k = 0; k < units.length; k++) {
     const u = units[k];
     const prev = units[k - 1];
     const next = units[k + 1];
-    const n = unitHeight(u);
 
     if (u.kind === 'single') {
       if (u.type === 'Character') speaker = characterName(u.text);
@@ -456,41 +493,9 @@ export const paginate = (elements: ScreenplayElement[], options: PaginateOptions
     const continuesBlock = inDialogueBlock(prev, u) && speaker !== '';
     const isDialogue = u.kind === 'single' && u.type === 'Dialogue' && speaker !== '';
 
-    const atTop = page.linesUsed === 0 || (page.linesUsed === 1 && page.items[0]?.kind === 'contd');
-    const s = atTop ? 0 : spaceBeforeOf(u);
-    const free = cap - page.linesUsed - s;
-    const nextInBlock = !!next && inDialogueBlock(u, next) && speaker !== '';
-    // Leave a line for (MORE) if the block will have to break after this unit
-    const reserve = nextInBlock && !keepsWithNext(u, next) && restOfBlock(k) > free ? 1 : 0;
-    const keepOk = !keepsWithNext(u, next) || atTop ||
-      n + spaceBeforeOf(next) + minLead(k + 1) <= free;
-
-    elementPages[u.index] = page.number;
-
-    if (n + reserve <= free && keepOk) {
-      if (u.kind === 'dual') {
-        page.items.push({ kind: 'dual', top: page.linesUsed + s, spaceBefore: s, height: n, left: u.left, right: u.right });
-        page.linesUsed += s + n;
-        for (const p of [...u.left, ...u.right]) elementPages[p.elementIndex] = page.number;
-      } else {
-        placeElement(u, u.lines, 0, s);
-      }
-      continue;
-    }
-
-    // Split a long Action/General/Dialogue at a sentence end
-    if (u.kind === 'single' && isSplittable(u) && !atTop) {
-      const cut = chooseCut(u, 0, free - (isDialogue ? 1 : 0), false);
-      if (cut > 0) {
-        const piece = wrapRange(u, 0, cut);
-        placeElement(u, piece, 0, s);
-        continueElement(u, cut, piece.length, isDialogue);
-        continue;
-      }
-    }
-
-    // Move the whole unit to a new page (unless it already starts one)
-    if (!atTop) {
+    // A locked page starts here
+    const lock = lockAtStart(k);
+    if (lock && k > 0) {
       if (continuesBlock) addMore();
       newPage({
         elementIndex: u.index,
@@ -499,44 +504,118 @@ export const paginate = (elements: ScreenplayElement[], options: PaginateOptions
         offset: 0,
         more: continuesBlock ? moreText : undefined,
         contd: continuesBlock ? `${speaker} ${contdText}` : undefined,
-      });
-      elementPages[u.index] = page.number;
+      }, lock.label);
     }
 
+    elementPages[u.index] = page.number;
+
     if (u.kind === 'dual') {
-      page.items.push({ kind: 'dual', top: page.linesUsed, spaceBefore: 0, height: n, left: u.left, right: u.right });
-      page.linesUsed += n;
+      const n = u.height;
+      const s = atTop() ? 0 : spaceBeforeOf(u);
+      if (n > cap - page.linesUsed - s && !atTop()) {
+        newPage({ elementIndex: u.index, elementId: elements[u.index].id, line: 0, offset: 0 });
+        elementPages[u.index] = page.number;
+      }
+      const space = atTop() ? 0 : s;
+      page.items.push({ kind: 'dual', top: page.linesUsed + space, spaceBefore: space, height: n, left: u.left, right: u.right });
+      page.linesUsed += space + n;
       for (const p of [...u.left, ...u.right]) elementPages[p.elementIndex] = page.number;
       continue;
     }
 
-    const room = cap - page.linesUsed;
-    if (n <= room) {
-      placeElement(u, u.lines, 0, 0);
-      continue;
-    }
+    // The element's text in segments between locked boundaries inside it
+    const cuts = midLocks(u);
+    const bounds = [0, ...cuts.map((l) => l.offset), u.text.length];
+    let placed = 0;
 
-    // Taller than a page: cut it into page-sized pieces
-    const cut = isSplittable(u)
-      ? chooseCut(u, 0, room - (isDialogue ? 1 : 0), true)
-      : u.lines[Math.max(1, room)].start;
-    const piece = wrapRange(u, 0, cut);
-    placeElement(u, piece, 0, 0);
-    continueElement(u, cut, piece.length, isDialogue);
+    for (let seg = 0; seg < bounds.length - 1; seg++) {
+      const from = bounds[seg];
+      const to = bounds[seg + 1];
+      const last = seg === bounds.length - 2;
+
+      if (seg > 0) {
+        if (isDialogue) addMore();
+        newPage({
+          elementIndex: u.index,
+          elementId: u.el.id,
+          line: placed,
+          offset: from,
+          more: isDialogue ? moreText : undefined,
+          contd: isDialogue ? `${speaker} ${contdText}` : undefined,
+        }, cuts[seg - 1].label);
+      }
+
+      const lines = from === 0 && last ? u.lines : wrapRange(u, from, to);
+      const n = lines.length;
+      const s = from === 0 && !atTop() ? spaceBeforeOf(u) : 0;
+      const free = cap - page.linesUsed - s;
+      // Lines to keep free below this piece for a (MORE)
+      const tail = !last
+        ? (isDialogue ? 1 : 0)
+        : (next && inDialogueBlock(u, next) && speaker !== '' && !keeps(k) &&
+          (!!lockAtStart(k + 1) || restOfBlock(k) > free)) ? 1 : 0;
+      const keepOk = !last || !keeps(k) || atTop() || n + spaceBeforeOf(next!) + minLead(k + 1) <= free;
+
+      if (n + tail <= free && keepOk) {
+        placeElement(u, lines, placed, s);
+        placed += n;
+        continue;
+      }
+
+      // Split a long Action/General/Dialogue at a sentence end
+      if (isSplittable(u) && !atTop()) {
+        const cut = chooseCut(u, from, to, free - (isDialogue ? 1 : 0), false);
+        if (cut > 0) {
+          const piece = wrapRange(u, from, cut);
+          placeElement(u, piece, placed, s);
+          placed = continueElement(u, cut, to, placed + piece.length, isDialogue, last ? 0 : tail);
+          continue;
+        }
+      }
+
+      // Move the whole piece to a new page (unless it already starts one)
+      if (!atTop()) {
+        const block = from === 0 && continuesBlock;
+        if (block) addMore();
+        newPage({
+          elementIndex: u.index,
+          elementId: u.el.id,
+          line: placed,
+          offset: from,
+          more: block ? moreText : undefined,
+          contd: block ? `${speaker} ${contdText}` : undefined,
+        });
+        if (from === 0) elementPages[u.index] = page.number;
+      }
+
+      const room = cap - page.linesUsed;
+      if (n + (last ? 0 : tail) <= room) {
+        placeElement(u, lines, placed, 0);
+        placed += n;
+        continue;
+      }
+
+      // Taller than a page: cut it into page-sized pieces
+      const cut = isSplittable(u)
+        ? chooseCut(u, from, to, room - (isDialogue ? 1 : 0), true)
+        : lines[Math.max(1, Math.min(room, n - 1))].start;
+      const piece = wrapRange(u, from, cut);
+      placeElement(u, piece, placed, 0);
+      placed = continueElement(u, cut, to, placed + piece.length, isDialogue, last ? 0 : tail);
+    }
   }
 
   return { pages, pageCount: pages.length, breaks, elementPages, continuedCharacters, contdText, linesPerPage: cap };
 };
 
-// The editor, stats and navigator all paginate the same elements array on each
-// change; cache by array identity so the work happens once.
-const cache = new WeakMap<ScreenplayElement[], Pagination>();
+// The editor, stats, navigator and PDF all paginate the same script on each
+// change; cache by the elements array (and locks) so the work happens once.
+const cache = new WeakMap<ScreenplayElement[], { locks?: LockedPage[]; result: Pagination }>();
 
-export const paginateScript = (elements: ScreenplayElement[]): Pagination => {
-  let result = cache.get(elements);
-  if (!result) {
-    result = paginate(elements);
-    cache.set(elements, result);
-  }
+export const paginateScript = (script: Pick<Screenplay, 'elements' | 'lockedPages'>): Pagination => {
+  const hit = cache.get(script.elements);
+  if (hit && hit.locks === script.lockedPages) return hit.result;
+  const result = paginate(script.elements, { lockedPages: script.lockedPages });
+  cache.set(script.elements, { locks: script.lockedPages, result });
   return result;
 };

@@ -1,13 +1,15 @@
 import { useRef, useCallback, useEffect } from 'react';
 import type { ScreenplayElement, ElementType } from '../types/screenplay';
-import { ELEMENT_FORMATTING, MARGIN_LEFT } from '../types/screenplay';
-import { CHARS_PER_INCH, elementWidthChars, firstLineWidthChars, paginateScript, type PageBreak, type Pagination } from '../engine/paginate';
+import { ELEMENT_BEHAVIOR, ELEMENT_FORMATTING, ELEMENT_SHORTCUTS, MARGIN_LEFT } from '../types/screenplay';
+import { getRevisionSettings, showsRevisionMark } from '../engine/production';
+import { CHARS_PER_INCH, elementWidthChars, firstLineWidthChars, paginateScript, wrapElement, type PageBreak, type Pagination } from '../engine/paginate';
 import { useScreenplayStore } from '../store/screenplayStore';
 import { useShallow } from 'zustand/react/shallow';
 import { generateId, createTextRuns } from '../utils/fdx';
 import { detectAutoCompleteTrigger } from '../utils/scriptParser';
 import { AutoComplete } from './AutoComplete';
-import { DECORATION_ATTR, editableText, offsetInElement, offsetTopWithin, positionAt } from './editorDom';
+import { editSceneNumberAt } from './productionActions';
+import { DECORATION_ATTR, editableText, offsetInElement, offsetTopWithin, positionAt, setSelectedElementIds } from './editorDom';
 import { LINE_HEIGHT_PX, PAGE_STRIDE } from './pageLayout';
 import './ScriptEditor.css';
 
@@ -73,25 +75,8 @@ const ELEMENT_FORMAT: Record<ElementType, {
   'General': { allCaps: false, placeholder: '' },
 };
 
-// Determine next element type based on current type (for Enter key)
-const getNextElementType = (currentType: ElementType): ElementType => {
-  switch (currentType) {
-    case 'Scene Heading':
-      return 'Action';
-    case 'Action':
-      return 'Action';
-    case 'Character':
-      return 'Dialogue';
-    case 'Dialogue':
-      return 'Action';
-    case 'Parenthetical':
-      return 'Dialogue';
-    case 'Transition':
-      return 'Scene Heading';
-    default:
-      return 'Action';
-  }
-};
+// Enter switches to the element's Return element (one table with Tab and the status bar)
+const getNextElementType = (currentType: ElementType): ElementType => ELEMENT_BEHAVIOR[currentType].returnKey;
 
 // Get CSS class name for element type
 const getElementClass = (type: ElementType): string => {
@@ -155,7 +140,9 @@ export const ScriptEditor = () => {
     if (!editor || isUpdatingRef.current) return;
 
     // Check if elements actually changed (not just selection)
-    const elementsKey = screenplay.elements.map(e => `${e.id}:${e.type}:${getPlainText(e.content)}`).join('|');
+    const revisions = getRevisionSettings(screenplay);
+    const elementsKey = screenplay.elements.map(e => `${e.id}:${e.type}:${getPlainText(e.content)}:${e.revisionId ?? ''}:${e.omitted ? 'o' : ''}`).join('|') +
+      `#${revisions.activeSetId}:${revisions.marksShown}:${JSON.stringify(screenplay.lockedPages ?? [])}`;
     if (elementsKey === lastElementsRef.current) {
       return; // No actual content change, skip re-render to preserve selection
     }
@@ -217,7 +204,7 @@ export const ScriptEditor = () => {
     editor.innerHTML = '';
 
     // Page breaks and spacing come from the shared pagination engine (same as the PDF)
-    const pagination = paginateScript(screenplay.elements);
+    const pagination = paginateScript(screenplay);
     const breaksByElement = new Map<string, PageBreak[]>();
     pagination.breaks.forEach((brk) => {
       breaksByElement.set(brk.elementId, [...(breaksByElement.get(brk.elementId) || []), brk]);
@@ -266,6 +253,24 @@ export const ScriptEditor = () => {
         div.appendChild(document.createTextNode(text));
       } else {
         div.appendChild(document.createElement('br'));
+      }
+
+      // An omitted scene's OMITTED placeholder is not editable text
+      if (element.omitted) {
+        div.setAttribute('contenteditable', 'false');
+        div.classList.add('omitted-scene');
+      }
+
+      // Revision mark (*) in the right margin, one per line
+      if (showsRevisionMark(element.revisionId, revisions)) {
+        const set = revisions.sets.find((r) => r.id === element.revisionId);
+        const mark = document.createElement('span');
+        mark.className = 'revision-mark';
+        mark.setAttribute('contenteditable', 'false');
+        mark.setAttribute(DECORATION_ATTR, '');
+        mark.style.left = `${Math.round((revisions.markLocation - MARGIN_LEFT) * CHARS_PER_INCH) - indentChars(element.type)}ch`;
+        mark.textContent = Array(wrapElement(element).length).fill(set?.mark ?? '*').join('\n');
+        div.appendChild(mark);
       }
 
       // Automatic (CONT'D) for a character speaking again in the same scene
@@ -322,7 +327,7 @@ export const ScriptEditor = () => {
     }
 
     isUpdatingRef.current = false;
-  }, [screenplay.elements, getTextOffset, showSceneNumbers, alignPageBreaks]);
+  }, [screenplay, getTextOffset, showSceneNumbers, alignPageBreaks]);
 
   // Re-render only when elements change (not selection). While typing the DOM is
   // left alone; once typing pauses, rebuild if the page breaks moved, otherwise
@@ -332,7 +337,7 @@ export const ScriptEditor = () => {
     const timer = window.setTimeout(() => {
       const editor = editorRef.current;
       if (!editor || isUpdatingRef.current) return;
-      const pagination = paginateScript(screenplay.elements);
+      const pagination = paginateScript(screenplay);
       const shown = editor.querySelectorAll('.page-break-spacer').length;
       if (layoutKey(pagination) !== renderedLayoutRef.current || shown !== pagination.breaks.length) {
         lastElementsRef.current = '';
@@ -342,7 +347,7 @@ export const ScriptEditor = () => {
       }
     }, 300);
     return () => window.clearTimeout(timer);
-  }, [screenplay.elements, renderContent, alignPageBreaks]);
+  }, [screenplay, renderContent, alignPageBreaks]);
 
   // Line wrapping can change once the script font loads
   useEffect(() => {
@@ -453,7 +458,10 @@ export const ScriptEditor = () => {
         const format = ELEMENT_FORMAT[elementType];
         const processedText = format?.allCaps ? text.toUpperCase() : text;
 
+        // Keep the element's other fields (scene number, revision, dual dialogue)
+        const existing = state.screenplay.elements.find((el) => el.id === elementId);
         newElements.push({
+          ...existing,
           id: elementId,
           type: elementType,
           content: createTextRuns(processedText),
@@ -527,6 +535,20 @@ export const ScriptEditor = () => {
     handleInput();
   }, [handleInput]);
 
+  // Paragraphs the selection touches (the caret's paragraph when collapsed)
+  const selectedElementIds = useCallback((): string[] => {
+    const editor = editorRef.current;
+    const selection = window.getSelection();
+    if (!editor || !selection || selection.rangeCount === 0) return [];
+    const range = selection.getRangeAt(0);
+    const ids = Array.from(editor.querySelectorAll<HTMLElement>('[data-element-id]'))
+      .filter((div) => range.intersectsNode(div))
+      .map((div) => div.dataset.elementId!);
+    if (ids.length > 0) return ids;
+    const current = getCurrentElement();
+    return current ? [current.element.id] : [];
+  }, [getCurrentElement]);
+
   // Handle keyboard events
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
     const state = useScreenplayStore.getState();
@@ -538,6 +560,38 @@ export const ScriptEditor = () => {
         // AutoComplete handles these via capture phase
         return;
       }
+    }
+
+    const mod = e.metaKey || e.ctrlKey;
+
+    // Mod+Alt+digit - change element (Final Draft's numbering; browsers keep Mod+digit)
+    const digit = /^Digit(\d)$/.exec(e.code)?.[1];
+    if (mod && e.altKey && digit && ELEMENT_SHORTCUTS[digit]) {
+      e.preventDefault();
+      if (!current) return;
+      const type = ELEMENT_SHORTCUTS[digit];
+      const elements = state.screenplay.elements.map(el => el.id === current.element.id ? { ...el, type } : el);
+      state.setScreenplay({ ...state.screenplay, elements });
+      setCurrentElementType(type);
+      setCursorPosition(current.element.id, current.offset);
+      return;
+    }
+
+    // Mod+] Mark Revised, Mod+[ Clear Revised (selected paragraphs, active set)
+    const bracket = e.code === 'BracketRight' || e.key === ']' ? ']' : e.code === 'BracketLeft' || e.key === '[' ? '[' : '';
+    if (mod && !e.altKey && bracket) {
+      e.preventDefault();
+      const ids = selectedElementIds();
+      if (bracket === ']') state.markRevised(ids);
+      else state.clearRevised(ids);
+      return;
+    }
+
+    // Mod+Shift+J - Edit Scene Number
+    if (mod && e.shiftKey && (e.code === 'KeyJ' || e.key.toLowerCase() === 'j')) {
+      e.preventDefault();
+      if (current) editSceneNumberAt(current.element.id);
+      return;
     }
 
     // Shift+Enter - insert newline within same element
@@ -639,11 +693,11 @@ export const ScriptEditor = () => {
 
       if (!current) return;
 
-      const types: ElementType[] = ['Scene Heading', 'Action', 'Character', 'Dialogue', 'Parenthetical', 'Transition'];
-      const currentIndex = types.indexOf(current.element.type);
-      const direction = e.shiftKey ? -1 : 1;
-      const nextIndex = (currentIndex + direction + types.length) % types.length;
-      const nextType = types[nextIndex];
+      // Tab switches to the element's Tab element; Shift+Tab steps back through the list
+      const types: ElementType[] = ['Scene Heading', 'Action', 'Character', 'Parenthetical', 'Dialogue', 'Transition', 'Shot', 'General'];
+      const nextType = e.shiftKey
+        ? types[(types.indexOf(current.element.type) - 1 + types.length) % types.length]
+        : ELEMENT_BEHAVIOR[current.element.type].tabKey;
 
       state.saveToHistory();
 
@@ -721,7 +775,7 @@ export const ScriptEditor = () => {
         return;
       }
     }
-  }, [getCurrentElement, selectElement, setCurrentElementType, setCursorPosition, handleInput]);
+  }, [getCurrentElement, selectElement, setCurrentElementType, setCursorPosition, handleInput, selectedElementIds]);
 
   // Handle selection change to track current element (without re-render)
   const handleSelectionChange = useCallback(() => {
@@ -735,12 +789,15 @@ export const ScriptEditor = () => {
 
     if (!editor.contains(selection.anchorNode)) return;
 
+    // Remember which paragraphs the selection covers, for Mark/Clear Revised from menus
+    setSelectedElementIds(selectedElementIds());
+
     const current = getCurrentElement();
     if (current) {
       selectElement(current.element.id);
       setCurrentElementType(current.element.type);
     }
-  }, [getCurrentElement, selectElement, setCurrentElementType]);
+  }, [getCurrentElement, selectElement, setCurrentElementType, selectedElementIds]);
 
   useEffect(() => {
     document.addEventListener('selectionchange', handleSelectionChange);

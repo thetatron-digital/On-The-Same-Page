@@ -41,7 +41,7 @@ export const calculateWritingStats = (screenplay: Screenplay): WritingStats => {
     }
   });
 
-  const { pageCount } = paginateScript(screenplay.elements);
+  const { pageCount } = paginateScript(screenplay);
 
   // 1 page ≈ 1 minute of screen time
   const totalMinutes = pageCount;

@@ -10,20 +10,11 @@ import { BeatBoard } from './BeatBoard';
 import { SplitView } from './SplitView';
 import { StoryMode } from './StoryMode';
 import { paginateScript } from '../engine/paginate';
+import { getRevisionSettings, pageRevision } from '../engine/production';
+import { ELEMENT_BEHAVIOR } from '../types/screenplay';
+import { saveOpenProject } from '../services/saveOpenProject';
 import { PAGE_GAP, PAGE_HEIGHT } from './pageLayout';
 import './Editor.css';
-
-// Element type hints for the status bar (Tab cycles through this order)
-const ELEMENT_HINTS: Record<string, { tab: string; enter: string }> = {
-  'Scene Heading': { tab: 'Action', enter: 'Action' },
-  'Action': { tab: 'Character', enter: 'Action' },
-  'Character': { tab: 'Dialogue', enter: 'Dialogue' },
-  'Dialogue': { tab: 'Parenthetical', enter: 'Action' },
-  'Parenthetical': { tab: 'Transition', enter: 'Dialogue' },
-  'Transition': { tab: 'Scene Heading', enter: 'Scene Heading' },
-  'Shot': { tab: 'Action', enter: 'Action' },
-  'General': { tab: 'Action', enter: 'Action' },
-};
 
 export const Editor = () => {
   const editorRef = useRef<HTMLDivElement>(null);
@@ -59,10 +50,12 @@ export const Editor = () => {
   );
 
   // Page count and page numbers come from the shared pagination engine (same as the PDF)
-  const pagination = paginateScript(screenplay.elements);
+  const pagination = paginateScript(screenplay);
   const pageCount = pagination.pageCount;
   const selectedIndex = screenplay.elements.findIndex((el) => el.id === selectedElementId);
   const currentPage = selectedIndex >= 0 ? pagination.elementPages[selectedIndex] : 1;
+  const revisions = getRevisionSettings(screenplay);
+  const activeSet = revisions.sets.find((set) => set.id === revisions.activeSetId);
 
   // Calculate total container height including gaps
   const totalHeight = pageCount * PAGE_HEIGHT + (pageCount - 1) * PAGE_GAP;
@@ -142,48 +135,22 @@ export const Editor = () => {
         useScreenplayStore.getState().redo();
       }
 
-      // Ctrl/Cmd + N - New document
-      if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+      // Mod+Alt+N - New document (browsers keep Mod+N for a new window)
+      if ((e.ctrlKey || e.metaKey) && e.altKey && e.code === 'KeyN') {
         e.preventDefault();
         useScreenplayStore.getState().newScreenplay();
       }
 
-      // Ctrl/Cmd + S - Save
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      // Mod+S - Save to the open project (FDX is under Export)
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.code === 'KeyS') {
         e.preventDefault();
-        const fdxContent = useScreenplayStore.getState().exportToFDX();
-        const fileName = useScreenplayStore.getState().fileName;
-        const blob = new Blob([fdxContent], { type: 'application/xml' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName.endsWith('.fdx') ? fileName : `${fileName}.fdx`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        useScreenplayStore.getState().setDirty(false);
+        saveOpenProject().catch(() => alert('Failed to save. Please try again.'));
       }
 
-      // Ctrl/Cmd + O - Open
-      if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
+      // Mod+O - Open a project (the project list on Home)
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.code === 'KeyO') {
         e.preventDefault();
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.fdx';
-        input.onchange = async (ev) => {
-          const file = (ev.target as HTMLInputElement).files?.[0];
-          if (file) {
-            try {
-              const content = await file.text();
-              useScreenplayStore.getState().loadFromFDX(content);
-              useScreenplayStore.getState().setFileName(file.name);
-            } catch {
-              alert('Failed to open file.');
-            }
-          }
-        };
-        input.click();
+        useScreenplayStore.getState().setActiveApp('home');
       }
     };
 
@@ -198,7 +165,8 @@ export const Editor = () => {
   const currentSceneHeading = screenplay.elements.find(el => el.type === 'Scene Heading')?.content[0]?.text || 'No Scene';
 
   // Get element hints for status bar
-  const hints = ELEMENT_HINTS[currentElementType] || ELEMENT_HINTS['Action'];
+  const behavior = ELEMENT_BEHAVIOR[currentElementType] ?? ELEMENT_BEHAVIOR['Action'];
+  const hints = { tab: behavior.tabKey, enter: behavior.returnKey };
 
   // Render the appropriate view based on activeApp
   const renderMainContent = () => {
@@ -256,17 +224,22 @@ export const Editor = () => {
               style={{ height: `${totalHeight}px` }}
             >
               {/* Page backgrounds - positioned absolutely at fixed intervals */}
-              {Array.from({ length: pageCount }, (_, i) => (
-                <div
-                  key={`page-bg-${i}`}
-                  className="page page-background"
-                  style={{
-                    top: `${i * (PAGE_HEIGHT + PAGE_GAP)}px`,
-                  }}
-                >
-                  {i > 0 && <div className="page-number">{i + 1}.</div>}
-                </div>
-              ))}
+              {pagination.pages.map((page, i) => {
+                const revised = pageRevision(page, screenplay.elements, revisions);
+                return (
+                  <div
+                    key={`page-bg-${i}`}
+                    className={`page page-background${revised && revisions.showPageColors ? ' revised-page' : ''}`}
+                    style={{
+                      top: `${i * (PAGE_HEIGHT + PAGE_GAP)}px`,
+                      // Tint rather than replace the page so text stays readable in dark themes
+                      ...(revised && revisions.showPageColors ? { background: `color-mix(in srgb, ${revised.pageColor} 40%, var(--script-bg))` } : {}),
+                    }}
+                  >
+                    {i > 0 && <div className="page-number">{page.label}.</div>}
+                  </div>
+                );
+              })}
 
               {/* Page break markers between pages */}
               {Array.from({ length: pageCount - 1 }, (_, i) => (
@@ -293,7 +266,15 @@ export const Editor = () => {
         {/* Status bar */}
         <div className="status-bar">
           <div className="status-left">
-            <span className="status-page">{currentPage} of {pageCount}</span>
+            <span className="status-page">
+              {pagination.pages[currentPage - 1]?.label ?? currentPage} of {pagination.pages[pageCount - 1]?.label ?? pageCount}
+            </span>
+            {revisions.revisionMode && (
+              <span className="status-revision" title="Revision Mode is on">
+                Revision: {activeSet?.label}
+              </span>
+            )}
+            {screenplay.lockedPages && <span className="status-locked" title="Pages are locked">Locked</span>}
             <span className="status-scene">{currentSceneHeading.substring(0, 40)}</span>
           </div>
           <div className="status-center">

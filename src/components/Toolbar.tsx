@@ -2,6 +2,13 @@ import { useRef, useState } from 'react';
 import { useScreenplayStore } from '../store/screenplayStore';
 import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore, useProjectsStore } from '../services/projectService';
+import { saveOpenProject } from '../services/saveOpenProject';
+import { getRevisionSettings, sceneHeadingIndex } from '../engine/production';
+import { RevisionsDialog, SceneNumbersDialog } from './ProductionDialogs';
+import { editSceneNumberAt, lockPagesWithPrompt, selectionIds } from './productionActions';
+
+// Shortcut hint prefix: ⌘ on Apple platforms, Ctrl+ elsewhere
+const MOD = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+';
 import { googleAuth } from '../services/googleAuth';
 import { downloadPDF } from '../utils/pdf';
 import { downloadOTSP, generateBreakdownXML, generateScheduleXML, generateShotListXML, generateSupervisorXML, generateArtCartCSV } from '../utils/exportFormats';
@@ -141,6 +148,9 @@ export const Toolbar = () => {
   const [showVersionModal, setShowVersionModal] = useState(false);
   const [newVersionName, setNewVersionName] = useState('');
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showRevisionsDialog, setShowRevisionsDialog] = useState(false);
+  const [showSceneNumbersDialog, setShowSceneNumbersDialog] = useState(false);
+  const [revisedPagesOnly, setRevisedPagesOnly] = useState(false);
   const [exportFormat, setExportFormat] = useState<ScreenplayExportFormat>('fdx');
   const [isExporting, setIsExporting] = useState(false);
 
@@ -210,7 +220,6 @@ export const Toolbar = () => {
     deleteVersion,
     toggleSceneNumbers,
     generateSceneNumbers,
-    clearSceneNumbers,
     setWatermarkSettings,
     toggleWatermark,
     getProjectData,
@@ -248,7 +257,6 @@ export const Toolbar = () => {
       deleteVersion: s.deleteVersion,
       toggleSceneNumbers: s.toggleSceneNumbers,
       generateSceneNumbers: s.generateSceneNumbers,
-      clearSceneNumbers: s.clearSceneNumbers,
       setWatermarkSettings: s.setWatermarkSettings,
       toggleWatermark: s.toggleWatermark,
       getProjectData: s.getProjectData,
@@ -257,8 +265,14 @@ export const Toolbar = () => {
 
   // Auth and projects state
   const { user, signIn, signOut } = useAuthStore();
-  const { currentProjectId, isSaving, saveProject } = useProjectsStore();
+  const { currentProjectId, isSaving } = useProjectsStore();
   const isGoogleConfigured = googleAuth.isConfigured();
+
+  // Production menu state
+  const revisionSettings = getRevisionSettings(screenplay);
+  const pagesLocked = !!screenplay.lockedPages;
+  const selectedHeading = selectedElementId ? sceneHeadingIndex(screenplay.elements, selectedElementId) : -1;
+  const selectedSceneOmitted = selectedHeading >= 0 && !!screenplay.elements[selectedHeading].omitted;
 
   const handleNew = () => {
     if (isDirty) {
@@ -382,6 +396,7 @@ export const Toolbar = () => {
       downloadPDF(screenplay, pdfFileName, {
         showSceneNumbers,
         watermark: watermarkSettings,
+        revisedPagesOnly,
       });
     } else {
       // FDX export
@@ -435,18 +450,8 @@ export const Toolbar = () => {
   };
 
   const handleSaveToCloud = async () => {
-    if (!currentProjectId) {
-      // No project loaded, go to home to create one
-      setActiveApp('home');
-      return;
-    }
-
     try {
-      const data = getProjectData();
-      await saveProject(currentProjectId, data);
-      setDirty(false);
-      // An explicitly saved document belongs to this project from now on
-      useScreenplayStore.getState().setDocumentOrigin('project');
+      await saveOpenProject();
     } catch {
       alert('Failed to save to cloud. Please try again.');
     }
@@ -1042,11 +1047,20 @@ export const Toolbar = () => {
           </button>
           {openDropdown === 'production' && (
             <div className="dropdown-menu production-menu" onClick={(e) => e.stopPropagation()}>
-              <div className="dropdown-section-title">Scene Numbers</div>
+              {/* Final Draft's Production menu order (ui-parity-spec §1.1) */}
+              <button className="dropdown-item" onClick={() => { closeDropdowns(); setShowSceneNumbersDialog(true); }}>
+                <span className="check-mark"></span>
+                Scene Numbers…
+              </button>
+              <button className="dropdown-item" onClick={() => { closeDropdowns(); editSceneNumberAt(useScreenplayStore.getState().selectedElementId); }}>
+                <span className="check-mark"></span>
+                Edit Scene Number…
+                <span className="dropdown-shortcut">{MOD}⇧J</span>
+              </button>
               <button
                 className={`dropdown-item ${showSceneNumbers ? 'checked' : ''}`}
                 onClick={() => {
-                  if (!showSceneNumbers) {
+                  if (!showSceneNumbers && !screenplay.elements.some((el) => el.sceneNumber)) {
                     generateSceneNumbers();
                   } else {
                     toggleSceneNumbers();
@@ -1056,18 +1070,57 @@ export const Toolbar = () => {
                 <span className="check-mark">{showSceneNumbers ? '✓' : ''}</span>
                 Show Scene Numbers
               </button>
-              {showSceneNumbers && (
-                <button
-                  className="dropdown-item"
-                  onClick={() => {
-                    clearSceneNumbers();
-                    closeDropdowns();
-                  }}
-                >
-                  <span className="check-mark"></span>
-                  Clear Scene Numbers
-                </button>
-              )}
+              <div className="dropdown-divider" />
+              <button
+                className="dropdown-item"
+                onClick={() => {
+                  closeDropdowns();
+                  const id = useScreenplayStore.getState().selectedElementId;
+                  if (id) useScreenplayStore.getState().toggleOmitScene(id);
+                }}
+              >
+                <span className="check-mark"></span>
+                {selectedSceneOmitted ? 'Restore Omitted Scene' : 'Omit Scene'}
+              </button>
+              <div className="dropdown-divider" />
+              <button className="dropdown-item" onClick={() => { closeDropdowns(); setShowRevisionsDialog(true); }}>
+                <span className="check-mark"></span>
+                Revisions…
+              </button>
+              <button
+                className={`dropdown-item ${revisionSettings.revisionMode ? 'checked' : ''}`}
+                onClick={() => useScreenplayStore.getState().toggleRevisionMode()}
+              >
+                <span className="check-mark">{revisionSettings.revisionMode ? '✓' : ''}</span>
+                Revision Mode
+              </button>
+              <button className="dropdown-item" onClick={() => { closeDropdowns(); useScreenplayStore.getState().markRevised(selectionIds()); }}>
+                <span className="check-mark"></span>
+                Mark Revised
+                <span className="dropdown-shortcut">{MOD}]</span>
+              </button>
+              <button className="dropdown-item" onClick={() => { closeDropdowns(); useScreenplayStore.getState().clearRevised(selectionIds()); }}>
+                <span className="check-mark"></span>
+                Clear Revised
+                <span className="dropdown-shortcut">{MOD}[</span>
+              </button>
+              <div className="dropdown-divider" />
+              <button className="dropdown-item" onClick={() => { closeDropdowns(); lockPagesWithPrompt(); }} disabled={pagesLocked}>
+                <span className="check-mark">{pagesLocked ? '✓' : ''}</span>
+                Lock Pages
+              </button>
+              <button className="dropdown-item" onClick={() => { closeDropdowns(); useScreenplayStore.getState().unlockAPages(); }} disabled={!pagesLocked}>
+                <span className="check-mark"></span>
+                Unlock "A" Pages
+              </button>
+              <button className="dropdown-item" onClick={() => { closeDropdowns(); useScreenplayStore.getState().unlockAllPages(); }} disabled={!pagesLocked}>
+                <span className="check-mark"></span>
+                Unlock All Pages
+              </button>
+              <div className="dropdown-submenu-title">Locking Tools</div>
+              <button className="dropdown-item indented" onClick={() => { closeDropdowns(); useScreenplayStore.getState().lockPages(); }} disabled={!pagesLocked}>
+                Relock Pages…
+              </button>
               <div className="dropdown-divider" />
               <div className="dropdown-section-title">Watermark</div>
               <button
@@ -1111,13 +1164,13 @@ export const Toolbar = () => {
           <button
             className={`menu-btn dropdown-trigger ${openDropdown === 'versions' ? 'active' : ''}`}
             onClick={() => toggleDropdown('versions')}
-            title="Script Versions"
+            title="Script Drafts (saved snapshots)"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M12 20h9" />
               <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
             </svg>
-            <span>Versions</span>
+            <span>Drafts</span>
             <svg className="dropdown-arrow" viewBox="0 0 12 12" fill="currentColor">
               <path d="M2 4l4 4 4-4" />
             </svg>
@@ -1129,7 +1182,7 @@ export const Toolbar = () => {
                 onClick={() => setShowVersionModal(true)}
               >
                 <span className="check-mark">+</span>
-                Create New Version
+                Save Draft
               </button>
               {versions.length > 0 && <div className="dropdown-divider" />}
               {versions.map((version) => (
@@ -1147,14 +1200,14 @@ export const Toolbar = () => {
                   <button
                     className="version-delete"
                     onClick={() => deleteVersion(version.id)}
-                    title="Delete version"
+                    title="Delete draft"
                   >
                     ×
                   </button>
                 </div>
               ))}
               {versions.length === 0 && (
-                <div className="dropdown-item disabled">No versions saved</div>
+                <div className="dropdown-item disabled">No drafts saved</div>
               )}
             </div>
           )}
@@ -1368,12 +1421,12 @@ export const Toolbar = () => {
       {showVersionModal && (
         <div className="modal-overlay" onClick={() => setShowVersionModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h3>Create New Version</h3>
+            <h3>Save Draft</h3>
             <input
               type="text"
               value={newVersionName}
               onChange={(e) => setNewVersionName(e.target.value)}
-              placeholder="Version name (e.g., Draft 2, Final, etc.)"
+              placeholder="Draft name (e.g., Draft 2, Final, etc.)"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleCreateVersion();
@@ -1387,6 +1440,9 @@ export const Toolbar = () => {
           </div>
         </div>
       )}
+
+      {showRevisionsDialog && <RevisionsDialog onClose={() => setShowRevisionsDialog(false)} />}
+      {showSceneNumbersDialog && <SceneNumbersDialog onClose={() => setShowSceneNumbersDialog(false)} />}
 
       {/* Export Format Modal */}
       {showExportModal && (
@@ -1431,6 +1487,16 @@ export const Toolbar = () => {
                 {exportFormat === 'pdf' && <span className="export-check">✓</span>}
               </button>
             </div>
+            {exportFormat === 'pdf' && (
+              <label className="export-pdf-option">
+                <input
+                  type="checkbox"
+                  checked={revisedPagesOnly}
+                  onChange={(e) => setRevisedPagesOnly(e.target.checked)}
+                />
+                Revised pages only
+              </label>
+            )}
             <div className="modal-divider" />
             <div className="export-project-section">
               <p className="modal-description">Or export entire project:</p>

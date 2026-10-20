@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import type { Screenplay, ElementType, WatermarkSettings } from '../types/screenplay';
 import { ELEMENT_FORMATTING } from '../types/screenplay';
 import { paginateScript } from '../engine/paginate';
+import { getRevisionSettings, pageRevision, showsRevisionMark } from '../engine/production';
 
 // PDF constants (in points, 72 points = 1 inch)
 const PAGE_WIDTH = 612; // 8.5 inches
@@ -11,6 +12,7 @@ const BOTTOM_MARGIN = 72; // 1 inch
 const LINE_HEIGHT = 12; // 12 points for Courier 12pt
 const FONT_SIZE = 12;
 const HEADER_MARGIN = 36; // 0.5 inch: page number baseline
+const LEFT_TEXT = 108; // 1.5 inches: left text margin
 const PAGE_NUMBER_RIGHT = 522; // 7.25 inches: page numbers are right-aligned here
 const SCENE_NUMBER_LEFT = 54; // 0.75 inch
 const SCENE_NUMBER_RIGHT = 531; // 7.38 inches
@@ -37,6 +39,7 @@ const getXPosition = (elementType: ElementType): number => {
 export interface PDFOptions {
   showSceneNumbers?: boolean;
   watermark?: WatermarkSettings;
+  revisedPagesOnly?: boolean; // only pages with revisions shown (Revisions: Revised pages only)
 }
 
 // Dual dialogue positioning (column width is DUAL_COLUMN_CHARS in the engine)
@@ -86,8 +89,13 @@ const addWatermark = (doc: jsPDF, watermark: WatermarkSettings) => {
 };
 
 export const generatePDF = (screenplay: Screenplay, options: PDFOptions = {}): jsPDF => {
-  const { showSceneNumbers = false, watermark = DEFAULT_WATERMARK } = options;
-  const { pages } = paginateScript(screenplay.elements);
+  const { showSceneNumbers = false, watermark = DEFAULT_WATERMARK, revisedPagesOnly = false } = options;
+  const revisions = getRevisionSettings(screenplay);
+  const allPages = paginateScript(screenplay).pages;
+  const pages = revisedPagesOnly
+    ? allPages.filter((page) => pageRevision(page, screenplay.elements, revisions))
+    : allPages;
+  const includeTitle = !!screenplay.title && !revisedPagesOnly;
 
   const doc = new jsPDF({
     unit: 'pt',
@@ -99,7 +107,7 @@ export const generatePDF = (screenplay: Screenplay, options: PDFOptions = {}): j
   doc.setFontSize(FONT_SIZE);
 
   // Add title page
-  if (screenplay.title) {
+  if (includeTitle) {
     const titleY = PAGE_HEIGHT / 3;
     doc.setFont('Courier', 'bold');
     doc.text(screenplay.title.toUpperCase(), PAGE_WIDTH / 2, titleY, { align: 'center' });
@@ -138,16 +146,35 @@ export const generatePDF = (screenplay: Screenplay, options: PDFOptions = {}): j
   };
 
   // Lay out every page exactly as the pagination engine placed it
+  // Margin mark beside each line of a revised paragraph
+  const markX = inchesToPoints(revisions.markLocation);
+  const drawMarks = (elementIndex: number, y: number, lineCount: number) => {
+    const revisionId = screenplay.elements[elementIndex]?.revisionId;
+    if (!showsRevisionMark(revisionId, revisions)) return;
+    const mark = revisions.sets.find((set) => set.id === revisionId)?.mark ?? '*';
+    for (let li = 0; li < lineCount; li++) doc.text(mark, markX, y + li * LINE_HEIGHT);
+  };
+
+  if (pages.length === 0) {
+    doc.text('No revised pages.', LEFT_TEXT, TOP_MARGIN);
+  }
+
   pages.forEach((page, pageIndex) => {
-    if (pageIndex > 0 || screenplay.title) {
+    if (pageIndex > 0 || includeTitle) {
       doc.addPage();
     }
     addWatermark(doc, watermark);
     doc.setFont('Courier', 'normal');
 
-    // Page number top right (script page 1 is unnumbered)
+    // Header (not on script page 1): the page's revision, then the page number
+    // (locked scripts print A-page labels such as 12A)
     if (page.number > 1) {
-      doc.text(`${page.number}.`, PAGE_NUMBER_RIGHT, HEADER_MARGIN, { align: 'right' });
+      doc.text(`${page.label}.`, PAGE_NUMBER_RIGHT, HEADER_MARGIN, { align: 'right' });
+      const revised = pageRevision(page, screenplay.elements, revisions);
+      if (revised) {
+        const label = revised.date ? `${revised.label} ${revised.date}` : revised.label;
+        doc.text(label, PAGE_WIDTH / 2, HEADER_MARGIN, { align: 'center' });
+      }
     }
 
     page.items.forEach((item) => {
@@ -168,6 +195,7 @@ export const generatePDF = (screenplay: Screenplay, options: PDFOptions = {}): j
             p.lines.forEach((line, li) => {
               doc.text(line.text, xPos + (li === 0 ? hang : 0), y + (p.top + li) * LINE_HEIGHT);
             });
+            drawMarks(p.elementIndex, y + p.top * LINE_HEIGHT, p.lines.length);
           });
         return;
       }
@@ -182,6 +210,7 @@ export const generatePDF = (screenplay: Screenplay, options: PDFOptions = {}): j
       }
 
       item.lines.forEach((line, li) => drawLine(item.type, line.text, y + li * LINE_HEIGHT, !item.continued && li === 0));
+      drawMarks(item.elementIndex, y, item.lines.length);
     });
   });
 
