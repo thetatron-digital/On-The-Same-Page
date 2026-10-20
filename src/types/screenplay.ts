@@ -1137,6 +1137,7 @@ export interface StoryboardFrame {
   durationMs?: number;       // board length; default from the storyboard
   layers?: Partial<Record<StoryboardLayer, string>>; // PNG data URLs
   referenceOpacity?: number; // 0-1, light-box strength of the reference layer
+  audio?: { dataUrl: string; durationMs: number; name: string }; // board audio (dialogue, temp sound)
 }
 
 // Shot list for a scene (printable format)

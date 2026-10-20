@@ -131,3 +131,17 @@
   .sb-tools { width: auto; flex-direction: row; flex-wrap: wrap; border-right: none; border-bottom: 1px solid var(--sb-border, #ddd); }
   .sb-side { width: auto; border-left: none; border-top: 1px solid var(--sb-border, #ddd); }
 }
+
+/* Guides and captions over the canvas */
+.sb-guides { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.sb-guides line { stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.sb-guides .grid { stroke: rgba(0, 150, 255, 0.25); }
+.sb-guides .thirds { stroke: rgba(255, 140, 0, 0.6); }
+.sb-guides .center { stroke: rgba(255, 0, 80, 0.55); }
+.sb-caption { position: absolute; left: 10%; right: 10%; bottom: 6%; text-align: center; pointer-events: none; color: #fff; font-size: clamp(12px, 2vw, 20px); text-shadow: 0 0 4px #000, 0 0 2px #000; }
+.sb-progress { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); display: flex; align-items: center; justify-content: center; z-index: 1000; color: #fff; flex-direction: column; gap: 10px; }
+.sb-progress-bar { width: 280px; height: 8px; background: rgba(255, 255, 255, 0.2); border-radius: 4px; overflow: hidden; }
+.sb-progress-bar span { display: block; height: 100%; background: #8B5CF6; }
+.sb-audio { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+.sb-audio audio { width: 100%; height: 32px; }
+.sb-recording { color: #E53935; font-weight: 700; }
