@@ -385,3 +385,12 @@
 .bct-sun-set { fill: #F97316; }
 .bct-sun-noon { fill: #FACC15; stroke: #fff; stroke-width: 1.5; }
 .bct-sun-hover { fill: none; stroke: var(--text-primary); stroke-width: 2; }
+
+/* Call sheet Send panel */
+.modal-content.bct-send { background: var(--panel-bg, var(--toolbar-bg, #1e1e1e)); width: min(860px, calc(100vw - 32px)); max-height: calc(100vh - 64px); overflow-y: auto; color: var(--text-primary); }
+.bct-send-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.bct-send-head h3 { margin: 0; }
+.bct-send-head .bc-icon-btn { margin-left: auto; }
+.bct-send-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+.bct-check-inline { display: inline-flex; align-items: center; gap: 6px; margin-left: 6px; font-size: 12px; }
+.bc-btn.small { padding: 3px 9px; font-size: 12px; }

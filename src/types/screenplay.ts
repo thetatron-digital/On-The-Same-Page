@@ -1749,8 +1749,20 @@ export interface CallSheet {
   disclaimer: string;
 
   status: 'draft' | 'published';
+  // Each time the call sheet was sent out (newest last)
+  distributions?: CallSheetDistribution[];
   createdAt: Date;
   updatedAt: Date;
+}
+
+// One send-out of a call sheet: a PDF version shared through Drive
+export interface CallSheetDistribution {
+  version: number;
+  publishedAt: Date;
+  driveFileId?: string;       // the PDF in Drive (updated in place for later versions)
+  notified: boolean;          // false = silent update
+  recipients: { personId: string; email: string; callTime: string }[];
+  confirmations?: { personId: string; at: Date; note?: string }[];
 }
 
 // Production data (shared across apps)
