@@ -103,6 +103,11 @@ class GoogleDriveService {
     return { Authorization: `Bearer ${token}` };
   }
 
+  // Bearer header for other Drive helpers (dailies media)
+  async authHeader(): Promise<HeadersInit> {
+    return this.getAuthHeader();
+  }
+
   // Find or create the app folder in user's Drive
   async getAppFolder(): Promise<string> {
     if (this.appFolderId) return this.appFolderId;
