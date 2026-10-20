@@ -19,7 +19,7 @@ const DATE_KEYS = new Set([
   'dueDate', 'acquiredDate', 'returnDate', 'syncedAt', 'date', 'startDate',
   'estimatedEndDate', 'dayStartedAt', 'currentSetupStartedAt', 'lastUpdated',
   'startedAt', 'completedAt', 'lunchStartedAt', 'endedAt', 'exportedAt',
-  'approvedAt',
+  'approvedAt', 'uploadedAt',
 ]);
 
 // The exact shape Date.prototype.toISOString() produces

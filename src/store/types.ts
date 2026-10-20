@@ -570,6 +570,19 @@ export interface OnSetSlice {
   getQuickStatus: () => { currentScene: string; currentSetup: string; estimatedWrap: string; aheadBehind: string; nextUp: string; isOnLunch: boolean; lunchCountdown?: string } | null;
 }
 
+// Dailies: Frame.io-style review of clips
+export interface DailiesSlice {
+  dailies: import('../types/dailies').Dailies | null;
+  /** Add a clip; with `stackOnto` it becomes the next version of that clip's stack */
+  addDailiesClip: (clip: Omit<import('../types/dailies').DailiesClip, 'id' | 'stackId' | 'version'>, stackOnto?: string) => string;
+  updateDailiesClip: (id: string, updates: Partial<import('../types/dailies').DailiesClip>) => void;
+  deleteDailiesClip: (id: string) => void;
+  unstackDailiesClip: (id: string) => void;
+  addDailiesComment: (comment: Omit<import('../types/dailies').DailiesComment, 'id' | 'createdAt'>) => string;
+  updateDailiesComment: (id: string, updates: Partial<import('../types/dailies').DailiesComment>) => void;
+  deleteDailiesComment: (id: string) => void;
+}
+
 // SuperVisor: takes, continuity, daily reports
 export interface SuperVisorSlice {
   // SuperVisor State (Script Supervisor)
@@ -620,6 +633,7 @@ export type ScreenplayState =
   ProductionSlice &
   OnSetSlice &
   SuperVisorSlice &
+  DailiesSlice &
   ProjectSlice;
 
 // Fields a Strip Board sort level can use (Movie Magic's Sort window)
