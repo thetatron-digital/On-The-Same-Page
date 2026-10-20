@@ -19,6 +19,8 @@ import { ProductionInfoView } from './basecamp/ProductionInfoView';
 import { ProductionReportView } from './basecamp/ProductionReportView';
 import { SunPanel } from './basecamp/SunPanel';
 import { useSunPanel } from './basecamp/sunPanelState';
+import { CallSheetSend } from './basecamp/CallSheetSend';
+import { useCallSheetSend } from './basecamp/callSheetSendState';
 import { shootDates } from '../engine/schedule/calendar';
 import { findConflicts } from '../engine/schedule/redFlags';
 import { scheduledElementDays, toYMD } from '../utils/doodReport';
@@ -302,6 +304,7 @@ const BaseCamp: React.FC = () => {
 
   return (
     <div className={`basecamp-container ${darkMode ? 'dark' : 'light'}`}>
+      <CallSheetSend />
       {/* Sidebar Navigation */}
       <div className="bc-sidebar">
         <div className="bc-sidebar-header">
@@ -2396,6 +2399,7 @@ const BaseCamp: React.FC = () => {
                   </td>
                   <td>
                     <div className="bc-row-actions">
+                      <button className="bc-icon-btn" onClick={() => useCallSheetSend.getState().open(cs.id)} title="Send to cast and crew, track confirmations">✉</button>
                       <button className="bc-icon-btn" onClick={() => openEdit(cs)} title="Edit">✎</button>
                       <button
                         className="bc-icon-btn danger"
