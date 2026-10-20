@@ -57,6 +57,35 @@ export interface DOODElementOptions {
 
 export const DEFAULT_MIN_DAYS_BETWEEN_DROP_PICKUP = 10;
 
+// Per-schedule DOOD preferences (Movie Magic keeps these per category,
+// overridable per element in the Edit Element window)
+export interface DOODSettings {
+  codes: DOODCodes;
+  categoryOptions: Record<string, DOODElementOptions>;
+  elementOptions: Record<string, Partial<DOODElementOptions>>; // keyed by element id
+}
+
+const NO_HOLDS: DOODElementOptions = {
+  allowHold: false,
+  allowDropPickup: false,
+  minDaysBetweenDropPickup: DEFAULT_MIN_DAYS_BETWEEN_DROP_PICKUP,
+};
+
+// Cast shows holds by default, as on a standard DOOD report
+export const DEFAULT_DOOD_SETTINGS: DOODSettings = {
+  codes: DEFAULT_DOOD_CODES,
+  categoryOptions: { Cast: { ...NO_HOLDS, allowHold: true } },
+  elementOptions: {},
+};
+
+export function resolveDOODOptions(settings: DOODSettings, category: string, elementId: string): DOODElementOptions {
+  return {
+    ...NO_HOLDS,
+    ...settings.categoryOptions[category],
+    ...settings.elementOptions[elementId],
+  };
+}
+
 export interface DOODElementInput {
   id: string;
   name: string;
