@@ -156,3 +156,26 @@ export async function exportVideo(
   onProgress(1);
   return { blob, extension: type.startsWith('video/mp4') ? 'mp4' : 'webm' };
 }
+
+/**
+ * Full-size flattened board from its layers (the stored `image` is a small
+ * JPEG thumbnail). Falls back to that thumbnail for boards without layers.
+ */
+export async function renderBoardPng(frame: StoryboardFrame, layerOrder: readonly string[], width: number, height: number): Promise<string> {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, width, height);
+  const layers = (frame.layers ?? {}) as Record<string, string | undefined>;
+  const sources = layerOrder.filter((l) => layers[l]);
+  if (!sources.length && frame.image) sources.push('__thumb');
+  for (const layer of sources) {
+    const img = await loadImage(layer === '__thumb' ? frame.image! : layers[layer]!);
+    ctx.globalAlpha = layer === 'reference' ? frame.referenceOpacity ?? 0.5 : 1;
+    ctx.drawImage(img, 0, 0, width, height);
+  }
+  ctx.globalAlpha = 1;
+  return canvas.toDataURL('image/png');
+}
