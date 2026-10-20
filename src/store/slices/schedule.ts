@@ -9,7 +9,7 @@ import type {
   DOODEntry,
   DOODStatus,
 } from '../../types/screenplay';
-import { STRIP_COLOR_MAP } from '../../types/screenplay';
+import { stripColorFor } from '../../types/screenplay';
 import { generateId } from '../../utils/fdx';
 import type { ScreenplayState, ScheduleSlice, StripSortLevel } from '../types';
 import { shootDates } from '../../engine/schedule/calendar';
@@ -120,8 +120,7 @@ export const createScheduleSlice: StateCreator<ScreenplayState, [], [], Schedule
 
     // Convert breakdown scenes to strips
     const strips: SceneStrip[] = state.breakdownScenes.map(scene => {
-      const colorKey = `${scene.intExt}-${scene.dayNight}`;
-      const color = STRIP_COLOR_MAP[colorKey] || 'White';
+      const color = stripColorFor(scene.intExt, scene.timeOfDay || scene.dayNight);
 
       return {
         id: generateId(),
@@ -167,9 +166,7 @@ export const createScheduleSlice: StateCreator<ScreenplayState, [], [], Schedule
     const newStrips: SceneStrip[] = state.productionData.scenes
       .filter(scene => !existingSceneIds.has(scene.id))
       .map(scene => {
-        const dayNightMap: Record<string, string> = { 'Day': 'DAY', 'Night': 'NIGHT', 'Dawn': 'DAWN', 'Dusk': 'DUSK' };
-        const colorKey = `${scene.intExt}-${dayNightMap[scene.dayNight] || 'DAY'}`;
-        const color = STRIP_COLOR_MAP[colorKey] || 'White';
+        const color = stripColorFor(scene.intExt, scene.dayNight);
 
         return {
           id: generateId(),
@@ -177,7 +174,7 @@ export const createScheduleSlice: StateCreator<ScreenplayState, [], [], Schedule
           sceneNumber: scene.sceneNumber,
           intExt: scene.intExt,
           location: scene.set,
-          timeOfDay: dayNightMap[scene.dayNight] || 'DAY',
+          timeOfDay: (scene.dayNight || 'Day').toUpperCase(),
           description: scene.description.substring(0, 50),
           pageCount: scene.pageCount,
           color: color as StripColor,
