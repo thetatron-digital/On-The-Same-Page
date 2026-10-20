@@ -8,6 +8,7 @@ import { formatEighths } from '../utils/breakdown';
 import './Breakdown.css';
 import { ElementManager } from './breakdown/ElementManager';
 import { SheetFields } from './breakdown/SheetFields';
+import { pendingLinkedElements } from '../utils/elements';
 
 // Category colors as CSS variables for consistent styling
 const CATEGORY_COLORS = Object.fromEntries(
@@ -152,6 +153,19 @@ export const Breakdown = () => {
     };
 
     addBreakdownElement(newElement);
+
+    // Element Linking: tagging an anchor can bring its linked elements
+    const store = useScreenplayStore.getState();
+    const tagged = store.breakdown?.elements.find(e => e.id === newElement.id);
+    const mode = store.breakdown?.elementLinkMode ?? 'confirm';
+    if (tagged?.elementRefId && store.breakdown && mode !== 'never') {
+      const pending = pendingLinkedElements(store.breakdown, newElement.sceneId, tagged.elementRefId);
+      if (pending.length > 0 && (mode === 'auto' ||
+          confirm(`Also add the elements linked to ${tagged.text.toUpperCase()}?\n\n${pending.map(p => `${p.category}: ${p.name}`).join('\n')}`))) {
+        store.addLinkedElementsToScene(newElement.sceneId, tagged.elementRefId);
+      }
+    }
+
     setSelectedText('');
     setSelectionInfo(null);
     window.getSelection()?.removeAllRanges();

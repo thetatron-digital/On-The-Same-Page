@@ -6,24 +6,29 @@ import { useScreenplayStore } from '../../store/screenplayStore';
 import { STRIP_COLOR_HEX, stripColorFor, stripTextColor } from '../../types/screenplay';
 import { buildScheduleReport, dayBreakLine, formatReportDate, oneLineToCsv } from '../../utils/scheduleReports';
 import { REPORT_TITLES, scheduleReportPdf, type ReportKind } from '../../utils/scheduleReportPdf';
+import { productionInfoLine, resolveProductionInfo } from '../../utils/productionInfo';
 import './basecampTools.css';
 
 export function ScheduleReports() {
-  const { schedule, breakdown, people, projectName, setBasecampView } = useScreenplayStore(
+  const { schedule, breakdown, people, settings, scriptTitle, setBasecampView } = useScreenplayStore(
     useShallow((s) => ({
       schedule: s.schedule,
       breakdown: s.breakdown,
       people: s.productionData.people,
-      projectName: s.productionData.settings.projectName || s.screenplay.title,
+      settings: s.productionData.settings,
+      scriptTitle: s.screenplay.title,
       setBasecampView: s.setBasecampView,
     }))
   );
+  const info = useMemo(() => resolveProductionInfo(settings, people), [settings, people]);
+  const projectName = info.pictureTitle || scriptTitle;
+  const credits = productionInfoLine(info);
   const [kind, setKind] = useState<ReportKind>('oneLine');
   const [includeBanners, setIncludeBanners] = useState(true);
 
   const report = useMemo(
-    () => (schedule ? buildScheduleReport(schedule, { breakdown, people, includeBanners, title: projectName }) : null),
-    [schedule, breakdown, people, includeBanners, projectName]
+    () => (schedule ? buildScheduleReport(schedule, { breakdown, people, includeBanners, title: projectName, credits }) : null),
+    [schedule, breakdown, people, includeBanners, projectName, credits]
   );
   const hasStrips = !!report?.days.some((d) => d.items.some((i) => i.kind === 'strip'));
   const fileBase = `${REPORT_TITLES[kind].replace(/ /g, '_')}_${(projectName || 'Schedule').replace(/\W+/g, '_')}`;
@@ -63,6 +68,7 @@ export function ScheduleReports() {
       ) : (
         <div className="bct-report">
           <div className="bct-report-title"><strong>{REPORT_TITLES[kind]}</strong><span>{report.title}</span></div>
+          {report.credits && <div className="bct-report-credits">{report.credits}</div>}
           {report.days.map((day) => (
             <section key={day.dayNumber} className="bct-report-day">
               {kind === 'shooting' && (

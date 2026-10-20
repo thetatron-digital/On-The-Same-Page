@@ -334,6 +334,8 @@ export interface BreakdownSlice {
   mergeElementRecords: (targetId: string, sourceIds: string[]) => void;
   renumberElementBoardIds: (category: string) => void;
   deleteElementRecord: (id: string) => void;
+  addLinkedElementsToScene: (sceneId: string, recordId: string) => number;
+  setElementLinkMode: (mode: 'auto' | 'confirm' | 'never') => void;
 }
 
 // ArtCart: items, options/approvals, vendors, shopping lists, budget
@@ -469,6 +471,7 @@ export interface ScheduleSlice {
   renameStripboard: (boardId: string, name: string, description?: string) => void;
   deleteStripboard: (boardId: string) => string | null;
   moveAllStripsToBoneyard: () => void;
+  setStripLayout: (layout: 'standard' | 'detailed' | 'thin') => void;
   addRedFlag: (flag: Omit<RedFlag, 'id'>) => string | null;
   updateRedFlag: (id: string, updates: Partial<Omit<RedFlag, 'id'>>) => string | null;
   deleteRedFlag: (id: string) => void;
@@ -484,7 +487,7 @@ export interface ScheduleSlice {
 export interface ProductionSlice {
   // Production Management State (shared)
   productionData: ProductionData;
-  basecampView: 'dashboard' | 'callsheets' | 'people' | 'scenes' | 'locations' | 'settings' | 'stripboard' | 'calendar' | 'dood' | 'reports' | 'redflags';
+  basecampView: 'dashboard' | 'callsheets' | 'people' | 'scenes' | 'locations' | 'settings' | 'stripboard' | 'calendar' | 'dood' | 'reports' | 'redflags' | 'productioninfo';
   // Production Management actions
   setBasecampView: (view: ScreenplayState['basecampView']) => void;
   initializeProductionData: () => void;

@@ -68,3 +68,20 @@ describe('element master list', () => {
     expect(b.elements.map((t) => t.id)).toEqual(['t3', 't4', 't5']);
   });
 });
+
+describe('element linking', () => {
+  it('adds linked elements a scene does not have yet, one level deep', async () => {
+    const { addLinkedElements, pendingLinkedElements } = await import('./elements');
+    let b = syncElementList(base());
+    const id = (name: string, cat: string) => b.elementList!.find((e) => e.name === name && e.category === cat)!.id;
+    const ada = id('ADA', 'Cast');
+    b = { ...b, elementList: b.elementList!.map((e) => (e.id === ada ? { ...e, linkedElementIds: [id('REVOLVER', 'Props'), id('REVOLVER', 'Weapons')] } : e)) };
+    // scene s3 already has the Props revolver (t2), so only the Weapons one is pending
+    const pending = pendingLinkedElements(b, 's3', ada);
+    expect(pending.map((e) => e.category)).toEqual(['Weapons']);
+    const next = addLinkedElements(b, 's3', pending);
+    const added = next.elements.at(-1)!;
+    expect(added).toMatchObject({ sceneId: 's3', category: 'Weapons', elementRefId: id('REVOLVER', 'Weapons'), sourceElementId: '' });
+    expect(pendingLinkedElements(next, 's3', ada)).toEqual([]);
+  });
+});

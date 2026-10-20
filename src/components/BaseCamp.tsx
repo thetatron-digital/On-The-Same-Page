@@ -15,6 +15,7 @@ import { DayOutOfDays } from './basecamp/DayOutOfDays';
 import { ProductionCalendar } from './basecamp/ProductionCalendar';
 import { ScheduleReports } from './basecamp/ScheduleReports';
 import { RedFlags } from './basecamp/RedFlags';
+import { ProductionInfoView } from './basecamp/ProductionInfoView';
 import { findConflicts } from '../engine/schedule/redFlags';
 import { scheduledElementDays } from '../utils/doodReport';
 
@@ -260,6 +261,8 @@ const BaseCamp: React.FC = () => {
         return <ScheduleReports />;
       case 'redflags':
         return <RedFlags />;
+      case 'productioninfo':
+        return <ProductionInfoView />;
       default:
         return <DashboardView />;
     }
@@ -276,6 +279,7 @@ const BaseCamp: React.FC = () => {
     { id: 'dood', label: 'Day Out of Days', icon: '▤' },
     { id: 'reports', label: 'Reports', icon: '▧' },
     { id: 'redflags', label: 'Red Flags', icon: '⚑' },
+    { id: 'productioninfo', label: 'Production Info', icon: 'ⓘ' },
     { id: 'callsheets', label: 'Call Sheets', icon: '▤' },
     { id: 'settings', label: 'Settings', icon: '⚙' },
   ];
@@ -2567,6 +2571,14 @@ const BaseCamp: React.FC = () => {
       return `${wholePages} ${eighths}/8`;
     };
 
+    const layout = schedule?.stripLayout ?? 'standard';
+    const sheetNumberOf = (sceneId: string) => {
+      const scenesInOrder = breakdownScenes.length ? breakdownScenes : (breakdown?.scenes ?? []);
+      const index = scenesInOrder.findIndex(s => s.id === sceneId);
+      return breakdown?.sheets?.[sceneId]?.sheetNumber || (index >= 0 ? String(index + 1) : '');
+    };
+    const synopsisOf = (strip: SceneStrip) => breakdown?.sheets?.[strip.sceneId]?.synopsis || strip.description;
+
     const renderStrip = (stripId: string) => {
       const strip = getStrip(stripId);
       if (!strip) return null;
@@ -2583,11 +2595,18 @@ const BaseCamp: React.FC = () => {
           onDragStart={(e) => handleDragStart(e, strip.id)}
           onClick={() => selectStrip(strip.id)}
         >
+          {layout === 'detailed' && <span className="strip-sheet" title="Sheet #">{sheetNumberOf(strip.sceneId)}</span>}
           <span className="strip-scene">{strip.sceneNumber}</span>
-          <span className="strip-int-ext">{strip.intExt}</span>
-          <span className="strip-location">{strip.location}</span>
-          <span className="strip-time">{strip.timeOfDay}</span>
+          {layout !== 'thin' && <span className="strip-int-ext">{strip.intExt}</span>}
+          <span className="strip-location">
+            {strip.location}
+            {layout === 'detailed' && synopsisOf(strip) && <span className="strip-synopsis">{synopsisOf(strip)}</span>}
+          </span>
+          {layout !== 'thin' && <span className="strip-time">{strip.timeOfDay}</span>}
           <span className="strip-pages">{formatPageCount(strip.pageCount)}</span>
+          {layout !== 'thin' && strip.castNumbers.length > 0 && (
+            <span className="strip-cast-ids" title="Cast Board IDs">{[...strip.castNumbers].sort((a, b) => a - b).join(',')}</span>
+          )}
           {shotCount > 0 && <span className="strip-shots">🎬{shotCount}</span>}
           {strip.isLocked && <span className="strip-lock">🔒</span>}
           {strip.hasStunts && <span className="strip-flag">⚡</span>}

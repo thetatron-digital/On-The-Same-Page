@@ -5,7 +5,7 @@
 // and every breakdown sheet references it. OTSP's tags are occurrences
 // in the script text; this module keeps a master list in step with them.
 
-import type { Breakdown, BreakdownScene } from '../types/screenplay';
+import type { Breakdown, BreakdownElement, BreakdownScene, ElementRecord } from '../types/screenplay';
 import { generateId } from './fdx';
 
 export const normalizeElementName = (text: string) => text.trim().replace(/\s+/g, ' ').toUpperCase();
@@ -114,5 +114,40 @@ export function deleteElement(breakdown: Breakdown, elementId: string): Breakdow
     elements: breakdown.elements.filter((t) => !removedTagIds.has(t.id)),
     elementList: (breakdown.elementList ?? []).filter((e) => e.id !== elementId),
     scenes: breakdown.scenes.map((s) => ({ ...s, elements: s.elements.filter((id) => !removedTagIds.has(id)) })),
+  };
+}
+
+/**
+ * Element Linking: elements linked to `recordId` that the scene doesn't
+ * have yet. One level, like Movie Magic's anchor -> linked elements.
+ */
+export function pendingLinkedElements(breakdown: Breakdown, sceneId: string, recordId: string): ElementRecord[] {
+  const list = breakdown.elementList ?? [];
+  const anchor = list.find((e) => e.id === recordId);
+  if (!anchor?.linkedElementIds?.length) return [];
+  const inScene = new Set(breakdown.elements.filter((t) => t.sceneId === sceneId).map((t) => t.elementRefId));
+  return anchor.linkedElementIds
+    .map((id) => list.find((e) => e.id === id))
+    .filter((e): e is ElementRecord => !!e && !inScene.has(e.id));
+}
+
+/** Tags for linked elements: on the sheet, but not tied to script text */
+export function addLinkedElements(breakdown: Breakdown, sceneId: string, records: ElementRecord[]): Breakdown {
+  if (records.length === 0) return breakdown;
+  const tags: BreakdownElement[] = records.map((r) => ({
+    id: generateId(),
+    text: r.name,
+    category: r.category,
+    sceneId,
+    sourceElementId: '',
+    startOffset: 0,
+    endOffset: 0,
+    elementRefId: r.id,
+    notes: 'Added by Element Linking',
+  }));
+  return {
+    ...breakdown,
+    elements: [...breakdown.elements, ...tags],
+    scenes: breakdown.scenes.map((s) => (s.id === sceneId ? { ...s, elements: [...s.elements, ...tags.map((t) => t.id)] } : s)),
   };
 }
