@@ -4,6 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 import type { TakeEntry } from '../types/screenplay';
 import { Dailies } from './dailies/Dailies';
 import { useDailiesUi } from './dailies/dailiesUi';
+import { EditorsLogPanel } from './EditorsLogPanel';
 import './SuperVisor.css';
 
 type ViewTab = 'takes' | 'continuity' | 'reports' | 'dailies';
@@ -591,6 +592,7 @@ const SuperVisor: React.FC = () => {
       {/* Reports Tab */}
       {session && activeTab === 'reports' && (
         <div className="supervisor-body reports-view">
+          <EditorsLogPanel sessionTakes={session.takes} allTakes={superVisor?.sessions.flatMap((s) => s.takes) ?? []} dayLabel={`Day ${schedule?.shootDays.find(d => d.id === session.shootDayId)?.dayNumber ?? '?'}`} />
           <div className="reports-header">
             <h3>Daily Reports</h3>
             <button

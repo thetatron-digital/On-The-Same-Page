@@ -819,3 +819,17 @@
 .dailies-btn {
   color: #6c63ff !important;
 }
+
+/* Editor's Log */
+.editors-log { margin-bottom: 24px; }
+.editors-log .reports-header { gap: 10px; flex-wrap: wrap; }
+.editors-log select { padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); }
+.editors-log-actions { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+.generate-btn.secondary { background: transparent; color: var(--text-primary); border: 1px solid var(--border-color); }
+.editors-log-table { max-height: 320px; overflow: auto; border: 1px solid var(--border-color); border-radius: 8px; }
+.editors-log-table table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.editors-log-table th, .editors-log-table td { padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--border-color); white-space: nowrap; }
+.editors-log-table td:last-child { white-space: normal; }
+.editors-log-table th { position: sticky; top: 0; background: var(--bg-secondary); }
+.editors-log-table tr.print td { font-weight: 600; }
+.editors-log-table tr.ng td { color: var(--text-muted); }
