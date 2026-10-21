@@ -46,10 +46,9 @@ export const createViewFinderSlice: StateCreator<ScreenplayState, [], [], ViewFi
   },
 
   importScenesForViewFinder: () => {
+    if (!get().viewFinder) get().initializeViewFinder();
+    // Read after initializing, so a fresh project doesn't crash here
     const state = get();
-    if (!state.viewFinder) {
-      get().initializeViewFinder();
-    }
 
     // Get scenes from breakdown or directly from screenplay
     const scenes = state.breakdownScenes.length > 0

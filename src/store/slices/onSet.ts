@@ -49,10 +49,9 @@ export const createOnSetSlice: StateCreator<ScreenplayState, [], [], OnSetSlice>
   },
 
   setOnSetViewMode: (mode) => {
+    if (!get().onSet) get().initializeOnSet();
+    // Read after initializing, so a fresh project doesn't crash here
     const state = get();
-    if (!state.onSet) {
-      get().initializeOnSet();
-    }
 
     set({
       onSet: {
@@ -79,10 +78,9 @@ export const createOnSetSlice: StateCreator<ScreenplayState, [], [], OnSetSlice>
   },
 
   startProductionDay: (dayId) => {
+    if (!get().onSet) get().initializeOnSet();
+    // Read after initializing, so a fresh project doesn't crash here
     const state = get();
-    if (!state.onSet) {
-      get().initializeOnSet();
-    }
 
     const productionStatus: ProductionStatus = {
       currentDayId: dayId,
@@ -195,10 +193,9 @@ export const createOnSetSlice: StateCreator<ScreenplayState, [], [], OnSetSlice>
   },
 
   addDelay: (reason, category, notes) => {
+    if (!get().onSet) get().initializeOnSet();
+    // Read after initializing, so a fresh project doesn't crash here
     const state = get();
-    if (!state.onSet) {
-      get().initializeOnSet();
-    }
 
     const id = generateId();
     const delay: DelayEntry = {
@@ -266,10 +263,9 @@ export const createOnSetSlice: StateCreator<ScreenplayState, [], [], OnSetSlice>
   },
 
   goLive: () => {
+    if (!get().onSet) get().initializeOnSet();
+    // Read after initializing, so a fresh project doesn't crash here
     const state = get();
-    if (!state.onSet) {
-      get().initializeOnSet();
-    }
 
     set({
       onSet: {

@@ -143,10 +143,9 @@ export const createScheduleSlice: StateCreator<ScreenplayState, [], [], Schedule
   // existing strips in place (keeping their day and lock) and adds new
   // sheets to the Unscheduled area.
   importStripsFromBreakdown: () => {
+    if (!get().schedule) get().initializeSchedule();
+    // Read after initializing, so a fresh project doesn't crash here
     const state = get();
-    if (!state.schedule) {
-      get().initializeSchedule();
-    }
     get().syncElements();
     const breakdown = get().breakdown;
     const schedule = get().schedule!;
@@ -195,10 +194,9 @@ export const createScheduleSlice: StateCreator<ScreenplayState, [], [], Schedule
   },
 
   importProductionScenesAsStrips: () => {
+    if (!get().schedule) get().initializeSchedule();
+    // Read after initializing, so a fresh project doesn't crash here
     const state = get();
-    if (!state.schedule) {
-      get().initializeSchedule();
-    }
     const currentSchedule = get().schedule!;
     const existingSceneIds = new Set(currentSchedule.strips.map(s => s.sceneId));
 
@@ -284,10 +282,9 @@ export const createScheduleSlice: StateCreator<ScreenplayState, [], [], Schedule
   },
 
   addShootDay: () => {
+    if (!get().schedule) get().initializeSchedule();
+    // Read after initializing, so a fresh project doesn't crash here
     const state = get();
-    if (!state.schedule) {
-      get().initializeSchedule();
-    }
 
     const id = generateId();
     const dayNumber = (state.schedule?.shootDays.length || 0) + 1;
@@ -523,10 +520,9 @@ export const createScheduleSlice: StateCreator<ScreenplayState, [], [], Schedule
   },
 
   createShotPackage: (sceneId, name, shotIds) => {
+    if (!get().schedule) get().initializeSchedule();
+    // Read after initializing, so a fresh project doesn't crash here
     const state = get();
-    if (!state.schedule) {
-      get().initializeSchedule();
-    }
 
     const id = generateId();
     const scene = state.breakdownScenes.find(s => s.id === sceneId);
