@@ -13,16 +13,18 @@ import { budgetCsv, topsheetPdf } from './budgetExport';
 import { makeComparison } from './comparison';
 import { takeSnapshot } from '../../engine/budget/actuals';
 import { newBudgetId } from '../../engine/budget/edit';
+import { useAppViews, type BottomLineLevel } from '../../routing/appViews';
 import './bottomline.css';
 
-export type Level = { kind: 'topsheet' } | { kind: 'category'; id: string } | { kind: 'account'; id: string };
+export type Level = BottomLineLevel;
 
 export default function BottomLine() {
   const { budget, schedule, darkMode, initializeBudget, updateBudget, artCart } = useScreenplayStore(
     useShallow((s) => ({ budget: s.budget, schedule: s.schedule, darkMode: s.darkMode, initializeBudget: s.initializeBudget, updateBudget: s.updateBudget, artCart: s.artCart }))
   );
   const [compareKey, setCompareKey] = useState('');
-  const [level, setLevel] = useState<Level>({ kind: 'topsheet' });
+  const level = useAppViews((v) => v.bottomLineLevel);
+  const setLevel = (next: Level) => useAppViews.getState().set({ bottomLineLevel: next });
   const [setup, setSetup] = useState<SetupTab | null>(null);
   const extra = useMemo(() => scheduleGlobals(schedule), [schedule]);
   const totals = useMemo(() => (budget ? budgetTotals(budget, extra) : null), [budget, extra]);

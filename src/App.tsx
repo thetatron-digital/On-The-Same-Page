@@ -3,6 +3,7 @@ import { AppMenuBar } from './components/AppMenuBar';
 import { DialogHost } from './components/DialogHost';
 import { SharedProjectPrompt } from './components/SharedProjectPrompt';
 import { OfflineNotice } from './components/OfflineNotice';
+import { FindAnything } from './components/FindAnything';
 import { Toolbar } from './components/Toolbar';
 import { Editor } from './components/Editor';
 import { Home } from './components/Home';
@@ -107,6 +108,7 @@ function App() {
       <>
         <Home />
         <OfflineNotice />
+        <FindAnything />
       </>
     );
   }
@@ -119,6 +121,7 @@ function App() {
       <DialogHost />
       <SharedProjectPrompt />
       <OfflineNotice />
+      <FindAnything />
     </div>
   );
 }

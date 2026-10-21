@@ -11,6 +11,7 @@ import { generateBreakdownScenes } from '../../utils/breakdown';
 import { addReferenceFiles } from './addReferences';
 import { ReferenceDetail } from './ReferenceDetail';
 import { exportDeckPdf, exportDeckZip } from './deckExport';
+import { useAppViews } from '../../routing/appViews';
 import './references.css';
 
 type LookKey = keyof Omit<ImageLook, 'palette'>;
@@ -34,7 +35,12 @@ export default function ReferenceLibrary({ onClose }: { onClose: () => void }) {
   const scenes = useMemo(() => generateBreakdownScenes(elements), [elements]);
   const [query, setQuery] = useState<ReferenceQuery>({});
   const [deckId, setDeckId] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Opened from Find Anything: start on that image
+  const [selectedId, setSelectedId] = useState<string | null>(() => {
+    const id = useAppViews.getState().referenceImageId;
+    if (id) useAppViews.getState().set({ referenceImageId: null });
+    return id;
+  });
   const [openFacets, setOpenFacets] = useState<Set<string>>(() => new Set(['timeOfDay', 'frameSize', 'lighting']));
   const [busy, setBusy] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
