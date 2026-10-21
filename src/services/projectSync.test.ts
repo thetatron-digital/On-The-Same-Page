@@ -111,4 +111,15 @@ describe('project sync', () => {
     expect(useSyncStatus.getState().others.map((o) => `${o.name}:${o.app}`)).toEqual(['Alex:basecamp']);
     expect(drive.notes.p_me1).toMatch(/^\d+\|[a-z]+\|Me$/);
   });
+
+  it('saves offline edits and pulls when the connection comes back', async () => {
+    const { startRemoteSync } = await import('./projectSync');
+    const stop = startRemoteSync(() => 'p1', 1e9);
+    editLocal(1, 'Edited on the train.');
+    useScreenplayStore.getState().setDirty(true);
+    editRemote(2, 'Grace bursts in.');
+    window.dispatchEvent(new Event('online'));
+    await vi.waitFor(() => expect(texts(parseProjectData(drive.json))).toEqual(['INT. HOUSE - DAY', 'Edited on the train.', 'Grace bursts in.']));
+    stop();
+  });
 });
