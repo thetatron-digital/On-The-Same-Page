@@ -4,6 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 import type { TakeEntry } from '../types/screenplay';
 import { Dailies } from './dailies/Dailies';
 import { useDailiesUi } from './dailies/dailiesUi';
+import { useAppViews } from '../routing/appViews';
 import { EditorsLogPanel } from './EditorsLogPanel';
 import './SuperVisor.css';
 
@@ -55,7 +56,8 @@ const SuperVisor: React.FC = () => {
   );
 
   // Local state
-  const [activeTab, setActiveTab] = useState<ViewTab>('takes');
+  const activeTab = useAppViews((v) => v.superVisorTab);
+  const setActiveTab = (tab: ViewTab) => useAppViews.getState().set({ superVisorTab: tab });
   const [showTakeModal, setShowTakeModal] = useState(false);
   const [editingTake, setEditingTake] = useState<TakeEntry | null>(null);
   const [newTake, setNewTake] = useState<Partial<TakeEntry>>({

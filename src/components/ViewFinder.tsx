@@ -1,5 +1,6 @@
 import React, { Suspense, lazy, useState, useEffect } from 'react';
 import { StoryboardEditor } from './viewfinder/StoryboardEditor';
+import { useAppViews } from '../routing/appViews';
 import { useScreenplayStore } from '../store/screenplayStore';
 import { useShallow } from 'zustand/react/shallow';
 import type { Shot, ShotSize, CameraAngle, CameraMovement, ShotStatus } from '../types/screenplay';
@@ -84,9 +85,14 @@ const ViewFinder: React.FC = () => {
 
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showStoryboard, setShowStoryboard] = useState(false);
-  const [showReferences, setShowReferences] = useState(false);
-  const [showBlocking, setShowBlocking] = useState(false);
+  const view = useAppViews((v) => v.viewFinderView);
+  const showView = (next: 'shots' | 'storyboard' | 'references' | 'blocking') => useAppViews.getState().set({ viewFinderView: next });
+  const showStoryboard = view === 'storyboard';
+  const showReferences = view === 'references';
+  const showBlocking = view === 'blocking';
+  const setShowStoryboard = (on: boolean) => showView(on ? 'storyboard' : 'shots');
+  const setShowReferences = (on: boolean) => showView(on ? 'references' : 'shots');
+  const setShowBlocking = (on: boolean) => showView(on ? 'blocking' : 'shots');
   const [editingShot, setEditingShot] = useState<Shot | null>(null);
   const [showCameraModal, setShowCameraModal] = useState(false);
 
