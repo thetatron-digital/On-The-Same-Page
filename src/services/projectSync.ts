@@ -228,11 +228,28 @@ export function startRemoteSync(getProjectId: () => string | null, interval = PU
   const timer = setInterval(pull, interval);
   const onVisible = () => { if (document.visibilityState === 'visible') pull(); };
   const onLeave = () => { const id = getProjectId(); if (id) leaveProject(id); };
+  // Back online: save what was edited offline, then bring in others' changes
+  const onOnline = () => {
+    const id = getProjectId();
+    const store = useScreenplayStore.getState();
+    if (id && syncBaseFor(id) && store.isDirty && store.documentOrigin === 'project' && !isReadOnlyProject(id)) {
+      void saveDriveProject(id, store.getProjectData())
+        .then((saved) => {
+          // Nothing changed while saving: the editor is clean
+          const now = useScreenplayStore.getState();
+          if (PERSISTED_KEYS.every((k) => now[k] === saved[k])) now.setDirty(false);
+        })
+        .catch(() => {})
+        .finally(pull);
+    } else pull();
+  };
   document.addEventListener('visibilitychange', onVisible);
   window.addEventListener('pagehide', onLeave);
+  window.addEventListener('online', onOnline);
   return () => {
     clearInterval(timer);
     document.removeEventListener('visibilitychange', onVisible);
     window.removeEventListener('pagehide', onLeave);
+    window.removeEventListener('online', onOnline);
   };
 }

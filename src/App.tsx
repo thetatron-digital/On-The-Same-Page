@@ -2,6 +2,7 @@ import { useEffect, Suspense, lazy } from 'react';
 import { AppMenuBar } from './components/AppMenuBar';
 import { DialogHost } from './components/DialogHost';
 import { SharedProjectPrompt } from './components/SharedProjectPrompt';
+import { OfflineNotice } from './components/OfflineNotice';
 import { Toolbar } from './components/Toolbar';
 import { Editor } from './components/Editor';
 import { Home } from './components/Home';
@@ -102,7 +103,12 @@ function App() {
 
   // Home page has its own layout, don't show toolbar
   if (activeApp === 'home') {
-    return <Home />;
+    return (
+      <>
+        <Home />
+        <OfflineNotice />
+      </>
+    );
   }
 
   return (
@@ -112,6 +118,7 @@ function App() {
       <Suspense fallback={<div className="app-loading" role="status">Loading…</div>}>{renderApp()}</Suspense>
       <DialogHost />
       <SharedProjectPrompt />
+      <OfflineNotice />
     </div>
   );
 }
