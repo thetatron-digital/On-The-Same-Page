@@ -58,6 +58,8 @@ npm run preview
 
 ## Deployment
 
+**Google sign-in, Drive sync, sharing and the file picker** need three free values from Google Cloud (`VITE_GOOGLE_CLIENT_ID`, `VITE_GOOGLE_API_KEY`, `VITE_GOOGLE_APP_ID`), set in `.env.local` and in your host's environment variables. See [docs/google-setup-and-testing.md](docs/google-setup-and-testing.md) for the steps and a two-account test checklist.
+
 ### Netlify
 
 This project includes a `netlify.toml` configuration file. Simply:
