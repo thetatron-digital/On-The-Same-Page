@@ -37,11 +37,20 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k.startsWith('otsp-app-') && k !== CACHE).map((k) => caches.delete(k))))
-      .then(() => self.clients.claim())
-  );
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter((k) => k.startsWith('otsp-app-') && k !== CACHE).map((k) => caches.delete(k)));
+    // Each deploy has new file names: drop built files the current build no longer has
+    const current = new Set(await allAssets());
+    if (current.size) {
+      const cache = await caches.open(CACHE);
+      for (const req of await cache.keys()) {
+        const path = new URL(req.url).pathname;
+        if (path.startsWith('/assets/') && !current.has(path)) await cache.delete(req);
+      }
+    }
+    await self.clients.claim();
+  })());
 });
 
 // The page sends the files it loaded before this worker took over
