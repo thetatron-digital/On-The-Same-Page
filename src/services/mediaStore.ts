@@ -106,6 +106,16 @@ export async function clipUrl(ref: MediaRef, onProgress?: (p: UploadProgress) =>
   return url;
 }
 
+/** The bytes kept in this browser, if any (never downloads) */
+export async function getCachedBlob(ref: MediaRef): Promise<Blob | undefined> {
+  return cache.get(cacheKey(ref)).catch(() => undefined);
+}
+
+/** Keep bytes for a reference in this browser (restoring a backup) */
+export async function cacheBlob(ref: MediaRef, blob: Blob): Promise<void> {
+  await cache.put(cacheKey(ref), blob);
+}
+
 export async function isClipCached(ref: MediaRef): Promise<boolean> {
   return !!(await cache.get(cacheKey(ref)).catch(() => undefined));
 }
