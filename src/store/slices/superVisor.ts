@@ -34,10 +34,9 @@ export const createSuperVisorSlice: StateCreator<ScreenplayState, [], [], SuperV
   },
 
   startSupervisorSession: (shootDayId) => {
+    if (!get().superVisor) get().initializeSuperVisor();
+    // Read after initializing, so a fresh project doesn't crash here
     const state = get();
-    if (!state.superVisor) {
-      get().initializeSuperVisor();
-    }
 
     const id = generateId();
     const session: SupervisorSession = {
@@ -80,10 +79,9 @@ export const createSuperVisorSlice: StateCreator<ScreenplayState, [], [], SuperV
   },
 
   setCurrentSlate: (slate) => {
+    if (!get().superVisor) get().initializeSuperVisor();
+    // Read after initializing, so a fresh project doesn't crash here
     const state = get();
-    if (!state.superVisor) {
-      get().initializeSuperVisor();
-    }
 
     set({
       superVisor: {
@@ -239,10 +237,9 @@ export const createSuperVisorSlice: StateCreator<ScreenplayState, [], [], SuperV
   },
 
   addContinuityLog: (sceneId) => {
+    if (!get().superVisor) get().initializeSuperVisor();
+    // Read after initializing, so a fresh project doesn't crash here
     const state = get();
-    if (!state.superVisor) {
-      get().initializeSuperVisor();
-    }
 
     const scene = state.breakdownScenes.find(s => s.id === sceneId);
     const id = generateId();
@@ -288,10 +285,9 @@ export const createSuperVisorSlice: StateCreator<ScreenplayState, [], [], SuperV
   },
 
   generateDailyReport: (shootDayId) => {
+    if (!get().superVisor) get().initializeSuperVisor();
+    // Read after initializing, so a fresh project doesn't crash here
     const state = get();
-    if (!state.superVisor) {
-      get().initializeSuperVisor();
-    }
 
     const session = state.superVisor!.sessions.find(s => s.shootDayId === shootDayId);
     if (!session) return '';
