@@ -5,6 +5,7 @@ import { googleAuth } from '../services/googleAuth';
 import { useScreenplayStore } from '../store/screenplayStore';
 import { openProject } from '../services/openProject';
 import { openSharedProject } from '../services/openShared';
+import { restoreBackup } from '../services/backup';
 import { isPickerConfigured } from '../services/googlePicker';
 import { ShareDialog } from './ShareDialog';
 import { useShallow } from 'zustand/react/shallow';
@@ -239,6 +240,31 @@ export const Home = () => {
               <p>Save to {user ? 'cloud' : 'browser'}</p>
             </div>
           </button>
+
+          <label className="action-card" title="Open a project from an OTSP backup file">
+            <input
+              type="file"
+              accept=".otspbackup,application/zip"
+              hidden
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = '';
+                if (!file) return;
+                setSharedError(null);
+                restoreBackup(file).catch((err) => setSharedError(err instanceof Error ? err.message : 'Could not restore the backup'));
+              }}
+            />
+            <div className="action-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="1 4 1 10 7 10" />
+                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+              </svg>
+            </div>
+            <div className="action-text">
+              <h3>Restore Backup</h3>
+              <p>From a .otspbackup file</p>
+            </div>
+          </label>
 
           {user && isPickerConfigured() && (
             <button

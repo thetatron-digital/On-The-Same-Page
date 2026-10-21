@@ -4,6 +4,7 @@
 // follow Final Draft's menus (findings/ui-parity-spec.md §1.1); shortcuts use
 // the browser-safe substitutions from §0.
 
+import { saveBackup } from '../services/backup';
 import { useScreenplayStore } from '../store/screenplayStore';
 import type { ElementType } from '../types/screenplay';
 import { ELEMENT_SHORTCUTS } from '../types/screenplay';
@@ -88,6 +89,7 @@ export const COMMANDS: Command[] = [
   { id: 'file.exportFountain', label: 'Fountain (.fountain)', run: exportFountain },
   { id: 'file.sides', label: 'Sides…', run: () => dialogs().show('sides') },
   { id: 'file.share', label: 'Share…', run: () => dialogs().show('share') },
+  { id: 'file.backup', label: 'Save Backup…', run: () => { void saveBackup().then((msg) => alert(msg)).catch((e) => alert(e instanceof Error ? e.message : 'Backup failed')); } },
   { id: 'file.print', label: 'Print…', keys: [letter('p', { mod: true, soft: true })], run: () => dialogs().show('pdf') },
 
   // Edit
@@ -272,7 +274,7 @@ export const MENUS: { title: string; items: MenuEntry[] }[] = [
     items: [
       'file.new', 'file.open', 'file.import', '---',
       'file.save', 'file.savePdf', { submenu: 'Export', items: ['file.exportFdx', 'file.exportFountain'] }, '---',
-      'file.sides', 'file.share', '---', 'file.print',
+      'file.sides', 'file.share', 'file.backup', '---', 'file.print',
     ],
   },
   {
